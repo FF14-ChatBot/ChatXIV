@@ -1,0 +1,5 @@
+# git-crypt: encrypt /documents for admin owners only
+# See docs/git-crypt-setup.md for setup and unlock instructions.
+
+documents/** filter=git-crypt diff=git-crypt
+.gitattributes !filter !diff

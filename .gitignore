@@ -25,3 +25,8 @@ build/
 
 # Optional
 *.local
+
+# git-crypt setup (do not commit)
+git-crypt.exe
+.gpg-keygen-*.txt
+.gpg-ownertrust*.txt
