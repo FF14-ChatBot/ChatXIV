@@ -1,0 +1,48 @@
+# ChatXIV Project License
+
+## Definitions
+
+- **"Owners"** means the organization owners of the FF14-ChatBot organization (e.g., as designated in the repository and organization settings on GitHub or the hosting platform in use). Ownership of this project is vested solely in the Owners.
+- **"Project"** means this software, codebase, documentation, and any other materials in this repository.
+
+---
+
+## 1. Ownership
+
+Copyright and all other rights in the Project are held by the Owners. No grant of ownership, partial or otherwise, is made to any contributor, user, or third party. Only the Owners may assign, license, or otherwise transfer rights in the Project except as expressly stated in this license.
+
+---
+
+## 2. Contributions
+
+Contributions to the Project (e.g., via pull requests, patches, or similar) are permitted only through the Project’s designated contribution process. Participation requires requesting and obtaining the necessary permissions (e.g., repository write access, merge rights, or approval by maintainers) as set by the Owners. By contributing, you grant the Owners a perpetual, irrevocable, worldwide, royalty-free license to use, modify, and distribute your contribution as part of the Project under this license. Contributing does not grant you any ownership in the Project or any right to commercially use, sell, or license the Project or your contribution outside the Project.
+
+---
+
+## 3. Use and Commercial Restrictions
+
+You may view, use, and modify the Project for personal or non-commercial use. Any **commercial** use, including but not limited to selling, licensing for fee, sublicensing, renting, distributing for commercial purposes, or trading the Project or derivative works, **requires prior written permission from the Owners**. You may not represent that you have the right to sell, license, or commercially exploit the Project on behalf of the Owners. For commercial or licensing inquiries, contact the Owners through the Project’s official channels.
+
+---
+
+## 4. Ad-Supported Revenue and Monetization
+
+The Owners may monetize the Project through advertising, sponsorships, or other means. Revenue from such monetization (including ad-supported use of the Project) accrues to the Owners. Third parties may not place ads, sponsorships, or other monetization around or in connection with the Project (including forks or derivative deployments) without written permission from the Owners.
+
+If the Project is offered with advertising support:
+
+- **Disclosure:** Where required by applicable law, the Project or its associated terms of use will disclose that the service may be supported by advertising.
+- **Third-party ads:** Ads may be supplied by third-party providers; the Owners are not responsible for the content, availability, or conduct of third-party ad networks or linked sites. Use of the Project may involve interaction with third-party ad content at the user’s own responsibility.
+- **Compliance:** The Owners will operate ad-supported offerings in accordance with applicable laws (e.g., disclosure, privacy, and consumer protection). Users are responsible for compliance with their own local laws when accessing the Project.
+
+---
+
+## 5. Disclaimer of Warranty and Use at Your Own Discretion
+
+THE PROJECT IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE OWNERS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE PROJECT OR THE USE OR OTHER DEALINGS IN THE PROJECT.
+
+Use of the Project is at your own discretion. Misuse of the Project or use for purposes other than those intended by the Owners may result in unfavorable outcomes. The Owners do not accept fault or responsibility for any such outcomes, and you assume all risk arising from your use (including misuse or unintended use) of the Project.
+
+---
+
+*This license is governed by the laws applicable to the Owners. If any provision is held unenforceable, the remaining provisions remain in effect.*

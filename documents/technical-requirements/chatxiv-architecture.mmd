@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph Clients["Clients"]
+    WebUI["Web UI (MVP)"]
+    Dalamud["Dalamud (post-MVP)"]
+  end
+
+  subgraph ChatXIV["ChatXIV Backend"]
+    API["REST API\n/v1/chat, /v1/feedback\n(OpenAPI/Swagger)"]
+    Chat["Chat / RAG service"]
+    Knowledge["Knowledge layer\n(retrieve → format + cite)"]
+    Session["Session store\n(Redis/DB or client-sent context)"]
+  end
+
+  subgraph External["External (cache-first)"]
+    XIVAPI["XIVAPI"]
+    Wiki["MediaWiki (wikis)"]
+    OpenAI["OpenAI\n(credentials encrypted, server-side only)"]
+  end
+
+  WebUI -->|HTTPS| API
+  Dalamud -.->|same API| API
+  API --> Chat
+  Chat --> Knowledge
+  Chat --> Session
+  Knowledge --> XIVAPI
+  Knowledge --> Wiki
+  Knowledge --> OpenAI
+  Knowledge --> Session
