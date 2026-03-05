@@ -24,7 +24,8 @@ Succinct guide for running, linting, testing, and building the repo.
 ## Lint and format
 
 - **Lint:** ESLint in both packages.
-  - Root: `npm run lint` (runs backend + frontend lint)
+  - Root (both): `npm run lint`
+  - Root (per side): `npm run lint:backend` or `npm run lint:frontend`
   - Per package: `cd backend && npm run lint` or `cd frontend && npm run lint`
 - **Format:** Prettier in both packages. `npm run format` (write), `npm run format:check` (check). From root: `npm run format` / `npm run format:check` run both.
 
@@ -33,12 +34,14 @@ Succinct guide for running, linting, testing, and building the repo.
 - **Runner:** Vitest in both backend and frontend.
 - **Coverage target:** 90% (enforced; thresholds in each package’s `vitest.config.ts`). Entry points and test files are excluded from coverage so the threshold applies to application source only.
 - **Commands:**
-  - Root: `npm run test` (both packages); `npm run test:coverage` (coverage for both)
+  - Root (both): `npm run test`; `npm run test:coverage` (coverage for both)
+  - Root (per side): `npm run test:backend` or `npm run test:frontend`
   - Per package: `npm run test`, `npm run coverage` (or `npm run test:watch` for watch mode)
 
 ## Build
 
-- Root: `npm run build` (builds backend then frontend)
+- Root (both): `npm run build` (builds backend then frontend)
+- Root (per side): `npm run build:backend` or `npm run build:frontend`
 - Per package: `cd backend && npm run build`; `cd frontend && npm run build`
 
 ## CI

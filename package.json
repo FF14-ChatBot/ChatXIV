@@ -7,10 +7,20 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "build:frontend": "npm run build --prefix frontend",
     "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "lint:backend": "npm run lint --prefix backend",
+    "lint:frontend": "npm run lint --prefix frontend",
     "format": "npm run format --prefix backend && npm run format --prefix frontend",
+    "format:backend": "npm run format --prefix backend",
+    "format:frontend": "npm run format --prefix frontend",
     "format:check": "npm run format:check --prefix backend && npm run format:check --prefix frontend",
+    "format:check:backend": "npm run format:check --prefix backend",
+    "format:check:frontend": "npm run format:check --prefix frontend",
     "test": "npm run test --prefix backend && npm run test --prefix frontend",
+    "test:backend": "npm run test --prefix backend",
+    "test:frontend": "npm run test --prefix frontend",
     "test:coverage": "npm run coverage --prefix backend && npm run coverage --prefix frontend"
   }
 }
