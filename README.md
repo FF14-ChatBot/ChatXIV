@@ -6,6 +6,7 @@ A chat-first assistant that provides extensive, accurate data to *Final Fantasy 
 
 - **[Business Requirements Document (BRD)](docs/design-documents/BRD.md)** — Product scope, requirements, and success criteria.
 - **[git-crypt setup](docs/git-crypt-setup.md)** — How `docs/design-documents/` encryption works, one-time setup, and triage/fix steps for new owners.
+- **Developer setup:** [docs/README.md](docs/README.md)
 
 ## Overview
 
