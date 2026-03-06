@@ -19,6 +19,7 @@ Thumbs.db
 
 # Build and logs
 dist/
+dist-node/
 build/
 coverage/
 *.log

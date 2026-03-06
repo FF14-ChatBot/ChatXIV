@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "description": "FFXIV data chatbot — BiS, raid plans, story, unlocks, settings",
+  "workspaces": ["backend", "frontend", "packages/*"],
   "scripts": {
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
-    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "build:cdm": "npm run build --workspace=@chatxiv/cdm",
+    "build": "npm run build:cdm && npm run build --prefix backend && npm run build --prefix frontend",
     "build:backend": "npm run build --prefix backend",
     "build:frontend": "npm run build --prefix frontend",
     "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",

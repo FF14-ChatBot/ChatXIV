@@ -16,6 +16,7 @@
     "audit": "npm audit --audit-level=high"
   },
   "dependencies": {
+    "@chatxiv/cdm": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
