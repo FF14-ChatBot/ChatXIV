@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "backend/**"
+      - "packages/cdm/**"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
+      - "packages/cdm/**"
       - ".github/workflows/backend-ci.yml"
 
 jobs:
@@ -37,6 +39,9 @@ jobs:
 
       - name: Format check
         run: npm run format:check
+
+      - name: Build CDM
+        run: npx tsc -p ../packages/cdm/tsconfig.json
 
       - name: Test
         run: npm run test
