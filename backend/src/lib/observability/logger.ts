@@ -5,7 +5,7 @@ import { ENV_KEYS } from '../config/constants.js';
 const baseLogger = pino({
   level: process.env[ENV_KEYS.LOG_LEVEL] ?? 'info',
   formatters: {
-    level: (label) => ({ level: label }),
+    level: (label: string) => ({ level: label }),
   },
 });
 

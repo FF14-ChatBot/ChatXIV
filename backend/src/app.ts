@@ -5,10 +5,10 @@ import { usageAnalyticsMiddleware } from './middleware/usageAnalytics.js';
 
 export const app = express();
 
+app.use(express.json());
 app.use(requestContextMiddleware);
 app.use(requestMetricsMiddleware);
 app.use(usageAnalyticsMiddleware);
-app.use(express.json());
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
