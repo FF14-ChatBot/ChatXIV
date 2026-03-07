@@ -1,12 +1,12 @@
 # git-crypt setup for chatXIV
 
-The `docs/design-documents/` folder is encrypted with **git-crypt**. Only users whose GPG key has been added can decrypt it (intended for repo admin/owners).
+The `docs/design-documents/` and `docs/tasks/` folders are encrypted with **git-crypt**. Only users whose GPG key has been added can decrypt them (intended for repo admin/owners).
 
 **Authorized owners (GPG identities to add):** add each owner's GPG identity (e.g. key ID, fingerprint, or email).
 
 ## Requesting access
 
-If you need access to `docs/design-documents/`:
+If you need access to the encrypted docs (e.g. `docs/design-documents/` or `docs/tasks/`):
 
 1. **Create a GPG key** (if you don’t have one), e.g. `gpg --full-generate-key`.
 2. **Export your public key** and send it to the repo owner (e.g. paste the output in a private channel):
@@ -17,11 +17,11 @@ If you need access to `docs/design-documents/`:
    ```bash
    git-crypt unlock
    ```
-   You’ll be prompted for your GPG key if needed. After that, files in `docs/design-documents/` are readable in your working copy.
+   You’ll be prompted for your GPG key if needed. After that, files in `docs/design-documents/` and `docs/tasks/` are readable in your working copy.
 
 ## Why committing `.git-crypt/` is safe
 
-The files in `.git-crypt/` that you commit are **not** the raw encryption key. When you run `git-crypt add-gpg-user`, git-crypt encrypts the repo’s symmetric key with that user’s **public** GPG key and stores the result in `.git-crypt/`. So what’s in the repo is **GPG-encrypted** key material. Only someone with the matching **private** GPG key can decrypt it and unlock `docs/design-documents/`. Everyone else can see the files in `.git-crypt/` but cannot use them without your private key.
+The files in `.git-crypt/` that you commit are **not** the raw encryption key. When you run `git-crypt add-gpg-user`, git-crypt encrypts the repo’s symmetric key with that user’s **public** GPG key and stores the result in `.git-crypt/`. So what’s in the repo is **GPG-encrypted** key material. Only someone with the matching **private** GPG key can decrypt it and unlock `docs/design-documents/` and `docs/tasks/`. Everyone else can see the files in `.git-crypt/` but cannot use them without your private key.
 
 ## How the private key and unlock work
 
@@ -72,7 +72,7 @@ git add .git-crypt/
 git commit -m "Add git-crypt GPG keys for document encryption"
 ```
 
-Only add GPG users who should have access to `docs/design-documents/`. Anyone not in the GPG list will see encrypted blobs for files under `docs/design-documents/`.
+Only add GPG users who should have access to the encrypted docs. Anyone not in the GPG list will see encrypted blobs for files under `docs/design-documents/` and `docs/tasks/`.
 
 ## Triage & fix (steps used during initial setup)
 
@@ -151,15 +151,18 @@ git commit -m "Your message"
 
 ### Documents were committed before encryption was enabled
 
-If `docs/design-documents/` was already in the repo when git-crypt was enabled, the working copy is marked for encryption but the last committed version may still be plaintext. Re-stage encrypted versions and commit:
+If `docs/design-documents/` or `docs/tasks/` was already in the repo when git-crypt was enabled—or the commit was made while git-crypt was **locked**—the last committed version may still be plaintext (you’ll see full file content in `git show` or the PR diff). Fix it with git-crypt **unlocked**.
+
+**Why you must run this in your own terminal:** `git-crypt unlock` and the re-encrypt steps need **GPG** and your **secret key**. Automated or IDE-run shells often don’t have the same environment: `gpg` may not be on PATH, or the process may not see your user keychain (e.g. `%APPDATA%\gnupg` on Windows). So run the commands below in the same terminal where you normally use GPG (your “main” dev environment), not from an agent or background task.
 
 ```bash
+git-crypt unlock
 git-crypt status -f
-git add docs/design-documents/
-git commit -m "Encrypt docs/design-documents/ with git-crypt"
+git add docs/design-documents/ docs/tasks/
+git commit --amend --no-edit
 ```
 
-Use the noreply author (see above) for this commit if you don’t want your email in history.
+To create a new fix commit instead of amending: use `git commit -m "Encrypt docs/design-documents/ and docs/tasks/ with git-crypt"` (and use the noreply author if you don’t want your email in history).
 
 ### Files to keep out of the repo
 
@@ -179,11 +182,11 @@ cd chatXIV
 git-crypt unlock
 ```
 
-After `git-crypt unlock`, files in `docs/design-documents/` are decrypted in your working copy. They stay encrypted in the git history and on the remote.
+After `git-crypt unlock`, files in `docs/design-documents/` and `docs/tasks/` are decrypted in your working copy. They stay encrypted in the git history and on the remote.
 
 ## For everyone else
 
-If you clone without unlocking, files under `docs/design-documents/` will appear as encrypted binary. You can work on the rest of the repo normally.
+If you clone without unlocking, files under `docs/design-documents/` and `docs/tasks/` will appear as encrypted binary. You can work on the rest of the repo (including the base of `docs/`) normally.
 
 ## Useful commands
 
@@ -193,16 +196,51 @@ If you clone without unlocking, files under `docs/design-documents/` will appear
 | `git-crypt status -e` | List only encrypted files |
 | `git-crypt lock` | Re-encrypt working copy (e.g. before sharing screen) |
 
+## FAQ
+
+### Files show as full content in the diff / PR (not encrypted). How was this fixed?
+
+**What happened:** Files under `docs/design-documents/` or `docs/tasks/` were committed while git-crypt was **locked**, or in the same commit that added the `.gitattributes` rules. The filter didn’t run, so those blobs were stored in plaintext. In `git show` or the PR you see the full file instead of encrypted binary.
+
+**Fix (run in your own terminal, with GPG and git-crypt available):**
+
+1. **Clean working directory** (so `git-crypt unlock` can run):  
+   `git stash push -m "temp for git-crypt re-encrypt"` (if you have uncommitted changes).
+
+2. **Unlock:**  
+   `git-crypt unlock`  
+   You may see “Warning: file not encrypted” for each affected file—that’s expected.
+
+3. **Stage encrypted versions:**  
+   `git-crypt status -f`  
+   This marks the files so the next commit will store them encrypted.
+
+4. **Stage and amend:**  
+   `git add docs/design-documents/ docs/tasks/`  
+   `git commit --amend --no-edit`
+
+5. **Restore stashed changes** (if you stashed):  
+   `git stash pop`
+
+6. **Update the remote** (history changed):  
+   `git push --force-with-lease`
+
+**Verify:**  
+`git show HEAD:the_filepath_to_encrypted_doc` should show binary starting with `GITCRYPT`, not the raw markdown.
+
+**Why it might have failed before:**  
+If you ran these from an automated or IDE shell, `gpg` might not be on PATH or the process might not see your user keychain. Adding keys worked in your normal terminal because that’s where GPG is configured. Run the fix in the same terminal where you use GPG.
+
 ## Your email and commits
 
 - **Commit author:** Every commit records an author (name + email) from your `git config user.name` and `user.email`. If you don't want your real email in the repo history, use a private or noreply address (e.g. GitHub's `username@users.noreply.github.com`) in that config, or override per-commit when making sensitive commits.
-- **git-crypt commit:** Use a noreply identity (e.g. `Your Name <yourname@users.noreply.github.com>`) as the commit author when adding `.git-crypt/` or encrypting `docs/design-documents/` so your real email is not stored in history.
+- **git-crypt commit:** Use a noreply identity (e.g. `Your Name <yourname@users.noreply.github.com>`) as the commit author when adding `.git-crypt/` or encrypting the docs folders so your real email is not stored in history.
 - **.git-crypt/ filenames:** Files under `.git-crypt/keys/` are named by GPG key **fingerprint** (hex), not by email or name, so your identity is not visible there.
 
 ## Security notes
 
-- **History:** If `docs/design-documents/` was ever committed before encryption was enabled, those old commits still contain the unencrypted content in the repo history. New commits store only encrypted content.
+- **History:** If `docs/design-documents/` or `docs/tasks/` was ever committed before encryption was enabled, those old commits still contain the unencrypted content in the repo history. New commits store only encrypted content.
 
 - **Access is additive:** git-crypt has no “remove user” – once a key is added, it can always decrypt. To revoke access you’d need to re-init and re-add only the keys that should keep access (and accept that old history may still be decryptable by anyone who had the key).
-- **.gitattributes** defines what is encrypted; don’t remove or weaken the `docs/design-documents/**` rule.
-- Keep your GPG private key secure; anyone with it can decrypt `docs/design-documents/`.
+- **.gitattributes** defines what is encrypted; don’t remove or weaken the `docs/design-documents/**` or `docs/tasks/**` rules.
+- Keep your GPG private key secure; anyone with it can decrypt the encrypted docs folders.
