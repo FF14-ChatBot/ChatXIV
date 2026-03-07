@@ -32,3 +32,4 @@ coverage/
 git-crypt.exe
 .gpg-keygen-*.txt
 .gpg-ownertrust*.txt
+.gpg-import*.asc
