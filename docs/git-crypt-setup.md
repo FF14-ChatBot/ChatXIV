@@ -38,6 +38,17 @@ Nothing is “remembered” by the repo or the server; your **local** private ke
 
 **If you’re an admin but don’t have a GPG key yet:** create one, then send your **public** key (e.g. `gpg --armor --export your@email.com`) to the repo owner so they can run `git-crypt add-gpg-user` for you.
 
+### "Unusable public key" / key has no encryption capability
+
+If the repo owner gets **"Unusable public key"** or **"encryption failed"** when running `git-crypt add-gpg-user`, your key can sign/certify but not encrypt. git-crypt needs to encrypt the repo key to your public key, so you must add an **encryption subkey** and export again:
+
+1. **Edit your key:** `gpg --edit-key "Your Name <your@email.com>"`
+2. At the `gpg>` prompt type: **`addkey`**
+3. Choose **RSA (set your own capabilities)** (often option 8), then **Encrypt only (E)** (toggle off S and C so only E is set), key size 4096, expiry as you prefer.
+4. Type **`save`** to exit.
+5. **Export the full key (with subkeys):** `gpg --armor --export "Your Name <your@email.com>"`  
+   Send that full output to the repo owner. The export will now include the new encryption subkey.
+
 ## Prerequisites
 
 - **git-crypt** installed ([Windows](https://github.com/AGWA/git-crypt/blob/master/INSTALL.md), macOS: `brew install git-crypt`, Linux: `apt install git-crypt`)
