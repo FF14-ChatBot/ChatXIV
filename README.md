@@ -5,7 +5,7 @@ A chat-first assistant that provides extensive, accurate data to *Final Fantasy 
 ## Documentation
 
 - **[Business Requirements Document (BRD)](docs/design-documents/BRD.md)** — Product scope, requirements, and success criteria.
-- **[git-crypt setup](docs/git-crypt-setup.md)** — How `docs/design-documents/` encryption works, one-time setup, and triage/fix steps for new owners.
+- **[git-crypt setup](docs/git-crypt-setup.md)** — How encryption for `docs/design-documents/` and `docs/tasks/` works, one-time setup, and triage/fix steps for new owners.
 - **Developer setup:** [docs/README.md](docs/README.md)
 
 ## Overview
@@ -16,7 +16,7 @@ ChatXIV reduces the manual labor of researching and retrieving FFXIV data outsid
 WIP
 
 ## Documents folder
-The `docs/design-documents/` folder is encrypted. To request access, see [docs/git-crypt-setup.md](docs/git-crypt-setup.md) — **Requesting access**.
+The `docs/design-documents/` and `docs/tasks/` folders are encrypted. To request access, see [docs/git-crypt-setup.md](docs/git-crypt-setup.md) — **Requesting access**.
 
 ---
 
