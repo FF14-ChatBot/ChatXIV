@@ -5,6 +5,7 @@ import { requestContextMiddleware } from './middleware/requestContext.js';
 import { requestMetricsMiddleware } from './middleware/requestMetrics.js';
 import { usageAnalyticsMiddleware } from './middleware/usageAnalytics.js';
 import { securityHeadersMiddleware } from './middleware/securityHeaders.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();
 
@@ -34,3 +35,5 @@ app.use(usageAnalyticsMiddleware);
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+app.use(errorHandler());

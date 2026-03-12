@@ -3,6 +3,9 @@ import type { Request, Response, NextFunction } from 'express';
 import { body } from 'express-validator';
 import * as expressValidator from 'express-validator';
 import { validateMiddleware, validate } from './validate.js';
+import { AppError } from '../lib/errors/AppError.js';
+import { ERROR_CODES } from '@chatxiv/cdm';
+import { requestContext } from '../lib/request/requestContext.js';
 
 vi.mock('express-validator', async (importOriginal) => {
   const mod = await importOriginal<typeof import('express-validator')>();
@@ -67,7 +70,7 @@ describe('validate', () => {
       expect(res.json).not.toHaveBeenCalled();
     });
 
-    it('responds 400 with error and details when validation result has errors', () => {
+    it('calls next(AppError.validation) with first error message when validation fails', () => {
       const errors = [
         {
           msg: 'Invalid email',
@@ -82,18 +85,39 @@ describe('validate', () => {
         array: () => errors,
       } as unknown as ReturnType<typeof expressValidator.validationResult>);
 
+      vi.spyOn(requestContext, 'get').mockReturnValue({ requestId: 'req-1', sessionId: undefined });
+
       const req = createReq();
       const res = createRes();
       const next = vi.fn<NextFunction>();
 
       validateMiddleware(req, res, next as unknown as NextFunction);
 
-      expect(next).not.toHaveBeenCalled();
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Validation failed',
-        details: errors,
-      });
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalledOnce();
+      const err = next.mock.calls[0][0] as unknown as AppError;
+      expect(err).toBeInstanceOf(AppError);
+      expect(err.status).toBe(400);
+      expect(err.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      expect(err.message).toContain('Invalid email');
+      expect(err.requestId).toBe('req-1');
+    });
+
+    it('uses "Validation failed" when first error has no msg', () => {
+      validationResultMock.mockReturnValue({
+        isEmpty: () => false,
+        array: () => [{}],
+      } as unknown as ReturnType<typeof expressValidator.validationResult>);
+
+      const req = createReq();
+      const res = createRes();
+      const next = vi.fn<NextFunction>();
+
+      validateMiddleware(req, res, next as unknown as NextFunction);
+
+      const err = next.mock.calls[0][0] as unknown as AppError;
+      expect(err.message).toBe('Validation failed');
     });
   });
 });

@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult, ValidationChain } from 'express-validator';
+import { AppError } from '../lib/errors/AppError.js';
+import { requestContext } from '../lib/request/requestContext.js';
 
 /**
  * Middleware that runs validationResult(req). If there are errors,
- * responds with 400 and the error array. Call this after route-specific
- * validators (e.g. body(), query(), param()) so validation is consolidated
- * and routes don't repeat "check result and send 400" logic.
+ * calls next(AppError.validation(...)) so the global error handler
+ * returns 400 with CDM shape (code: VALIDATION_ERROR, message, requestId).
  */
 export function validateMiddleware(req: Request, res: Response, next: NextFunction): void {
   const result = validationResult(req);
@@ -13,10 +14,14 @@ export function validateMiddleware(req: Request, res: Response, next: NextFuncti
     next();
     return;
   }
-  res.status(400).json({
-    error: 'Validation failed',
-    details: result.array(),
-  });
+  const errors = result.array();
+  const first = errors[0];
+  const message =
+    first && 'path' in first && first.path
+      ? `${String(first.path)}: ${first.msg}`
+      : ((first?.msg as string) ?? 'Validation failed');
+  const requestId = requestContext.get()?.requestId;
+  next(AppError.validation(message, requestId));
 }
 
 /**

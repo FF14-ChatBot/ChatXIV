@@ -13,6 +13,7 @@ export function requestContextMiddleware(req: Request, res: Response, next: Next
 
   res.setHeader(HEADERS.REQUEST_ID, requestId);
   res.setHeader(HEADERS.CORRELATION_ID, requestId);
+  if (res.locals) res.locals.requestId = requestId;
 
   // Clear debug buffer on finish so it's scoped to this request and doesn't leak into the next.
   res.on('finish', () => {

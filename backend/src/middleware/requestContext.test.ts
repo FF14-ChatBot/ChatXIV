@@ -15,6 +15,7 @@ describe('middleware/requestContextMiddleware', () => {
     const headers = new Map<string, string>();
     const handlers: Record<string, Array<() => void>> = {};
     const res = {
+      locals: {} as Record<string, unknown>,
       setHeader: (k: string, v: string) => headers.set(k, v),
       on: (event: string, fn: () => void) => {
         handlers[event] = handlers[event] ?? [];
@@ -62,5 +63,38 @@ describe('middleware/requestContextMiddleware', () => {
     expect(initSpy).toHaveBeenCalledOnce();
     res._emit('finish');
     expect(clearSpy).toHaveBeenCalledOnce();
+  });
+
+  it('sets res.locals.requestId when res.locals exists', () => {
+    vi.spyOn(debugModeModule.debugMode, 'isEnabled').mockReturnValue(false);
+    const req = {
+      headers: { [HEADERS.REQUEST_ID]: 'my-rid' },
+    } as unknown as Request;
+    const res = createRes();
+    const next = vi.fn();
+
+    requestContextMiddleware(req, res, next);
+
+    expect(res.locals.requestId).toBe('my-rid');
+  });
+
+  it('does not throw when res.locals is undefined', () => {
+    vi.spyOn(debugModeModule.debugMode, 'isEnabled').mockReturnValue(false);
+    const req = { headers: {} } as unknown as Request;
+    const headers = new Map<string, string>();
+    const handlers: Record<string, Array<() => void>> = {};
+    const res = {
+      setHeader: (k: string, v: string) => headers.set(k, v),
+      on: (event: string, fn: () => void) => {
+        handlers[event] = handlers[event] ?? [];
+        handlers[event].push(fn);
+      },
+      _headers: headers,
+    } as unknown as Response & { _headers: Map<string, string> };
+
+    const next = vi.fn();
+    requestContextMiddleware(req, res, next);
+
+    expect(res._headers.get(HEADERS.REQUEST_ID)).toBeDefined();
   });
 });
