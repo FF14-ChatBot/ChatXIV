@@ -38,3 +38,31 @@ export type MetricsSummaryResponse = {
   byRoute: Record<string, RouteMetricSummary>;
   byStatus: Record<number, number>;
 };
+
+export const ERROR_CODES = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  RATE_LIMITED: 'RATE_LIMITED',
+  SOURCE_UNAVAILABLE: 'SOURCE_UNAVAILABLE',
+  NO_SOURCED_ANSWER: 'NO_SOURCED_ANSWER',
+  REFUSAL: 'REFUSAL',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+} as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
+
+export const DEFAULT_HTTP_STATUS_BY_CODE: Readonly<Record<ErrorCode, number>> = {
+  [ERROR_CODES.VALIDATION_ERROR]: 400,
+  [ERROR_CODES.RATE_LIMITED]: 429,
+  [ERROR_CODES.SOURCE_UNAVAILABLE]: 503,
+  [ERROR_CODES.NO_SOURCED_ANSWER]: 404,
+  [ERROR_CODES.REFUSAL]: 422,
+  [ERROR_CODES.INTERNAL_ERROR]: 500,
+};
+
+export interface ApiErrorResponse {
+  code: ErrorCode;
+  message: string;
+  requestId?: string;
+  /** Omitted in production. */
+  stack?: string;
+}
