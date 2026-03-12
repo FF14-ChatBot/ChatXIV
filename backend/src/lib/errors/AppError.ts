@@ -23,6 +23,14 @@ export class AppError extends Error implements NormalizableError {
     return new AppError(429, ERROR_CODES.RATE_LIMITED, message, requestId);
   }
 
+  static requestTimeout(message: string, requestId?: string): AppError {
+    return new AppError(408, ERROR_CODES.REQUEST_TIMEOUT, message, requestId);
+  }
+
+  static payloadTooLarge(message: string, requestId?: string): AppError {
+    return new AppError(413, ERROR_CODES.PAYLOAD_TOO_LARGE, message, requestId);
+  }
+
   static sourceUnavailable(message: string, requestId?: string): AppError {
     return new AppError(503, ERROR_CODES.SOURCE_UNAVAILABLE, message, requestId);
   }

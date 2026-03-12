@@ -41,6 +41,28 @@ describe('normalizeError', () => {
     expect(body.message).toBe('Something broke');
   });
 
+  it('maps body-parser 413 (entity.too.large) to PAYLOAD_TOO_LARGE', () => {
+    const err = Object.assign(new Error('entity too large'), {
+      type: 'entity.too.large',
+      statusCode: 413,
+    });
+    const { status, body } = normalizeError(err, { includeStack: false, requestId: 'r1' });
+
+    expect(status).toBe(413);
+    expect(body.code).toBe(ERROR_CODES.PAYLOAD_TOO_LARGE);
+    expect(body.message).toBe('Request body is too large.');
+    expect(body.requestId).toBe('r1');
+  });
+
+  it('maps body-parser 413 without requestId (no requestId in body)', () => {
+    const err = Object.assign(new Error('entity too large'), { statusCode: 413 });
+    const { status, body } = normalizeError(err, { includeStack: false });
+
+    expect(status).toBe(413);
+    expect(body.code).toBe(ERROR_CODES.PAYLOAD_TOO_LARGE);
+    expect(body.requestId).toBeUndefined();
+  });
+
   it('maps non-Error throw to 500 with fallback message', () => {
     const { status, body } = normalizeError('string error', { includeStack: false });
 

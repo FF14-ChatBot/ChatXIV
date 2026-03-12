@@ -16,6 +16,18 @@ describe('AppError', () => {
     expect(err.code).toBe(ERROR_CODES.RATE_LIMITED);
   });
 
+  it('requestTimeout() returns 408 REQUEST_TIMEOUT', () => {
+    const err = AppError.requestTimeout('Request took too long');
+    expect(err.status).toBe(408);
+    expect(err.code).toBe(ERROR_CODES.REQUEST_TIMEOUT);
+  });
+
+  it('payloadTooLarge() returns 413 PAYLOAD_TOO_LARGE', () => {
+    const err = AppError.payloadTooLarge('Body too large');
+    expect(err.status).toBe(413);
+    expect(err.code).toBe(ERROR_CODES.PAYLOAD_TOO_LARGE);
+  });
+
   it('sourceUnavailable() returns 503 SOURCE_UNAVAILABLE', () => {
     const err = AppError.sourceUnavailable('Service down');
     expect(err.status).toBe(503);
