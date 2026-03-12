@@ -4,3 +4,6 @@
 docs/design-documents/** filter=git-crypt diff=git-crypt
 docs/tasks/** filter=git-crypt diff=git-crypt
 .gitattributes !filter !diff
+
+# Normalize line endings to LF (matches Prettier / npm format)
+* text=auto eol=lf
