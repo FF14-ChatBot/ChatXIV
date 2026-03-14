@@ -9,9 +9,12 @@ import {
   createConsoleLogger,
   logger,
 } from './lib';
+import { setChatxivApiClient, createChatxivApiClient } from './clients';
+import { ErrorBoundary, GlobalErrorHandler } from './components';
 import App from './App';
 import './index.css';
 
+setChatxivApiClient(createChatxivApiClient());
 setLogger(createConsoleLogger());
 
 const posthogToken = import.meta.env.VITE_PUBLIC_POSTHOG_TOKEN as string | undefined;
@@ -31,8 +34,12 @@ logger.debug('App boot');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <GlobalErrorHandler>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </GlobalErrorHandler>
+    </ErrorBoundary>
   </StrictMode>
 );
