@@ -9,6 +9,10 @@ export const HEADERS = {
 export const ENV_KEYS = {
   LOG_LEVEL: 'LOG_LEVEL',
   DEBUG_MODE: 'DEBUG_MODE',
+  MAX_BODY_SIZE_KB: 'MAX_BODY_SIZE_KB',
+  REQUEST_TIMEOUT_MS: 'REQUEST_TIMEOUT_MS',
+  RATE_LIMIT_CAPACITY: 'RATE_LIMIT_CAPACITY',
+  RATE_LIMIT_REFILL_PER_MIN: 'RATE_LIMIT_REFILL_PER_MIN',
 } as const;
 
 /** Header and query param names that must be redacted in debug payloads (TR-19a). */

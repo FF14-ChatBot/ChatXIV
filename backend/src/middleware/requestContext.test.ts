@@ -65,6 +65,19 @@ describe('middleware/requestContextMiddleware', () => {
     expect(clearSpy).toHaveBeenCalledOnce();
   });
 
+  it('does not call clearRun on finish when debug mode is disabled', () => {
+    vi.spyOn(debugModeModule.debugMode, 'isEnabled').mockReturnValue(false);
+    const clearSpy = vi.spyOn(debugCapture, 'clearRun');
+
+    const req = { headers: {} } as unknown as Request;
+    const res = createRes();
+    const next = vi.fn();
+
+    requestContextMiddleware(req, res, next);
+    res._emit('finish');
+    expect(clearSpy).not.toHaveBeenCalled();
+  });
+
   it('sets res.locals.requestId when res.locals exists', () => {
     vi.spyOn(debugModeModule.debugMode, 'isEnabled').mockReturnValue(false);
     const req = {
