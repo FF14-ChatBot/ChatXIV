@@ -5,5 +5,8 @@ export {
   FALLBACK_MESSAGE,
   ApiClientError,
   chatxivApiRequest,
+  setChatxivApiClient,
+  getChatxivApiClient,
+  createChatxivApiClient,
 } from './chatxivApi';
-export type { ChatxivApiConfig } from './chatxivApi';
+export type { ChatxivApiConfig, ChatxivApiRequestOptions, IChatxivApiClient } from './chatxivApi';

@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { chatxivApiRequest, parseErrorBody } from './client';
+import { setChatxivApiClient, chatxivApiRequest } from './instance';
+import { createChatxivApiClient } from './client';
+import { parseErrorBody } from './client';
 import { ApiClientError } from './errors';
 
 describe('chatxivApiRequest', () => {
   beforeEach(() => {
+    setChatxivApiClient(createChatxivApiClient());
     vi.stubGlobal('crypto', { randomUUID: () => 'test-uuid' });
   });
 
@@ -188,5 +191,13 @@ describe('parseErrorBody', () => {
     } as unknown as Response;
     const result = await parseErrorBody(res);
     expect(result).toBeUndefined();
+  });
+});
+
+describe('ChatXIV API client DI', () => {
+  it('getChatxivApiClient throws when setChatxivApiClient was not called', async () => {
+    vi.resetModules();
+    const { getChatxivApiClient } = await import('./instance.js');
+    expect(() => getChatxivApiClient()).toThrow('ChatXIV API client not initialized');
   });
 });

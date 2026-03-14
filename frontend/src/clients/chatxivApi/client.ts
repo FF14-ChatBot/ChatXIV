@@ -3,7 +3,7 @@ import { ERROR_CODES } from '@chatxiv/cdm';
 import { request as coreRequest } from '../core';
 import { getChatxivApiBaseUrl } from './config';
 import { ApiClientError } from './errors';
-import type { ChatxivApiConfig } from './types';
+import type { ChatxivApiConfig, ChatxivApiRequestOptions, IChatxivApiClient } from './types';
 
 function randomRequestId(): string {
   return crypto.randomUUID?.() ?? `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -34,14 +34,10 @@ export async function parseErrorBody(response: Response): Promise<ApiErrorRespon
   return parsed;
 }
 
-export async function chatxivApiRequest<T = unknown>(
+async function runRequest<T = unknown>(
   method: string,
   path: string,
-  options: {
-    body?: unknown;
-    config?: ChatxivApiConfig;
-    signal?: AbortSignal;
-  } = {}
+  options: ChatxivApiRequestOptions = {}
 ): Promise<T> {
   const { body, config = {}, signal } = options;
   const baseUrl = config.baseUrl ?? getChatxivApiBaseUrl();
@@ -75,4 +71,17 @@ export async function chatxivApiRequest<T = unknown>(
   }
   if (!isJson) return undefined as T;
   return response.json() as Promise<T>;
+}
+
+/** Default ChatXIV API client implementation. Inject at app boot via setChatxivApiClient(). */
+export function createChatxivApiClient(): IChatxivApiClient {
+  return {
+    request<T = unknown>(
+      method: string,
+      path: string,
+      options?: ChatxivApiRequestOptions
+    ): Promise<T> {
+      return runRequest<T>(method, path, options);
+    },
+  };
 }

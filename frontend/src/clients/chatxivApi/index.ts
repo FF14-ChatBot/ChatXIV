@@ -5,5 +5,6 @@ export {
   FALLBACK_MESSAGE,
   ApiClientError,
 } from './errors';
-export { chatxivApiRequest } from './client';
-export type { ChatxivApiConfig } from './types';
+export { createChatxivApiClient, parseErrorBody } from './client';
+export { setChatxivApiClient, getChatxivApiClient, chatxivApiRequest } from './instance';
+export type { ChatxivApiConfig, ChatxivApiRequestOptions, IChatxivApiClient } from './types';
