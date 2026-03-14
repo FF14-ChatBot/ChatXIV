@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { usageAnalyticsMiddleware } from './usageAnalytics.js';
-import { usageAnalytics, UsageCategory } from '../lib/observability/usageAnalytics.js';
+import {
+  UsageCategory,
+  createInMemoryUsageAnalytics,
+} from '../lib/observability/usageAnalytics/index.js';
+import { setUsageAnalytics, usageAnalytics } from '../lib/observability/usageAnalyticsInstance.js';
 import { requestContext } from '../lib/request/requestContext.js';
 
 describe('middleware/usageAnalyticsMiddleware', () => {
   beforeEach(() => {
-    usageAnalytics.clear();
+    setUsageAnalytics(createInMemoryUsageAnalytics());
   });
 
   function createRes() {
