@@ -6,6 +6,10 @@ import {
   getRequestTimeoutMs,
   getRateLimitConfig,
 } from './lib/config/requestConfig.js';
+import { setMetrics } from './lib/observability/metricsInstance.js';
+import { createInMemoryMetrics } from './lib/observability/metrics/index.js';
+import { setUsageAnalytics } from './lib/observability/usageAnalyticsInstance.js';
+import { createInMemoryUsageAnalytics } from './lib/observability/usageAnalytics/index.js';
 import { requestContextMiddleware } from './middleware/requestContext.js';
 import { requestMetricsMiddleware } from './middleware/requestMetrics.js';
 import { usageAnalyticsMiddleware } from './middleware/usageAnalytics.js';
@@ -13,6 +17,9 @@ import { securityHeadersMiddleware } from './middleware/securityHeaders.js';
 import { requestTimeoutMiddleware } from './middleware/requestTimeout.js';
 import { createMemoryStore, rateLimitMiddleware } from './middleware/rateLimit/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
+
+setMetrics(createInMemoryMetrics());
+setUsageAnalytics(createInMemoryUsageAnalytics());
 
 export const app = express();
 
