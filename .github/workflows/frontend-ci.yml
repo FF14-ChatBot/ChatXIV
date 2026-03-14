@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "frontend/**"
+      - "packages/cdm/**"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     paths:
       - "frontend/**"
+      - "packages/cdm/**"
       - ".github/workflows/frontend-ci.yml"
 
 jobs:
@@ -34,6 +36,9 @@ jobs:
 
       - name: Install Rollup Linux native binding (npm optional deps workaround)
         run: npm install @rollup/rollup-linux-x64-gnu --no-save
+
+      - name: Build CDM
+        run: npx tsc -p ../packages/cdm/tsconfig.json
 
       - name: Lint
         run: npm run lint
