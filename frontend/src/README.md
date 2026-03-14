@@ -1,0 +1,67 @@
+# Frontend source layout
+
+- **clients/** – HTTP clients for external services. **clients/core/** is the generic fetch wrapper (no error mapping). **clients/chatxivApi/** is the ChatXIV app API client (`chatxivApiRequest()`, `ApiClientError`). Each backend gets its own named folder and request function (e.g. future `clients/authApi/` with `authApiRequest`). Import from `clients` or `clients/chatxivApi`.
+- **components/** – Shared UI (e.g. `ErrorBoundary` for render errors, `GlobalErrorHandler` for unhandled async/window errors). Prefer composition over large single-file components.
+- **hooks/** – Reusable React hooks (e.g. `useSessionId` for API config).
+- **features/** – Route or feature-level modules (e.g. chat, settings). Add as you add screens.
+- **test-utils.tsx** – Custom `render` with optional wrapper. Use for new tests so Router/context live in one place.
+
+---
+
+## How the API client works
+
+When the app talks to the ChatXIV API (or later, other backends), it goes through two layers: a **generic HTTP layer** (core) and a **per-backend layer** (e.g. chatxivApi). Only the per-backend layer knows that API’s error format and user-facing messages.
+
+### One client per backend (future-proof)
+
+There is no single “backend” client. Each backend has a **named** client so multiple backends can coexist:
+
+| Client         | Folder                | Request function      | Use case           |
+| -------------- | --------------------- | --------------------- | ------------------ |
+| ChatXIV API    | `clients/chatxivApi/` | `chatxivApiRequest()` | Main app API       |
+| (future) Auth  | `clients/authApi/`    | `authApiRequest()`    | Auth service       |
+| (future) Other | `clients/otherApi/`   | `otherApiRequest()`   | Any other HTTP API |
+
+You import the client you need: `chatxivApiRequest` for the ChatXIV API, and later `authApiRequest` for auth. Each has its own config type and env (e.g. `VITE_CHATXIV_BACKEND_URL` for ChatXIV, `VITE_AUTH_BACKEND_URL` for auth).
+
+### What you use in the app (ChatXIV API)
+
+- **Boot:** `main.tsx` calls `setChatxivApiClient(createChatxivApiClient())` so the real client is injected. Tests can inject a mock via `setChatxivApiClient(mock)`.
+- **Import:** `chatxivApiRequest` and `ApiClientError` from `clients` (or `clients/chatxivApi`).
+- **Call:** `chatxivApiRequest('POST', '/v1/ask', { body: { query: '...' }, config: { getSessionId: () => sessionId } })`.
+- **Result:** Parsed JSON body, or a thrown `ApiClientError` with a safe `displayMessage` for the UI.
+
+You never call the core directly from app code. The core is used only inside each client module. The client implements `IChatxivApiClient`; swap implementations at boot to use a different backend or a test double.
+
+### Two layers
+
+| Layer           | Folder                | Role                                                                                                                                                                                      |
+| --------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Core**        | `clients/core/`       | Builds URL, adds headers you pass in, runs `fetch`, returns raw `Response`. No status or error parsing. Any backend can use it.                                                           |
+| **ChatXIV API** | `clients/chatxivApi/` | Uses core to do the request. Adds X-Request-Id and X-Session-Id. On 4xx/5xx, parses CDM error body and throws `ApiClientError` with user-facing message. On success, returns parsed JSON. |
+
+So: **core** = “do the request and give me the response.” **chatxivApi** (and any other client) = “do the request via core, then interpret success vs. error for that API.”
+
+### Flow when you call `chatxivApiRequest`
+
+1. **Config** – ChatXIV client gets base URL (`VITE_CHATXIV_BACKEND_URL` or same-origin) and optional `getSessionId()` for the X-Session-Id header.
+2. **Headers** – Builds headers (Content-Type, X-Request-Id, optional X-Session-Id) and passes them to the core via `getHeaders`.
+3. **HTTP** – Core builds URL, calls `fetch`, returns `Response` to the client.
+4. **Network failure** – Client catches and throws `ApiClientError` with a generic message.
+5. **HTTP error (4xx/5xx)** – Client parses body as CDM, maps `code` to user-facing message, throws `ApiClientError`.
+6. **Success** – Client parses JSON and returns; caller gets typed data or `undefined` for 204 / non-JSON.
+
+So from the UI’s point of view: call `chatxivApiRequest`, get data or a single error type (`ApiClientError`) with a safe message to show.
+
+### Adding another backend
+
+To add a second (or third) backend:
+
+1. **Create a new folder** under `clients/`, e.g. `clients/authApi/`.
+2. **Add config** – e.g. `getAuthApiBaseUrl()` reading `VITE_AUTH_BACKEND_URL`.
+3. **Add types** – e.g. `AuthApiConfig` (baseUrl, getToken, etc.).
+4. **Use the core** – call `request()` from `clients/core` with your baseUrl and a `getHeaders` that adds that API’s required headers (e.g. `Authorization: Bearer …`).
+5. **Handle response** – check `response.ok`, parse body in that API’s format, throw your own error type (or a generic one). You don’t use CDM or `ApiClientError` unless that API uses the same shape.
+6. **Export** – e.g. `authApiRequest` and `AuthApiConfig` from `clients/authApi/index.ts`, and re-export from `clients/index.ts`.
+
+The core stays generic; each backend client is a thin wrapper with its own config, headers, and error handling.

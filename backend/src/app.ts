@@ -38,7 +38,6 @@ app.use(securityHeadersMiddleware);
 app.use(express.json({ limit: `${requestConfig.maxBodySizeKb}kb` }));
 
 app.use(requestContextMiddleware);
-// Injectable middleware: resolved from container (see lib/di/container.ts).
 app.use(container.resolve(RequestTimeoutMiddleware).handler);
 app.use(container.resolve(RequestMetricsMiddleware).handler);
 app.use(container.resolve(UsageAnalyticsMiddleware).handler);
