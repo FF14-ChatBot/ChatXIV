@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { requestMetricsMiddleware } from './requestMetrics.js';
-import { metrics } from '../lib/observability/metrics.js';
+import { setMetrics, metrics } from '../lib/observability/metricsInstance.js';
+import { createInMemoryMetrics } from '../lib/observability/metrics/index.js';
 
 describe('middleware/requestMetricsMiddleware', () => {
   beforeEach(() => {
-    metrics.clear();
+    setMetrics(createInMemoryMetrics());
   });
 
   function createRes() {

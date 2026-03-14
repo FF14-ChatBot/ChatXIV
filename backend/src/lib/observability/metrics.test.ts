@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { metrics } from './metrics.js';
+import { setMetrics, metrics } from './metricsInstance.js';
+import { createInMemoryMetrics } from './metrics/index.js';
 
 describe('lib/observability/metrics', () => {
   beforeEach(() => {
-    metrics.clear();
+    setMetrics(createInMemoryMetrics());
   });
 
   it('records and returns entries as copies', () => {
