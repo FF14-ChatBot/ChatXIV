@@ -22,6 +22,19 @@ export function getRequestTimeoutMs(): number {
   return parseEnvInt(ENV_KEYS.REQUEST_TIMEOUT_MS, DEFAULT_REQUEST_TIMEOUT_MS);
 }
 
+/** Request-related config (env-derived). Used by DI container and app. */
+export interface RequestConfig {
+  requestTimeoutMs: number;
+  maxBodySizeKb: number;
+}
+
+export function getRequestConfig(): RequestConfig {
+  return {
+    requestTimeoutMs: getRequestTimeoutMs(),
+    maxBodySizeKb: getMaxBodySizeKb(),
+  };
+}
+
 /**
  * Token-bucket rate limit: up to `capacity` requests in a burst, then
  * `refillPerMin` tokens per minute (sustained rate). Not "capacity per N minutes".

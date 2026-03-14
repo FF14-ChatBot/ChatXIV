@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { UsageCategory, usageAnalytics } from './usageAnalytics.js';
+import { UsageCategory, createInMemoryUsageAnalytics } from './usageAnalytics/index.js';
+import { setUsageAnalytics, usageAnalytics } from './usageAnalyticsInstance.js';
 
 describe('lib/observability/usageAnalytics', () => {
   beforeEach(() => {
-    usageAnalytics.clear();
+    setUsageAnalytics(createInMemoryUsageAnalytics());
   });
 
   it('records and returns records as copies', () => {

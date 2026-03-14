@@ -1,5 +1,10 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { getMaxBodySizeKb, getRequestTimeoutMs, getRateLimitConfig } from './requestConfig.js';
+import {
+  getMaxBodySizeKb,
+  getRequestTimeoutMs,
+  getRequestConfig,
+  getRateLimitConfig,
+} from './requestConfig.js';
 
 describe('requestConfig', () => {
   const env = process.env;
@@ -31,6 +36,25 @@ describe('requestConfig', () => {
     it('parses env value', () => {
       process.env.REQUEST_TIMEOUT_MS = '15000';
       expect(getRequestTimeoutMs()).toBe(15_000);
+    });
+  });
+
+  describe('getRequestConfig', () => {
+    it('returns requestTimeoutMs and maxBodySizeKb from env', () => {
+      delete process.env.REQUEST_TIMEOUT_MS;
+      delete process.env.MAX_BODY_SIZE_KB;
+      expect(getRequestConfig()).toEqual({
+        requestTimeoutMs: 30_000,
+        maxBodySizeKb: 50,
+      });
+    });
+    it('parses env values', () => {
+      process.env.REQUEST_TIMEOUT_MS = '5000';
+      process.env.MAX_BODY_SIZE_KB = '100';
+      expect(getRequestConfig()).toEqual({
+        requestTimeoutMs: 5_000,
+        maxBodySizeKb: 100,
+      });
     });
   });
 
