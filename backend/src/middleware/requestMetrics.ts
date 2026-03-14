@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { metrics } from '../lib/observability/metrics.js';
+import { getMetrics } from '../lib/observability/metricsInstance.js';
 
 export function requestMetricsMiddleware(req: Request, res: Response, next: NextFunction): void {
   const start = performance.now();
@@ -7,7 +7,7 @@ export function requestMetricsMiddleware(req: Request, res: Response, next: Next
 
   res.on('finish', () => {
     const durationMs = Math.round(performance.now() - start);
-    metrics.record({
+    getMetrics().record({
       method: req.method,
       route,
       statusCode: res.statusCode,

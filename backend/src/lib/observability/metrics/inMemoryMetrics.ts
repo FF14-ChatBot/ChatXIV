@@ -1,33 +1,10 @@
-/** In-memory request metrics; bounded to avoid unbounded growth. Replace with a real sink when needed. */
+/** In-memory metrics implementation. Bounded to avoid unbounded growth. */
 
 import { Builder } from 'builder-pattern';
+import type { RequestMetricEntry, RouteMetricSummary, IMetricsStore } from './types.js';
 
-export interface RequestMetricEntry {
-  method: string;
-  route: string;
-  statusCode: number;
-  durationMs: number;
-  timestamp: number;
-}
-
-// todo: replace with a real sink
-const entries: RequestMetricEntry[] = [];
 const MAX_ENTRIES = 10_000;
 
-/** Per-route summary returned from getSummary(). */
-type RouteMetricSummary = {
-  count: number;
-  minDurationMs: number;
-  maxDurationMs: number;
-  sumDurationMs: number;
-  avgDurationMs: number;
-  p50DurationMs: number;
-  p90DurationMs: number;
-  p95DurationMs: number;
-  p99DurationMs: number;
-};
-
-/** Internal only: we need the durations array to compute percentiles; it is not exposed in RouteMetricSummary. */
 type RouteMetricAccumulator = RouteMetricSummary & { durations: number[] };
 
 function percentileNearestRank(sorted: number[], p: number): number {
@@ -48,7 +25,7 @@ function createEmptyAccumulator(): RouteMetricAccumulator {
     .p95DurationMs(0)
     .p99DurationMs(0)
     .build();
-  acc.durations = []; // fresh array per accumulator (Builder returns shallow copy)
+  acc.durations = [];
   return acc;
 }
 
@@ -86,7 +63,6 @@ function computePercentiles(byRoute: Record<string, RouteMetricAccumulator>): vo
   }
 }
 
-/** Returns summary per route without the internal durations array (not exposed in the API). */
 function toRouteSummaries(
   byRoute: Record<string, RouteMetricAccumulator>
 ): Record<string, RouteMetricSummary> {
@@ -99,33 +75,30 @@ function toRouteSummaries(
   return result;
 }
 
-export const metrics = {
-  // todo: replace write with a real sink
-  record(entry: RequestMetricEntry): void {
-    entries.push(entry);
-    if (entries.length > MAX_ENTRIES) {
-      entries.splice(0, entries.length - MAX_ENTRIES);
-    }
-  },
-
-  // todo: replace retrieval with a real sink
-  getEntries(): RequestMetricEntry[] {
-    return [...entries];
-  },
-
-  // todo: replace retrieval with a real sink
-  getSummary(): {
-    totalRequests: number;
-    byRoute: Record<string, RouteMetricSummary>;
-    byStatus: Record<number, number>;
-  } {
-    const { byRoute, byStatus, totalRequests } = aggregateByRouteAndStatus(entries);
-    computePercentiles(byRoute);
-    return { totalRequests, byRoute: toRouteSummaries(byRoute), byStatus };
-  },
-
-  // todo: remove this when we have a real sink
-  clear(): void {
-    entries.length = 0;
-  },
-};
+/** In-memory metrics store. Inject at app boot via setMetrics(). */
+export function createInMemoryMetrics(): IMetricsStore {
+  const entries: RequestMetricEntry[] = [];
+  return {
+    record(entry: RequestMetricEntry): void {
+      entries.push(entry);
+      if (entries.length > MAX_ENTRIES) {
+        entries.splice(0, entries.length - MAX_ENTRIES);
+      }
+    },
+    getEntries(): RequestMetricEntry[] {
+      return [...entries];
+    },
+    getSummary(): {
+      totalRequests: number;
+      byRoute: Record<string, RouteMetricSummary>;
+      byStatus: Record<number, number>;
+    } {
+      const { byRoute, byStatus, totalRequests } = aggregateByRouteAndStatus(entries);
+      computePercentiles(byRoute);
+      return { totalRequests, byRoute: toRouteSummaries(byRoute), byStatus };
+    },
+    clear(): void {
+      entries.length = 0;
+    },
+  };
+}
