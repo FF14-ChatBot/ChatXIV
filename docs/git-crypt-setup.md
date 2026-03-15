@@ -74,6 +74,32 @@ git commit -m "Add git-crypt GPG keys for document encryption"
 
 Only add GPG users who should have access to the encrypted docs. Anyone not in the GPG list will see encrypted blobs for files under `docs/design-documents/` and `docs/tasks/`.
 
+## Adding another key (repo owner)
+
+When a new collaborator sends you their **public** key (e.g. pasted armor or a `.asc` file):
+
+1. **Import the key** (if not already in your keyring):
+   ```bash
+   gpg --import path/to/key.asc
+   ```
+   Or paste the armored block and pipe: `gpg --import` (then paste, Ctrl+Z Enter on Windows).
+
+2. **Add them to git-crypt** (use their key ID, fingerprint, or email from the key):
+   ```bash
+   git-crypt add-gpg-user "Name <email@example.com>"
+   # Or: git-crypt add-gpg-user 0xKEYID
+   ```
+
+3. **Commit the updated `.git-crypt/`** (optionally with a noreply author; see *Avoid storing your real email in commits*):
+   ```bash
+   git add .git-crypt/
+   git commit -m "Add git-crypt GPG key for <collaborator>"
+   ```
+
+4. **Push.** The collaborator can then run `git-crypt unlock` in their clone.
+
+Imported key files (e.g. `.gpg-import-*.asc`) are ignored via `.gitignore`; do not commit them.
+
 ## Triage & fix (steps used during initial setup)
 
 Use this section to reproduce or fix setup on a new machine or when something breaks. These steps were used for the initial chatXIV setup.
