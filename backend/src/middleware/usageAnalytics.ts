@@ -1,18 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
+import { injectable, inject } from 'tsyringe';
 import { requestContext } from '../lib/request/requestContext.js';
-import { isUsageCategory, UsageCategory } from '../lib/observability/usageAnalytics/index.js';
-import { getUsageAnalytics } from '../lib/observability/usageAnalyticsInstance.js';
+import {
+  type IUsageStore,
+  isUsageCategory,
+  UsageCategory,
+} from '../lib/observability/usageAnalytics/index.js';
+import { UsageStoreToken } from '../lib/di/container.js';
 
 /** Records usage by category on response finish. Must run after requestContextMiddleware so requestId is available. Handlers set res.locals.usageCategory when they know the category. */
-export function usageAnalyticsMiddleware(_req: Request, res: Response, next: NextFunction): void {
-  res.on('finish', () => {
-    const raw = res.locals.usageCategory;
-    const category = isUsageCategory(raw) ? raw : UsageCategory.UNCATEGORIZED;
+@injectable()
+export class UsageAnalyticsMiddleware {
+  constructor(@inject(UsageStoreToken) private readonly usageStore: IUsageStore) {}
 
-    const ctx = requestContext.get();
-    const requestId = ctx?.requestId ?? 'unknown';
-    getUsageAnalytics().record({ category, requestId, timestamp: Date.now() });
-  });
+  /** Express middleware handler. Bound once when registering (e.g. app.use(middleware.handler)). */
+  handler = (_req: Request, res: Response, next: NextFunction): void => {
+    res.on('finish', () => {
+      const raw = res.locals.usageCategory;
+      const category = isUsageCategory(raw) ? raw : UsageCategory.UNCATEGORIZED;
 
-  next();
+      const ctx = requestContext.get();
+      const requestId = ctx?.requestId ?? 'unknown';
+      this.usageStore.record({ category, requestId, timestamp: Date.now() });
+    });
+
+    next();
+  };
 }

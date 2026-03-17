@@ -2,7 +2,7 @@ import type { IMetricsStore, RequestMetricEntry, RouteMetricSummary } from './me
 
 let instance: IMetricsStore | null = null;
 
-/** Set the metrics store (call once at app boot). Required before first use of metrics/getMetrics. */
+/** Set the metrics store (called by DI container on load). Required before first use of metrics/getMetrics. */
 export function setMetrics(store: IMetricsStore): void {
   instance = store;
 }
@@ -11,7 +11,7 @@ export function setMetrics(store: IMetricsStore): void {
 export function getMetrics(): IMetricsStore {
   if (instance === null) {
     throw new Error(
-      'Metrics store not initialized. Call setMetrics() at app boot (e.g. in app.ts).'
+      'Metrics store not initialized. Ensure the DI container is imported (e.g. from app.ts) so setMetrics() runs.'
     );
   }
   return instance;

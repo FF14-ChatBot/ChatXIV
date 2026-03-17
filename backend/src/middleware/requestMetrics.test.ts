@@ -1,14 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
-import { requestMetricsMiddleware } from './requestMetrics.js';
-import { setMetrics, metrics } from '../lib/observability/metricsInstance.js';
+import { RequestMetricsMiddleware } from './requestMetrics.js';
 import { createInMemoryMetrics } from '../lib/observability/metrics/index.js';
 
 describe('middleware/requestMetricsMiddleware', () => {
-  beforeEach(() => {
-    setMetrics(createInMemoryMetrics());
-  });
-
   function createRes() {
     const handlers: Record<string, Array<() => void>> = {};
     const res = {
@@ -25,30 +20,34 @@ describe('middleware/requestMetricsMiddleware', () => {
   }
 
   it('uses req.path when req.route is not set', () => {
+    const metricsStore = createInMemoryMetrics();
+    const middleware = new RequestMetricsMiddleware(metricsStore);
     const req = { method: 'GET', path: '/x' } as unknown as Request;
     const res = createRes();
     const next = vi.fn();
 
-    requestMetricsMiddleware(req, res, next);
+    middleware.handler(req, res, next);
     expect(next).toHaveBeenCalledOnce();
 
     res.statusCode = 201;
     res._emit('finish');
 
-    const entries = metrics.getEntries();
+    const entries = metricsStore.getEntries();
     expect(entries).toHaveLength(1);
     expect(entries[0].route).toBe('/x');
     expect(entries[0].statusCode).toBe(201);
   });
 
   it('uses req.route.path when present', () => {
+    const metricsStore = createInMemoryMetrics();
+    const middleware = new RequestMetricsMiddleware(metricsStore);
     const req = { method: 'POST', path: '/ignored', route: { path: '/r' } } as unknown as Request;
     const res = createRes();
     const next = vi.fn();
 
-    requestMetricsMiddleware(req, res, next);
+    middleware.handler(req, res, next);
     res._emit('finish');
 
-    expect(metrics.getEntries()[0].route).toBe('/r');
+    expect(metricsStore.getEntries()[0].route).toBe('/r');
   });
 });

@@ -2,7 +2,7 @@ import type { IUsageStore, UsageRecord, UsageCategory } from './usageAnalytics/i
 
 let instance: IUsageStore | null = null;
 
-/** Set the usage store (call once at app boot). Required before first use of usageAnalytics/getUsageAnalytics. */
+/** Set the usage store (called by DI container on load). Required before first use of usageAnalytics/getUsageAnalytics. */
 export function setUsageAnalytics(store: IUsageStore): void {
   instance = store;
 }
@@ -11,7 +11,7 @@ export function setUsageAnalytics(store: IUsageStore): void {
 export function getUsageAnalytics(): IUsageStore {
   if (instance === null) {
     throw new Error(
-      'Usage analytics store not initialized. Call setUsageAnalytics() at app boot (e.g. in app.ts).'
+      'Usage analytics store not initialized. Ensure the DI container is imported (e.g. from app.ts) so setUsageAnalytics() runs.'
     );
   }
   return instance;

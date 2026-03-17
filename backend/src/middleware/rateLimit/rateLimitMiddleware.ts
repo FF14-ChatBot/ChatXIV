@@ -1,7 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
+import { injectable, inject } from 'tsyringe';
 import { HEADERS } from '../../lib/config/constants.js';
 import type { RateLimitConfig } from './types.js';
 import type { RateLimitStore } from './types.js';
+import { RateLimitStoreToken, RateLimitConfigToken } from '../../lib/di/container.js';
 import { AppError } from '../../lib/errors/AppError.js';
 import { requestContext } from '../../lib/request/requestContext.js';
 
@@ -21,6 +23,35 @@ function getRateLimitKey(req: Request): string {
   return `ip:${ip}`;
 }
 
+/** DI-injected rate limit middleware. Resolve via container.resolve(RateLimitMiddleware).handler. */
+@injectable()
+export class RateLimitMiddleware {
+  constructor(
+    @inject(RateLimitStoreToken) private readonly store: RateLimitStore,
+    @inject(RateLimitConfigToken) private readonly config: RateLimitConfig
+  ) {}
+
+  /** Express middleware handler. Bound once when registering (e.g. app.use(middleware.handler)). */
+  handler = (req: Request, res: Response, next: NextFunction): void => {
+    if (shouldSkipRateLimit(req.path)) {
+      next();
+      return;
+    }
+    const key = getRateLimitKey(req);
+    const { allowed, retryAfterSeconds } = this.store.consume(key, this.config);
+    if (!allowed) {
+      if (retryAfterSeconds !== undefined) {
+        res.setHeader('Retry-After', String(retryAfterSeconds));
+      }
+      const requestId = requestContext.get()?.requestId;
+      next(AppError.rateLimited(RATE_LIMIT_MESSAGE, requestId));
+      return;
+    }
+    next();
+  };
+}
+
+/** Factory for tests or explicit wiring. Prefer container.resolve(RateLimitMiddleware) in app. */
 export function rateLimitMiddleware(store: RateLimitStore, config: RateLimitConfig) {
   return function middleware(req: Request, res: Response, next: NextFunction): void {
     if (shouldSkipRateLimit(req.path)) {
