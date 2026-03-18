@@ -1,8 +1,8 @@
 import type { ApiErrorResponse } from '@chatxiv/cdm';
 import { ERROR_CODES } from '@chatxiv/cdm';
-import { request as coreRequest } from '../core';
+import { request as coreRequest } from '../core/request';
 import { getChatxivApiBaseUrl } from './config';
-import { ApiClientError } from './errors';
+import { ApiClientError } from './errors/ApiClientError';
 import type { ChatxivApiConfig, ChatxivApiRequestOptions, IChatxivApiClient } from './types';
 
 function randomRequestId(): string {

@@ -1,0 +1,23 @@
+---
+description: Vitest testing patterns, coverage thresholds, and mocking conventions
+globs: "**/*.test.{ts,tsx}"
+alwaysApply: false
+---
+
+# Testing Conventions
+
+- **Vitest** with `globals: true`; `describe`/`it`/`expect` are available without imports
+- **90% coverage thresholds** (lines, functions, branches, statements) — do not lower them
+- Tests colocated next to source: `Foo.ts` → `Foo.test.ts`
+
+## Frontend
+- Use the custom `render` from `frontend/src/test-utils.tsx`
+- Wrap routed components with `MemoryRouter`
+
+## Backend
+- `reflect-metadata` is auto-imported via setup file
+- Mock `requestContext.get()` for middleware tests
+
+## Mocking
+- Use Vitest's `vi` object: `vi.fn()`, `vi.spyOn()`, `vi.mock()`
+- Do not use Jest-style `jest.*` calls

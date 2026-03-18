@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
-import { AnalyticsPageView } from './lib';
+import { AnalyticsPageView } from './lib/analytics/AnalyticsPageView';
 
 function Home() {
   return (

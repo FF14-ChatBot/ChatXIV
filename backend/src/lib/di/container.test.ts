@@ -9,25 +9,25 @@ import {
   RequestConfigToken,
   CorsOriginsToken,
 } from './container.js';
-import type { IMetricsStore } from '../observability/metrics/index.js';
-import type { IUsageStore } from '../observability/usageAnalytics/index.js';
+import type { MetricsStore } from '../observability/metrics/types.js';
+import type { UsageStore } from '../observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '../../middleware/rateLimit/types.js';
 import type { RequestConfig } from '../config/requestConfig.js';
 import { RequestMetricsMiddleware } from '../../middleware/requestMetrics.js';
 import { UsageAnalyticsMiddleware } from '../../middleware/usageAnalytics.js';
-import { RateLimitMiddleware } from '../../middleware/rateLimit/index.js';
+import { RateLimitMiddleware } from '../../middleware/rateLimit/rateLimitMiddleware.js';
 import { RequestTimeoutMiddleware } from '../../middleware/requestTimeout.js';
 
 describe('container', () => {
   it('register() registers all tokens and they can be resolved', () => {
     register();
 
-    const metricsStore = container.resolve<IMetricsStore>(MetricsStoreToken);
+    const metricsStore = container.resolve<MetricsStore>(MetricsStoreToken);
     expect(metricsStore).toBeDefined();
     expect(typeof metricsStore.record).toBe('function');
     expect(typeof metricsStore.getEntries).toBe('function');
 
-    const usageStore = container.resolve<IUsageStore>(UsageStoreToken);
+    const usageStore = container.resolve<UsageStore>(UsageStoreToken);
     expect(usageStore).toBeDefined();
     expect(typeof usageStore.record).toBe('function');
 

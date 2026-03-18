@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { RequestMetricsMiddleware } from './requestMetrics.js';
-import { createInMemoryMetrics } from '../lib/observability/metrics/index.js';
+import { createInMemoryMetrics } from '../lib/observability/metrics/inMemoryMetrics.js';
 
 describe('middleware/requestMetricsMiddleware', () => {
   function createRes() {

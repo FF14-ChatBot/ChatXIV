@@ -10,16 +10,16 @@ Succinct guide for running, linting, testing, and building the repo.
 ## First-time setup
 
 1. Clone the repo.
-2. Install dependencies in each package:
-   - `cd backend && npm install`
-   - `cd frontend && npm install`
+2. Install dependencies:
+   - **Preferred:** `npm install` at the repo root (workspaces install backend, frontend, and `packages/*`).
+   - **Or per-package:** `cd backend && npm install`, `cd frontend && npm install`, etc.
 3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored.
 
 ## How to run
 
 - **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`
 - **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`
-- **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (uses `--prefix`; requires install in each package first)
+- **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (after root `npm install`)
 
 ## Lint and format
 
@@ -58,22 +58,23 @@ Succinct guide for running, linting, testing, and building the repo.
 
 ## Project structure
 
-This repo uses a **multi-repo (per-package) approach**: no npm workspaces; each package has its own `package.json` and `package-lock.json`; you install and run from each package (or use root convenience scripts).
+This repo uses **npm workspaces** (`backend/`, `frontend/`, `packages/*`). Each package has its own `package.json`; `backend/` and `frontend/` also have their own lockfiles for CI caching. Run `npm install` at the repo root to install everything.
 
 - **backend/** — Express + TypeScript API; own `package.json` and lockfile.
 - **frontend/** — React + Vite app; own `package.json` and lockfile.
-- **Root `package.json`** — Convenience scripts only (`dev:backend`, `dev:frontend`, `build`, `lint`, `format`, `format:check`, `test`, `test:coverage`). Root scripts use `npm run … --prefix <package>`. There is no root `npm install`; dependencies are installed in each package.
+- **packages/cdm/** — Shared types package (`@chatxiv/cdm`).
+- **Root `package.json`** — Workspace root; convenience scripts (`dev:backend`, `dev:frontend`, `build`, `lint`, `format`, `format:check`, `test`, `test:coverage`).
 
 ## FAQ
 
 ### Why two lockfiles?
 
-There are two packages and no workspaces; each package has its own `package-lock.json`. CI runs per package and caches each lockfile.
+Backend and frontend each have their own `package-lock.json` for CI caching. Root `npm install` via workspaces still installs everything.
 
 ### How do I run backend and frontend together?
 
-Run each in a separate terminal (`cd backend && npm run dev` and `cd frontend && npm run dev`), or use root scripts from two terminals: `npm run dev:backend`, `npm run dev:frontend`.
+Run each in a separate terminal: `npm run dev:backend` and `npm run dev:frontend` from the root (after root `npm install`), or `cd backend && npm run dev` and `cd frontend && npm run dev`.
 
 ### Do I run `npm install` at the root?
 
-No. Run `npm install` inside `backend/` and inside `frontend/`.
+Yes. Run `npm install` at the repo root; workspaces install backend, frontend, and `packages/*`. Per-package install also works if needed.

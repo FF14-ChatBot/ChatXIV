@@ -1,0 +1,12 @@
+---
+description: Cross-check rules, docs, and task specs against the actual codebase before coding
+alwaysApply: true
+---
+
+# Critical Thinking
+
+- Before implementing, verify that existing rules, docs, and task specs match the actual code
+- If a contradiction is found between docs and code, flag it before writing code
+- If a rule or convention seems wrong based on current code or modern practice, raise it rather than blindly follow
+- When starting a task from `docs/tasks/`, check that the spec's assumptions still hold against the current codebase
+- Prefer asking one good question over making one bad assumption

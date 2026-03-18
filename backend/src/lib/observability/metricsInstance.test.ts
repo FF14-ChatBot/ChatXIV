@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setMetrics, getMetrics, metrics } from './metricsInstance.js';
-import { createInMemoryMetrics } from './metrics/index.js';
+import { createInMemoryMetrics } from './metrics/inMemoryMetrics.js';
 
 describe('metricsInstance', () => {
   beforeEach(() => {

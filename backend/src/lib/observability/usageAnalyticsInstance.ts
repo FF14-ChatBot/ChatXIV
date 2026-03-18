@@ -1,14 +1,14 @@
-import type { IUsageStore, UsageRecord, UsageCategory } from './usageAnalytics/index.js';
+import type { UsageStore, UsageRecord, UsageCategory } from './usageAnalytics/types.js';
 
-let instance: IUsageStore | null = null;
+let instance: UsageStore | null = null;
 
 /** Set the usage store (called by DI container on load). Required before first use of usageAnalytics/getUsageAnalytics. */
-export function setUsageAnalytics(store: IUsageStore): void {
+export function setUsageAnalytics(store: UsageStore): void {
   instance = store;
 }
 
 /** Get the current store. Throws if setUsageAnalytics() has not been called. */
-export function getUsageAnalytics(): IUsageStore {
+export function getUsageAnalytics(): UsageStore {
   if (instance === null) {
     throw new Error(
       'Usage analytics store not initialized. Ensure the DI container is imported (e.g. from app.ts) so setUsageAnalytics() runs.'
@@ -18,7 +18,7 @@ export function getUsageAnalytics(): IUsageStore {
 }
 
 /** Delegating object for backward compat. Use getUsageAnalytics() in new code when you need the store. */
-export const usageAnalytics: IUsageStore = {
+export const usageAnalytics: UsageStore = {
   record(entry: UsageRecord): void {
     getUsageAnalytics().record(entry);
   },

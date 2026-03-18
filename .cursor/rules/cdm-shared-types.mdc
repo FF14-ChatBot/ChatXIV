@@ -1,0 +1,19 @@
+---
+description: Shared common data model package conventions for API contract types
+globs: packages/cdm/**/*.ts
+alwaysApply: false
+---
+
+# CDM Shared Types
+
+- No I/O, no side effects, no external dependencies
+- Pure types, constants, and lightweight derived data (e.g. `Object.values(...)`, lookup maps)
+- Enum-like objects: `as const` + derived type pattern
+
+```typescript
+export const EXAMPLE = { FOO: 'foo', BAR: 'bar' } as const;
+export type Example = (typeof EXAMPLE)[keyof typeof EXAMPLE];
+```
+
+- Every new API contract type (request/response shapes, error codes) belongs here
+- Rebuild after changes: `npm run build:cdm`

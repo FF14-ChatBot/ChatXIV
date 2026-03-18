@@ -1,16 +1,15 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import {
-  setAnalytics,
-  createPostHogAnalytics,
-  createNoopAnalytics,
-  setLogger,
-  createConsoleLogger,
-  logger,
-} from './lib';
-import { setChatxivApiClient, createChatxivApiClient } from './clients';
-import { ErrorBoundary, GlobalErrorHandler } from './components';
+import { setAnalytics } from './lib/analytics/instance';
+import { createPostHogAnalytics } from './lib/analytics/posthogAnalytics';
+import { createNoopAnalytics } from './lib/analytics/noopAnalytics';
+import { setLogger, logger } from './lib/logger/instance';
+import { createConsoleLogger } from './lib/logger/consoleLogger';
+import { setChatxivApiClient } from './clients/chatxivApi/instance';
+import { createChatxivApiClient } from './clients/chatxivApi/client';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { GlobalErrorHandler } from './components/GlobalErrorHandler';
 import App from './App';
 import './index.css';
 
