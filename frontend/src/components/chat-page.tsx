@@ -4,12 +4,13 @@ import { Input } from './ui/input';
 import { useState } from 'react';
 
 const sampleSearches = [
-  "What is BiS for Melee DPS in UCoB?",
-  "Where is the NPC that I can purchase Egg of Elpis from?",
-  "Please show me the mechs for Light Rampant in FRU!"
+  'What is BiS for Melee DPS in UCoB?',
+  'Where is the NPC that I can purchase Egg of Elpis from?',
+  'Please show me the mechs for Light Rampant in FRU!',
 ];
 
-const welcomeMessage = "Hello, I am Mammetbot! Welcome to ChatXIV. If you have a question about FFXIV click in the message box below, type in the question, click on the send button, and I will do my best to answer within my capabilities!";
+const welcomeMessage =
+  'Hello, I am Mammetbot! Welcome to ChatXIV. If you have a question about FFXIV click in the message box below, type in the question, click on the send button, and I will do my best to answer within my capabilities!';
 
 interface Message {
   id: string;
@@ -23,24 +24,24 @@ export function ChatPage() {
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
-    
+
     const newMessage: Message = {
       id: Date.now().toString(),
       text: inputValue,
-      role: 'user'
+      role: 'user',
     };
-    
+
     setMessages([...messages, newMessage]);
     setInputValue('');
-    
+
     // Simulate bot response
     setTimeout(() => {
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "I'm MammetBot! This is a demo response. In a real implementation, I would provide helpful information about FFXIV!",
-        role: 'assistant'
+        role: 'assistant',
       };
-      setMessages(prev => [...prev, botMessage]);
+      setMessages((prev) => [...prev, botMessage]);
     }, 1000);
   };
 
@@ -55,7 +56,9 @@ export function ChatPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Message List - Centered when empty, top-aligned with messages */}
-      <div className={`flex-1 overflow-auto p-4 ${hasMessages ? '' : 'flex items-center justify-center'}`}>
+      <div
+        className={`flex-1 overflow-auto p-4 ${hasMessages ? '' : 'flex items-center justify-center'}`}
+      >
         {!hasMessages ? (
           <div className="w-full max-w-5xl space-y-4">
             {/* Welcome message box */}

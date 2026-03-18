@@ -2,13 +2,13 @@
 
 :root {
   --font-size: 16px;
-  --background: linear-gradient(to bottom, #87CEEB 0%, #F0E68C 50%, #F4A460 100%);
+  --background: linear-gradient(to bottom, #87ceeb 0%, #f0e68c 50%, #f4a460 100%);
   --foreground: oklch(0.145 0 0);
   --card: rgba(255, 255, 255, 0.9);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #1E90FF;
+  --primary: #1e90ff;
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.95 0.0058 264.53);
   --secondary-foreground: #030213;
@@ -126,7 +126,7 @@
   }
 
   body {
-    background: linear-gradient(to bottom, #87CEEB 0%, #F0E68C 50%, #F4A460 100%);
+    background: linear-gradient(to bottom, #87ceeb 0%, #f0e68c 50%, #f4a460 100%);
     background-attachment: fixed;
     @apply text-foreground;
   }

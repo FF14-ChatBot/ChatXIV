@@ -43,7 +43,11 @@ export function Header() {
 
         {/* Center: MammetBot */}
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <img src={mammetIcon} alt="Mammet" className="size-8 object-contain border-2 border-primary/30 rounded-full p-0.5" />
+          <img
+            src={mammetIcon}
+            alt="Mammet"
+            className="size-8 object-contain border-2 border-primary/30 rounded-full p-0.5"
+          />
           <span className="font-semibold text-lg">MammetBot</span>
         </div>
 
@@ -55,11 +59,7 @@ export function Header() {
             onClick={toggleTheme}
             aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
           >
-            {theme === 'light' ? (
-              <Moon className="size-5" />
-            ) : (
-              <Sun className="size-5" />
-            )}
+            {theme === 'light' ? <Moon className="size-5" /> : <Sun className="size-5" />}
           </Button>
 
           <Button variant="outline" size="sm">
