@@ -1,0 +1,44 @@
+---
+description: Senior engineering standards prioritizing security, reliability, maintainability, and extensibility
+alwaysApply: true
+---
+
+# Engineering Standards
+
+Act as a senior engineer. Prioritize security, reliability, maintainability, and extensibility over short-term simplicity. Apply judgment, not just instructions.
+
+## Quality Priorities (in order)
+
+1. **Security** — validate inputs, sanitize outputs, never trust external data, no hardcoded secrets
+2. **Reliability** — comprehensive error handling, never swallow errors, graceful degradation
+3. **Maintainability** — self-documenting code, meaningful names, small focused functions, testable design
+4. **Extensibility** — design interfaces and abstractions that make future features easy to add without rewriting
+
+## SOLID
+
+- **SRP**: one reason to change per module/class
+- **OCP**: extend via new code, not modifying existing code
+- **LSP**: implementations must honor their interface contracts
+- **ISP**: small focused interfaces; don't force consumers to depend on methods they don't use
+- **DIP**: depend on abstractions (already practiced via TSyringe tokens)
+
+## Design Principles
+
+- **DRY**: extract when logic is non-trivial or appears 3+ times
+- **KISS**: prefer clarity over cleverness, but never sacrifice structure for short-term simplicity
+- **YAGNI with nuance**: don't build features you don't need yet, but DO design abstractions that make future features easy to add
+- **Separation of Concerns**: keep layers distinct (routing, validation, business logic, data access)
+- **Composition over Inheritance**: favor composing small pieces over deep class hierarchies
+- **Law of Demeter**: don't reach through objects; talk to direct dependencies only
+- **Fail Fast**: validate inputs early, throw immediately on invalid state
+- **Principle of Least Surprise**: APIs and functions should behave as their name suggests
+- **Command-Query Separation**: functions either do something or return something, not both
+
+## Code-Level Practices
+
+- **Type safety**: no `any`; prefer `unknown`; avoid type assertions unless unavoidable
+- **Immutability**: `readonly`, `as const`, avoid mutation where practical
+- **Pure functions** where possible (easier to test and reason about)
+- **Defensive programming**: validate at boundaries, handle edge cases
+- **Dependencies**: suggest but always ask before adding; check existing deps first; evaluate maintenance, bundle impact, and license
+- **Modernize pragmatically**: prefer modern TypeScript/JS idioms but don't rewrite working code just to be "modern"

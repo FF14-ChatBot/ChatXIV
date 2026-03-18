@@ -1,0 +1,35 @@
+---
+description: Express + TypeScript backend conventions including DI, errors, env config, and middleware patterns
+globs: backend/**/*.ts
+alwaysApply: false
+---
+
+# Backend Conventions
+
+## DI and Services
+- TSyringe DI; composition root is `backend/src/lib/di/container.ts`
+- **Use DI only for services with swappable dependencies** (stores, HTTP clients). Plain exported functions are preferred for stateless logic.
+
+## Imports
+- ESM with `.js` extensions: `import { AppError } from '../lib/errors/AppError.js'`
+
+## Errors
+- `AppError` factory methods for errors that become HTTP responses (`.validation()`, `.internal()`, etc.)
+- Plain `Error` is correct for startup/config crashes (no HTTP context)
+
+## Middleware
+- DI-injected: class with arrow-function `handler` property, resolved via `container.resolve()`
+- Simple/stateless: plain function
+
+## Logging
+- Pino logger in request-handling code; never `console.log`
+- `console.error` acceptable only in pre-boot code where logger is not yet available
+
+## Env Vars
+- Read through typed getters in `lib/config/env.ts` (e.g. `getPort()`)
+- Reference names via `ENV_KEYS` in `lib/config/constants.ts`
+- Adding a new var: (1) `ENV_KEYS`, (2) `environment.d.ts`, (3) `.env.example`, (4) typed getter, (5) tests
+- Startup-critical: `STARTUP_REQUIRED` in `validate.ts`; feature secrets: return `undefined`, caller handles 503
+
+## Naming
+- Files: camelCase — Classes: PascalCase — Constants: UPPER_SNAKE_CASE

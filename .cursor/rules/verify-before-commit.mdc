@@ -1,0 +1,21 @@
+---
+description: Run lint, test, coverage, build, audit, and format after completing a task before committing
+alwaysApply: true
+---
+
+# Verify Before Commit
+
+After completing a logical task, before committing:
+
+**If source code was changed** (`.ts`, `.tsx`, `.css`, `.json` in `backend/src/` or `frontend/src/`), run in both `backend/` and `frontend/` (as applicable):
+
+1. `npm run format` — auto-fix formatting
+2. `npm run lint` — fix any lint errors introduced
+3. `npm run test` — all tests pass
+4. `npm run coverage` — 90% thresholds maintained; add tests for new code if coverage drops
+5. `npm run build` — production build succeeds
+6. `npm audit` — fix all findings, or document with justification if no upstream fix exists
+
+**If only non-code files were changed** (docs, rules, skills, config, `.md`, `.mdc`, `AGENTS.md`), the npm pipeline can be skipped.
+
+If any step fails, fix before proceeding. Do not commit broken code.

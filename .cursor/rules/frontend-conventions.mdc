@@ -1,0 +1,33 @@
+---
+description: React + Vite frontend conventions including components, hooks, API clients, and styling
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend Conventions
+
+## Components
+- Functional components by default
+- Class components acceptable for error boundaries (no hook equivalent for `componentDidCatch`)
+
+## Hooks
+- `use` prefix; place in `hooks/` for shared, or colocate in `features/` for feature-specific
+
+## HTTP / Data Fetching
+- Components, hooks, and features go through a client in `clients/` — never call `fetch` directly
+- Two-layer pattern: `clients/core/` (generic fetch) → `clients/<name>Api/` (error handling, headers)
+- New backend: add a folder under `clients/` per `frontend/src/README.md`
+
+## Imports
+- Import directly from the source file, not from barrel `index.ts` re-exports
+- e.g. `import { ErrorBoundary } from './components/ErrorBoundary'` not `from './components'`
+
+## DI at Boot
+- Singletons wired in `main.tsx` via `set*()` / `create*()` functions
+
+## Styling
+- **CSS Modules** (`.module.css`) for component styles; scoped by default, no class name collisions
+- `import styles from './MyComponent.module.css'` then `className={styles.container}`
+- **Global CSS** (`index.css`) only for resets and CSS custom properties (e.g. theming with `[data-theme]`)
+- CSS custom properties for design tokens (colors, spacing, typography)
+- Do not use Tailwind, CSS-in-JS, or styled-components
