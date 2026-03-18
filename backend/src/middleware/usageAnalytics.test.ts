@@ -1,10 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { UsageAnalyticsMiddleware } from './usageAnalytics.js';
-import {
-  UsageCategory,
-  createInMemoryUsageAnalytics,
-} from '../lib/observability/usageAnalytics/index.js';
+import { UsageCategory } from '../lib/observability/usageAnalytics/types.js';
+import { createInMemoryUsageAnalytics } from '../lib/observability/usageAnalytics/inMemoryUsageAnalytics.js';
 import { requestContext } from '../lib/request/requestContext.js';
 
 describe('middleware/usageAnalyticsMiddleware', () => {

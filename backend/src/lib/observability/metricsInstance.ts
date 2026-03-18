@@ -1,14 +1,14 @@
-import type { IMetricsStore, RequestMetricEntry, RouteMetricSummary } from './metrics/index.js';
+import type { MetricsStore, RequestMetricEntry, RouteMetricSummary } from './metrics/types.js';
 
-let instance: IMetricsStore | null = null;
+let instance: MetricsStore | null = null;
 
 /** Set the metrics store (called by DI container on load). Required before first use of metrics/getMetrics. */
-export function setMetrics(store: IMetricsStore): void {
+export function setMetrics(store: MetricsStore): void {
   instance = store;
 }
 
 /** Get the current store. Throws if setMetrics() has not been called. */
-export function getMetrics(): IMetricsStore {
+export function getMetrics(): MetricsStore {
   if (instance === null) {
     throw new Error(
       'Metrics store not initialized. Ensure the DI container is imported (e.g. from app.ts) so setMetrics() runs.'
@@ -18,7 +18,7 @@ export function getMetrics(): IMetricsStore {
 }
 
 /** Delegating object for backward compat. Use getMetrics() in new code when you need the store. */
-export const metrics: IMetricsStore = {
+export const metrics: MetricsStore = {
   record(entry: RequestMetricEntry): void {
     getMetrics().record(entry);
   },

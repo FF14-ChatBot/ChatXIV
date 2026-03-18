@@ -34,8 +34,8 @@ import {
 } from '../config/requestConfig.js';
 import { getCorsOrigin } from '../config/cors.js';
 import { createMemoryStore } from '../../middleware/rateLimit/memoryStore.js';
-import type { IMetricsStore } from '../observability/metrics/index.js';
-import type { IUsageStore } from '../observability/usageAnalytics/index.js';
+import type { MetricsStore } from '../observability/metrics/types.js';
+import type { UsageStore } from '../observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '../../middleware/rateLimit/types.js';
 import { setMetrics } from '../observability/metricsInstance.js';
 import { setUsageAnalytics } from '../observability/usageAnalyticsInstance.js';
@@ -55,10 +55,10 @@ let registered = false;
 /** Call once at app startup (e.g. in server or app entry) to register all tokens and wire globals. */
 export function register(): void {
   if (registered) return;
-  container.register<IMetricsStore>(MetricsStoreToken, {
+  container.register<MetricsStore>(MetricsStoreToken, {
     useFactory: () => createInMemoryMetrics(),
   });
-  container.register<IUsageStore>(UsageStoreToken, {
+  container.register<UsageStore>(UsageStoreToken, {
     useFactory: () => createInMemoryUsageAnalytics(),
   });
   container.register<RateLimitStore>(RateLimitStoreToken, {
@@ -73,7 +73,7 @@ export function register(): void {
   container.register<string[]>(CorsOriginsToken, {
     useFactory: () => getCorsOrigin(),
   });
-  setMetrics(container.resolve<IMetricsStore>(MetricsStoreToken));
-  setUsageAnalytics(container.resolve<IUsageStore>(UsageStoreToken));
+  setMetrics(container.resolve<MetricsStore>(MetricsStoreToken));
+  setUsageAnalytics(container.resolve<UsageStore>(UsageStoreToken));
   registered = true;
 }

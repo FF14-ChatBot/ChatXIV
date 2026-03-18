@@ -10,7 +10,7 @@ import { RequestMetricsMiddleware } from './middleware/requestMetrics.js';
 import { UsageAnalyticsMiddleware } from './middleware/usageAnalytics.js';
 import { securityHeadersMiddleware } from './middleware/securityHeaders.js';
 import { RequestTimeoutMiddleware } from './middleware/requestTimeout.js';
-import { RateLimitMiddleware } from './middleware/rateLimit/index.js';
+import { RateLimitMiddleware } from './middleware/rateLimit/rateLimitMiddleware.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();

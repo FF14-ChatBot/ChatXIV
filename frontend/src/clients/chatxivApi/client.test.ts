@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setChatxivApiClient, chatxivApiRequest } from './instance';
 import { createChatxivApiClient } from './client';
 import { parseErrorBody } from './client';
-import { ApiClientError } from './errors';
+import { ApiClientError } from './errors/ApiClientError';
 
 describe('chatxivApiRequest', () => {
   beforeEach(() => {

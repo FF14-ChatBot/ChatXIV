@@ -11,7 +11,7 @@ export interface UsageRecord {
 }
 
 /** Usage store interface. Swap implementation at app boot for a different sink (e.g. SQLite). */
-export interface IUsageStore {
+export interface UsageStore {
   record(entry: UsageRecord): void;
   getRecords(): UsageRecord[];
   getCountByCategory(): Record<UsageCategory, number>;
