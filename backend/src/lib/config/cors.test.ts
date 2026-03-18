@@ -1,20 +1,35 @@
-import { describe, it, expect } from 'vitest';
-import { getCorsOrigin, ALLOWED_CORS_ORIGINS } from './cors.js';
+import { describe, it, expect, afterEach } from 'vitest';
+import { getCorsOrigins } from './cors.js';
 
 describe('cors', () => {
-  describe('ALLOWED_CORS_ORIGINS', () => {
-    it('includes production and dev origins', () => {
-      expect(ALLOWED_CORS_ORIGINS).toContain('https://chatxiv.com');
-      expect(ALLOWED_CORS_ORIGINS).toContain('https://www.chatxiv.com');
-      expect(ALLOWED_CORS_ORIGINS).toContain('http://localhost:5173');
-    });
+  const saved = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...saved };
   });
 
-  describe('getCorsOrigin', () => {
-    it('returns a copy of the allowed origins list', () => {
-      const result = getCorsOrigin();
-      expect(result).toEqual([...ALLOWED_CORS_ORIGINS]);
-      expect(result).not.toBe(ALLOWED_CORS_ORIGINS);
+  describe('getCorsOrigins', () => {
+    it('returns hardcoded defaults when CORS_ORIGIN is unset', () => {
+      delete process.env.CORS_ORIGIN;
+      const result = getCorsOrigins();
+      expect(result).toContain('https://chatxiv.com');
+      expect(result).toContain('https://www.chatxiv.com');
+      expect(result).toContain('http://localhost:5173');
+    });
+
+    it('parses comma-separated CORS_ORIGIN env var', () => {
+      process.env.CORS_ORIGIN = 'https://a.com, https://b.com';
+      expect(getCorsOrigins()).toEqual(['https://a.com', 'https://b.com']);
+    });
+
+    it('handles single origin without comma', () => {
+      process.env.CORS_ORIGIN = 'https://a.com';
+      expect(getCorsOrigins()).toEqual(['https://a.com']);
+    });
+
+    it('filters out empty segments from trailing commas', () => {
+      process.env.CORS_ORIGIN = 'https://a.com,,';
+      expect(getCorsOrigins()).toEqual(['https://a.com']);
     });
   });
 });

@@ -32,7 +32,7 @@ import {
   getRequestConfig,
   getRateLimitConfig,
 } from '../config/requestConfig.js';
-import { getCorsOrigin } from '../config/cors.js';
+import { getCorsOrigins } from '../config/cors.js';
 import { createMemoryStore } from '../../middleware/rateLimit/memoryStore.js';
 import type { IMetricsStore } from '../observability/metrics/index.js';
 import type { IUsageStore } from '../observability/usageAnalytics/index.js';
@@ -71,7 +71,7 @@ export function register(): void {
     useFactory: () => getRequestConfig(),
   });
   container.register<string[]>(CorsOriginsToken, {
-    useFactory: () => getCorsOrigin(),
+    useFactory: () => getCorsOrigins(),
   });
   setMetrics(container.resolve<IMetricsStore>(MetricsStoreToken));
   setUsageAnalytics(container.resolve<IUsageStore>(UsageStoreToken));
