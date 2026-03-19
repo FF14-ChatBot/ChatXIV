@@ -19,10 +19,11 @@ export const ENV_KEYS = {
   ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
   ANTHROPIC_MODEL: 'ANTHROPIC_MODEL',
   DATA_DIR: 'DATA_DIR',
+  ADMIN_API_KEY: 'ADMIN_API_KEY',
 } as const;
 
 /** Header and query param names that must be redacted in debug payloads (TR-19a). */
 export const REDACT = {
-  HEADER_NAMES: ['authorization', 'x-api-key', 'api-key', 'cookie'] as const,
+  HEADER_NAMES: ['authorization', 'x-api-key', 'x-admin-key', 'api-key', 'cookie'] as const,
   QUERY_PARAMS: ['key', 'token', 'api_key', 'apikey', 'auth'] as const,
 } as const;

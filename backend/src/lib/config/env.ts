@@ -36,3 +36,8 @@ export function getAnthropicApiKey(): string | undefined {
 export function getAnthropicModel(): string | undefined {
   return process.env[ENV_KEYS.ANTHROPIC_MODEL] || undefined;
 }
+
+/** Lazy-validated: returns undefined when unset so the admin auth middleware can respond with 401. */
+export function getAdminApiKey(): string | undefined {
+  return process.env[ENV_KEYS.ADMIN_API_KEY] || undefined;
+}

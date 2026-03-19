@@ -21,8 +21,18 @@ describe('lib/config/constants', () => {
     expect(ENV_KEYS.DATA_DIR).toBe('DATA_DIR');
   });
 
+  it('exports ADMIN_API_KEY env key', () => {
+    expect(ENV_KEYS.ADMIN_API_KEY).toBe('ADMIN_API_KEY');
+  });
+
   it('exports redaction config', () => {
-    expect(REDACT.HEADER_NAMES).toEqual(['authorization', 'x-api-key', 'api-key', 'cookie']);
+    expect(REDACT.HEADER_NAMES).toEqual([
+      'authorization',
+      'x-api-key',
+      'x-admin-key',
+      'api-key',
+      'cookie',
+    ]);
     expect(REDACT.QUERY_PARAMS).toEqual(['key', 'token', 'api_key', 'apikey', 'auth']);
   });
 });

@@ -15,6 +15,10 @@ export class AppError extends Error implements NormalizableError {
     Object.setPrototypeOf(this, AppError.prototype);
   }
 
+  static unauthorized(message: string, requestId?: string): AppError {
+    return new AppError(401, ERROR_CODES.UNAUTHORIZED, message, requestId);
+  }
+
   static validation(message: string, requestId?: string): AppError {
     return new AppError(400, ERROR_CODES.VALIDATION_ERROR, message, requestId);
   }

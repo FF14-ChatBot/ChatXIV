@@ -40,6 +40,7 @@ export type MetricsSummaryResponse = {
 };
 
 export const ERROR_CODES = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   RATE_LIMITED: 'RATE_LIMITED',
   REQUEST_TIMEOUT: 'REQUEST_TIMEOUT',
@@ -53,6 +54,7 @@ export const ERROR_CODES = {
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
 
 export const DEFAULT_HTTP_STATUS_BY_CODE: Readonly<Record<ErrorCode, number>> = {
+  [ERROR_CODES.UNAUTHORIZED]: 401,
   [ERROR_CODES.VALIDATION_ERROR]: 400,
   [ERROR_CODES.RATE_LIMITED]: 429,
   [ERROR_CODES.REQUEST_TIMEOUT]: 408,
@@ -70,3 +72,13 @@ export interface ApiErrorResponse {
   /** Omitted in production. */
   stack?: string;
 }
+
+/** Feature flag entry with metadata (admin detail view). */
+export interface FeatureFlagEntry {
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly updatedAt: string;
+}
+
+/** Public flags response consumed by the frontend. */
+export type FeatureFlagsResponse = Readonly<Record<string, boolean>>;
