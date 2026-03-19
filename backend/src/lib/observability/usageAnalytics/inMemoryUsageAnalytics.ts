@@ -1,12 +1,12 @@
 /** In-memory usage analytics implementation. Bounded to avoid unbounded growth. */
 
 import { USAGE_CATEGORIES } from '@chatxiv/cdm';
-import type { UsageRecord, IUsageStore, UsageCategory } from './types.js';
+import type { UsageRecord, UsageStore, UsageCategory } from './types.js';
 
 const MAX_RECORDS = 50_000;
 
 /** In-memory usage store. Inject at app boot via setUsageAnalytics(). */
-export function createInMemoryUsageAnalytics(): IUsageStore {
+export function createInMemoryUsageAnalytics(): UsageStore {
   const records: UsageRecord[] = [];
   return {
     record(entry: UsageRecord): void {

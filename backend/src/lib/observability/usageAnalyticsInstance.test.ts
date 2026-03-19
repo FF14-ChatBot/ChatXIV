@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { UsageCategory, createInMemoryUsageAnalytics } from './usageAnalytics/index.js';
+import { UsageCategory } from './usageAnalytics/types.js';
+import { createInMemoryUsageAnalytics } from './usageAnalytics/inMemoryUsageAnalytics.js';
 import { setUsageAnalytics, getUsageAnalytics, usageAnalytics } from './usageAnalyticsInstance.js';
 
 describe('usageAnalyticsInstance', () => {

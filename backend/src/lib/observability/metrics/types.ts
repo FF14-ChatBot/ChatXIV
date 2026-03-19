@@ -22,7 +22,7 @@ export type RouteMetricSummary = {
 };
 
 /** Metrics store interface. Swap implementation at app boot for a different sink (e.g. SQLite). */
-export interface IMetricsStore {
+export interface MetricsStore {
   record(entry: RequestMetricEntry): void;
   getEntries(): RequestMetricEntry[];
   getSummary(): {

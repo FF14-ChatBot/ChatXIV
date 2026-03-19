@@ -1,6 +1,6 @@
 # Frontend source layout
 
-- **clients/** – HTTP clients for external services. **clients/core/** is the generic fetch wrapper (no error mapping). **clients/chatxivApi/** is the ChatXIV app API client (`chatxivApiRequest()`, `ApiClientError`). Each backend gets its own named folder and request function (e.g. future `clients/authApi/` with `authApiRequest`). Import from `clients` or `clients/chatxivApi`.
+- **clients/** – HTTP clients for external services. **clients/core/** is the generic fetch wrapper (no error mapping). **clients/chatxivApi/** is the ChatXIV app API client (`chatxivApiRequest()`, `ApiClientError`). Each backend gets its own named folder and request function (e.g. future `clients/authApi/` with `authApiRequest`). Import directly from the source file (e.g. `clients/chatxivApi/instance`, `clients/chatxivApi/client`).
 - **components/** – Shared UI (e.g. `ErrorBoundary` for render errors, `GlobalErrorHandler` for unhandled async/window errors). Prefer composition over large single-file components.
 - **hooks/** – Reusable React hooks (e.g. `useSessionId` for API config).
 - **features/** – Route or feature-level modules (e.g. chat, settings). Add as you add screens.
@@ -27,7 +27,7 @@ You import the client you need: `chatxivApiRequest` for the ChatXIV API, and lat
 ### What you use in the app (ChatXIV API)
 
 - **Boot:** `main.tsx` calls `setChatxivApiClient(createChatxivApiClient())` so the real client is injected. Tests can inject a mock via `setChatxivApiClient(mock)`.
-- **Import:** `chatxivApiRequest` and `ApiClientError` from `clients` (or `clients/chatxivApi`).
+- **Import:** `chatxivApiRequest` from `clients/chatxivApi/instance`, `ApiClientError` from `clients/chatxivApi/errors/ApiClientError`.
 - **Call:** `chatxivApiRequest('POST', '/v1/ask', { body: { query: '...' }, config: { getSessionId: () => sessionId } })`.
 - **Result:** Parsed JSON body, or a thrown `ApiClientError` with a safe `displayMessage` for the UI.
 
@@ -62,6 +62,6 @@ To add a second (or third) backend:
 3. **Add types** – e.g. `AuthApiConfig` (baseUrl, getToken, etc.).
 4. **Use the core** – call `request()` from `clients/core` with your baseUrl and a `getHeaders` that adds that API’s required headers (e.g. `Authorization: Bearer …`).
 5. **Handle response** – check `response.ok`, parse body in that API’s format, throw your own error type (or a generic one). You don’t use CDM or `ApiClientError` unless that API uses the same shape.
-6. **Export** – e.g. `authApiRequest` and `AuthApiConfig` from `clients/authApi/index.ts`, and re-export from `clients/index.ts`.
+6. **Export** – e.g. `authApiRequest` and `AuthApiConfig` from their respective source files in `clients/authApi/`. Import directly from source files; do not use barrel `index.ts` re-exports.
 
 The core stays generic; each backend client is a thin wrapper with its own config, headers, and error handling.
