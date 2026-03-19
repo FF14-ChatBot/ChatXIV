@@ -1,23 +1,68 @@
 ---
-description: Vitest testing patterns, coverage thresholds, and mocking conventions
+description: Testing conventions for unit and integration tests across backend and frontend
 globs: "**/*.test.{ts,tsx}"
 alwaysApply: false
 ---
 
 # Testing Conventions
 
-- **Vitest** with `globals: true`; `describe`/`it`/`expect` are available without imports
-- **90% coverage thresholds** (lines, functions, branches, statements) — do not lower them
-- Tests colocated next to source: `Foo.ts` → `Foo.test.ts`
+## Test Classification
 
-## Frontend
-- Use the custom `render` from `frontend/src/test-utils.tsx`
-- Wrap routed components with `MemoryRouter`
+- **Unit tests** (default): test a single module in isolation. Dependencies are mocked.
+- **Integration tests**: test a full slice (e.g. HTTP → middleware → route → service → store). Only use when verifying cross-layer wiring; keep few and focused.
 
-## Backend
-- `reflect-metadata` is auto-imported via setup file
-- Mock `requestContext.get()` for middleware tests
+Route and middleware tests should be **unit tests** — inject mock services, not real stores. This ensures tests survive store swaps (e.g. in-memory → Redis) without change.
 
-## Mocking
-- Use Vitest's `vi` object: `vi.fn()`, `vi.spyOn()`, `vi.mock()`
-- Do not use Jest-style `jest.*` calls
+## Mock Factories
+
+Shared mock factories live in `<package>/src/test/mocks/<Interface>.mock.ts`. Each exports a `createMock<Interface>()` function that returns an object where every method is a `vi.fn()` with sensible defaults.
+
+```typescript
+// test/mocks/myService.mock.ts
+import { vi, type Mocked } from 'vitest';
+import type { MyService } from '../../lib/path/types.js';
+
+export function createMockMyService(): Mocked<MyService> {
+  return {
+    doSomething: vi.fn().mockResolvedValue(undefined),
+  } as Mocked<MyService>;
+}
+```
+
+Use vitest's `Mocked<T>` for the return type — it preserves the interface contract (so it passes to functions expecting `T`) while exposing `.mockResolvedValue()`, `.mock.calls`, etc. on every method. Tests override per-case:
+
+```typescript
+const service = createMockMyService();
+service.doSomething.mockResolvedValue(customResult);
+```
+
+### When to Use Shared vs Inline Mocks
+
+- **Shared factory** (`test/mocks/`): when the interface is consumed by 2+ test files, or is a core domain interface (services, stores, strategies)
+- **Inline mock**: when the mock is trivial, test-specific, and unlikely to be reused (e.g. a one-off `req`/`res` stub)
+
+## Test Patterns by Layer
+
+| Layer | Mock strategy | What to assert |
+|-------|--------------|----------------|
+| **Route** | `createMock<Service>()` injected into router factory | HTTP status, response shape, service method calls |
+| **Middleware** | `createMock<Strategy/Store>()` or inline req/res stubs | `next()` called correctly, errors propagated |
+| **Service** | Real in-memory store (tests business logic, not storage) | Return values, error conditions, side effects |
+| **Store** | None — these ARE the implementations | CRUD correctness |
+| **DI container** | None — verifies wiring with real registrations | Tokens resolve, singletons are same instance |
+
+## Route Unit Test Pattern
+
+Mount the router factory on a minimal Express app with only `express.json()` and `errorHandler()` — no DI container, no global middleware:
+
+```typescript
+import { createMockMyService, type MockMyService } from '../test/mocks/myService.mock.js';
+
+function buildApp(service: MockMyService) {
+  const app = express();
+  app.use(express.json());
+  app.use(createMyRouter(service));
+  app.use(errorHandler());
+  return app;
+}
+```

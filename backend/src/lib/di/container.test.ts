@@ -8,15 +8,21 @@ import {
   RateLimitConfigToken,
   RequestConfigToken,
   CorsOriginsToken,
+  AuthStrategyToken,
+  FeatureFlagStoreToken,
+  FeatureFlagServiceToken,
 } from './container.js';
 import type { MetricsStore } from '../observability/metrics/types.js';
 import type { UsageStore } from '../observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '../../middleware/rateLimit/types.js';
 import type { RequestConfig } from '../config/requestConfig.js';
+import type { AuthStrategy } from '../auth/types.js';
+import type { FeatureFlagStore, FeatureFlagService } from '../featureFlags/types.js';
 import { RequestMetricsMiddleware } from '../../middleware/requestMetrics.js';
 import { UsageAnalyticsMiddleware } from '../../middleware/usageAnalytics.js';
 import { RateLimitMiddleware } from '../../middleware/rateLimit/rateLimitMiddleware.js';
 import { RequestTimeoutMiddleware } from '../../middleware/requestTimeout.js';
+import { AdminAuthMiddleware } from '../../middleware/adminAuth.js';
 
 describe('container', () => {
   it('register() registers all tokens and they can be resolved', () => {
@@ -53,6 +59,24 @@ describe('container', () => {
 
     const corsOrigins = container.resolve<string[]>(CorsOriginsToken);
     expect(Array.isArray(corsOrigins)).toBe(true);
+
+    const authStrategy = container.resolve<AuthStrategy>(AuthStrategyToken);
+    expect(authStrategy).toBeDefined();
+    expect(typeof authStrategy.authenticate).toBe('function');
+
+    const featureFlagStore = container.resolve<FeatureFlagStore>(FeatureFlagStoreToken);
+    expect(featureFlagStore).toBeDefined();
+    expect(typeof featureFlagStore.get).toBe('function');
+    expect(typeof featureFlagStore.getAll).toBe('function');
+    expect(typeof featureFlagStore.set).toBe('function');
+    expect(typeof featureFlagStore.remove).toBe('function');
+
+    const featureFlagService = container.resolve<FeatureFlagService>(FeatureFlagServiceToken);
+    expect(featureFlagService).toBeDefined();
+    expect(typeof featureFlagService.getAll).toBe('function');
+    expect(typeof featureFlagService.setFlag).toBe('function');
+    expect(typeof featureFlagService.removeFlag).toBe('function');
+    expect(typeof featureFlagService.isEnabled).toBe('function');
   });
 
   it('resolve injectable middleware returns instance with handler', () => {
@@ -73,5 +97,9 @@ describe('container', () => {
     const timeoutMw = container.resolve(RequestTimeoutMiddleware);
     expect(timeoutMw).toBeDefined();
     expect(typeof timeoutMw.handler).toBe('function');
+
+    const adminAuthMw = container.resolve(AdminAuthMiddleware);
+    expect(adminAuthMw).toBeDefined();
+    expect(typeof adminAuthMw.handler).toBe('function');
   });
 });
