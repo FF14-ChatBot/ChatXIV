@@ -14,8 +14,8 @@ declare global {
       ANTHROPIC_MODEL?: string;
       DATA_DIR?: string;
       ADMIN_API_KEY?: string;
-      SQLITE_DB_PATH?: string;
-      OBSERVABILITY_SQLITE?: string;
+      OBSERVABILITY_DATABASE_PATH?: string;
+      VITEST_WORKER_ID?: string;
     }
   }
 }

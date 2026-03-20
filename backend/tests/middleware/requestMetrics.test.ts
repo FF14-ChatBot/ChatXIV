@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { RequestMetricsMiddleware } from '@src/middleware/requestMetrics.js';
-import { createInMemoryMetrics } from '@src/lib/observability/metrics/inMemoryMetrics.js';
+import { createArrayBackedMetricsStore } from '@test/arrayBackedObservabilityStores.js';
 
 describe('middleware/requestMetricsMiddleware', () => {
   function createRes() {
@@ -20,7 +20,7 @@ describe('middleware/requestMetricsMiddleware', () => {
   }
 
   it('uses req.path when req.route is not set', () => {
-    const metricsStore = createInMemoryMetrics();
+    const metricsStore = createArrayBackedMetricsStore();
     const middleware = new RequestMetricsMiddleware(metricsStore);
     const req = { method: 'GET', path: '/x' } as unknown as Request;
     const res = createRes();
@@ -39,7 +39,7 @@ describe('middleware/requestMetricsMiddleware', () => {
   });
 
   it('uses req.route.path when present', () => {
-    const metricsStore = createInMemoryMetrics();
+    const metricsStore = createArrayBackedMetricsStore();
     const middleware = new RequestMetricsMiddleware(metricsStore);
     const req = { method: 'POST', path: '/ignored', route: { path: '/r' } } as unknown as Request;
     const res = createRes();

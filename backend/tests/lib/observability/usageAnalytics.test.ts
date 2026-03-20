@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { UsageCategory } from '@src/lib/observability/usageAnalytics/types.js';
-import { createInMemoryUsageAnalytics } from '@src/lib/observability/usageAnalytics/inMemoryUsageAnalytics.js';
 import {
   setUsageAnalytics,
   usageAnalytics,
 } from '@src/lib/observability/usageAnalyticsInstance.js';
+import { createArrayBackedUsageStore } from '@test/arrayBackedObservabilityStores.js';
 
 describe('lib/observability/usageAnalytics', () => {
   beforeEach(() => {
-    setUsageAnalytics(createInMemoryUsageAnalytics());
+    setUsageAnalytics(createArrayBackedUsageStore());
   });
 
   it('records and returns records as copies', () => {
@@ -45,14 +45,5 @@ describe('lib/observability/usageAnalytics', () => {
       const counts = usageAnalytics.getCountByCategory() as Record<string, number>;
       expect(counts['not_a_real_category']).toBe(1);
     });
-  });
-
-  it('bounds memory by trimming old records', () => {
-    for (let i = 0; i < 50_010; i++) {
-      usageAnalytics.record({ category: UsageCategory.BIS, requestId: `r${i}`, timestamp: i });
-    }
-    const records = usageAnalytics.getRecords();
-    expect(records).toHaveLength(50_000);
-    expect(records[0].requestId).toBe('r10');
   });
 });

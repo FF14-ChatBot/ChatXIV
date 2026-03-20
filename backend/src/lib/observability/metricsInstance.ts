@@ -7,6 +7,11 @@ export function setMetrics(store: MetricsStore): void {
   instance = store;
 }
 
+/** @internal Vitest — reset singleton so `register()` can run again in another test file. */
+export function resetMetricsStoreSingletonForTests(): void {
+  instance = null;
+}
+
 /** Get the current store. Throws if setMetrics() has not been called. */
 export function getMetrics(): MetricsStore {
   if (instance === null) {
@@ -31,8 +36,5 @@ export const metrics: MetricsStore = {
     byStatus: Record<number, number>;
   } {
     return getMetrics().getSummary();
-  },
-  clear(): void {
-    getMetrics().clear();
   },
 };

@@ -7,6 +7,11 @@ export function setUsageAnalytics(store: UsageStore): void {
   instance = store;
 }
 
+/** @internal Vitest — reset singleton so `register()` can run again in another test file. */
+export function resetUsageAnalyticsSingletonForTests(): void {
+  instance = null;
+}
+
 /** Get the current store. Throws if setUsageAnalytics() has not been called. */
 export function getUsageAnalytics(): UsageStore {
   if (instance === null) {
@@ -27,8 +32,5 @@ export const usageAnalytics: UsageStore = {
   },
   getCountByCategory(): Record<UsageCategory, number> {
     return getUsageAnalytics().getCountByCategory();
-  },
-  clear(): void {
-    getUsageAnalytics().clear();
   },
 };

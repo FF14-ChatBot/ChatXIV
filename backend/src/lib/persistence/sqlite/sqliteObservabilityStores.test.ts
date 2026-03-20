@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { UsageCategory } from '@chatxiv/cdm';
 import type { SqliteDatabase } from './types.js';
-import { applyMigrations } from './migrate.js';
+import { runMigrations } from './runMigrations.js';
 import { createSqliteMetricsStore } from './sqliteMetricsStore.js';
 import { createSqliteUsageStore } from './sqliteUsageStore.js';
 
@@ -11,10 +11,10 @@ describe('SQLite observability stores', () => {
 
   beforeEach(() => {
     db = new Database(':memory:');
-    applyMigrations(db);
+    runMigrations(db);
   });
 
-  it('metrics: record, getEntries, getSummary, clear', () => {
+  it('metrics: record, getEntries, getSummary', () => {
     const store = createSqliteMetricsStore(db);
     store.record({
       method: 'GET',
@@ -29,11 +29,9 @@ describe('SQLite observability stores', () => {
     const summary = store.getSummary();
     expect(summary.totalRequests).toBe(1);
     expect(summary.byStatus[200]).toBe(1);
-    store.clear();
-    expect(store.getEntries()).toHaveLength(0);
   });
 
-  it('usage: record, getRecords, getCountByCategory, clear', () => {
+  it('usage: record, getRecords, getCountByCategory', () => {
     const store = createSqliteUsageStore(db);
     store.record({
       category: UsageCategory.BIS,
@@ -49,7 +47,5 @@ describe('SQLite observability stores', () => {
     const byCat = store.getCountByCategory();
     expect(byCat[UsageCategory.BIS]).toBe(2);
     expect(byCat[UsageCategory.MSQ]).toBe(0);
-    store.clear();
-    expect(store.getRecords()).toHaveLength(0);
   });
 });

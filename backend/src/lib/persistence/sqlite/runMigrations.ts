@@ -1,0 +1,42 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { SqliteDatabase } from './types.js';
+
+/**
+ * Ensure `schema_migrations` exists, then apply any `migrations/*.sql` files not yet recorded.
+ * Safe to call on every process start.
+ */
+export function runMigrations(db: SqliteDatabase): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      applied_at INTEGER NOT NULL
+    );
+  `);
+
+  const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), 'migrations');
+  const files = readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+
+  const alreadyApplied = db.prepare('SELECT name FROM schema_migrations').all() as {
+    name: string;
+  }[];
+  const appliedSet = new Set(alreadyApplied.map((r) => r.name));
+
+  for (const file of files) {
+    if (appliedSet.has(file)) continue;
+
+    const sql = readFileSync(join(migrationsDir, file), 'utf8');
+    const run = db.transaction(() => {
+      db.exec(sql);
+      db.prepare('INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)').run(
+        file,
+        Date.now()
+      );
+    });
+    run();
+  }
+}

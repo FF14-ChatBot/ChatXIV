@@ -25,6 +25,10 @@ describe('lib/config/constants', () => {
     expect(ENV_KEYS.ADMIN_API_KEY).toBe('ADMIN_API_KEY');
   });
 
+  it('exports observability database path env key', () => {
+    expect(ENV_KEYS.OBSERVABILITY_DATABASE_PATH).toBe('OBSERVABILITY_DATABASE_PATH');
+  });
+
   it('exports redaction config', () => {
     expect(REDACT.HEADER_NAMES).toEqual([
       'authorization',

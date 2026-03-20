@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "node --loader ts-node/esm --watch src/server.ts",
-    "build": "tsc -p tsconfig.json && node scripts/copy-openapi.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/copy-openapi.mjs && node scripts/copy-sqlite-migrations.mjs",
     "start": "node dist/server.js",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"tests/**/*.{ts,tsx,js,jsx,json,css,md}\" \"README.md\"",

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setMetrics, metrics } from '@src/lib/observability/metricsInstance.js';
-import { createInMemoryMetrics } from '@src/lib/observability/metrics/inMemoryMetrics.js';
+import { createArrayBackedMetricsStore } from '@test/arrayBackedObservabilityStores.js';
 
 describe('lib/observability/metrics', () => {
   beforeEach(() => {
-    setMetrics(createInMemoryMetrics());
+    setMetrics(createArrayBackedMetricsStore());
   });
 
   it('records and returns entries as copies', () => {
@@ -61,14 +61,5 @@ describe('lib/observability/metrics', () => {
       });
       expect(summary.byStatus).toEqual({ 200: 2, 500: 1 });
     });
-  });
-
-  it('bounds memory by trimming old entries', () => {
-    for (let i = 0; i < 10_005; i++) {
-      metrics.record({ method: 'GET', route: '/x', statusCode: 200, durationMs: i, timestamp: i });
-    }
-    const entries = metrics.getEntries();
-    expect(entries).toHaveLength(10_000);
-    expect(entries[0].durationMs).toBe(5);
   });
 });

@@ -1,3 +1,5 @@
+import path from 'node:path';
+import os from 'node:os';
 import { ENV_KEYS } from './constants.js';
 
 const DEFAULT_PORT = 3000;
@@ -27,6 +29,30 @@ export function getPort(): number {
 
 export function getDataDir(): string {
   return process.env[ENV_KEYS.DATA_DIR] || DEFAULT_DATA_DIR;
+}
+
+const OBSERVABILITY_DB_FILENAME = 'observability.db';
+
+/**
+ * Resolved path for the observability SQLite database (metrics + usage).
+ * - `OBSERVABILITY_DATABASE_PATH`: explicit file (relative resolved from `process.cwd()`).
+ * - `NODE_ENV=test`: temp file per Vitest worker (`VITEST_WORKER_ID`) so parallel tests do not clash.
+ * - Otherwise: `path.resolve(process.cwd(), DATA_DIR, observability.db)`.
+ */
+export function getObservabilityDatabasePath(): string {
+  const override = process.env[ENV_KEYS.OBSERVABILITY_DATABASE_PATH]?.trim();
+  if (override) {
+    return path.isAbsolute(override) ? override : path.resolve(process.cwd(), override);
+  }
+
+  if (getNodeEnv() === 'test') {
+    const worker = process.env.VITEST_WORKER_ID ?? '0';
+    return path.join(os.tmpdir(), `chatxiv-observability-test-w${worker}.db`);
+  }
+
+  const dir = getDataDir();
+  const dataDir = path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);
+  return path.join(dataDir, OBSERVABILITY_DB_FILENAME);
 }
 
 /**
