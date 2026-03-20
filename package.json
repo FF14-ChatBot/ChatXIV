@@ -30,7 +30,7 @@
     "test:coverage": "npm run coverage --prefix backend && npm run coverage --prefix frontend",
     "audit": "npm run audit --prefix backend && npm run audit --prefix frontend",
     "precommit:check": "node scripts/precommit-checks.mjs",
-    "prepare": "husky"
+    "prepare": "node scripts/husky-prepare.mjs"
   },
   "devDependencies": {
     "husky": "^9.1.7"
