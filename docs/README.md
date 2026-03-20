@@ -14,6 +14,7 @@ Succinct guide for running, linting, testing, and building the repo.
    - **Preferred:** `npm install` at the repo root (workspaces install backend, frontend, and `packages/*`).
    - **Or per-package:** `cd backend && npm install`, `cd frontend && npm install`, etc.
 3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored.
+4. Frontend env: create `frontend/.env` (and/or `frontend/.env.production`) for Vite-exposed variables (must start with `VITE_`), e.g. `VITE_CHATXIV_BACKEND_URL`.
 
 ## How to run
 
@@ -74,6 +75,16 @@ Backend and frontend each have their own `package-lock.json` for CI caching. Roo
 ### How do I run backend and frontend together?
 
 Run each in a separate terminal: `npm run dev:backend` and `npm run dev:frontend` from the root (after root `npm install`), or `cd backend && npm run dev` and `cd frontend && npm run dev`.
+
+### How should production domains be configured?
+
+- Recommended split:
+  - Frontend app: `https://www.chatxiv.com`
+  - Backend API: `https://api.chatxiv.com`
+- Frontend build-time env:
+  - `VITE_CHATXIV_BACKEND_URL=https://api.chatxiv.com`
+- Backend CORS allowlist:
+  - include `https://www.chatxiv.com` (via `CORS_ORIGIN` or defaults in `backend/src/lib/config/cors.ts`)
 
 ### Do I run `npm install` at the root?
 
