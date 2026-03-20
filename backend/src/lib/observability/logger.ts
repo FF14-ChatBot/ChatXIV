@@ -1,9 +1,9 @@
 import pino from 'pino';
 import { requestContext } from '../request/requestContext.js';
-import { ENV_KEYS } from '../config/constants.js';
+import { getLogLevel } from '../config/env.js';
 
 const baseLogger = pino({
-  level: process.env[ENV_KEYS.LOG_LEVEL] ?? 'info',
+  level: getLogLevel(),
   formatters: {
     level: (label: string) => ({ level: label }),
   },
