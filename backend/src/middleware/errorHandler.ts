@@ -12,12 +12,13 @@ import type { Request, Response, NextFunction } from 'express';
 import { normalizeError } from '../lib/errors/normalizeError.js';
 import { requestContext } from '../lib/request/requestContext.js';
 import { logger } from '../lib/observability/logger.js';
+import { isProduction } from '../lib/config/env.js';
 
 export interface ErrorHandlerOptions {
   isProduction?: boolean;
 }
 
-const isProductionEnv = process.env.NODE_ENV === 'production';
+const isProductionEnv = isProduction();
 
 /** Register last so all route/middleware errors are handled here; does not call next(). */
 export function errorHandler(options: ErrorHandlerOptions = {}) {

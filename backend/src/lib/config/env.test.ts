@@ -2,10 +2,13 @@ import { describe, it, expect, afterEach } from 'vitest';
 import {
   getPort,
   getNodeEnv,
+  isProduction,
   getDataDir,
   getAnthropicApiKey,
   getAnthropicModel,
   getAdminApiKey,
+  getLogLevel,
+  getDebugMode,
 } from './env.js';
 
 describe('lib/config/env', () => {
@@ -34,6 +37,23 @@ describe('lib/config/env', () => {
     it('falls back to "development" for unknown values', () => {
       process.env.NODE_ENV = 'staging' as never;
       expect(getNodeEnv()).toBe('development');
+    });
+  });
+
+  describe('isProduction', () => {
+    it('returns true when NODE_ENV is "production"', () => {
+      process.env.NODE_ENV = 'production';
+      expect(isProduction()).toBe(true);
+    });
+
+    it('returns false when NODE_ENV is "development"', () => {
+      delete process.env.NODE_ENV;
+      expect(isProduction()).toBe(false);
+    });
+
+    it('returns false when NODE_ENV is "test"', () => {
+      process.env.NODE_ENV = 'test';
+      expect(isProduction()).toBe(false);
     });
   });
 
@@ -124,6 +144,53 @@ describe('lib/config/env', () => {
     it('returns the key when set', () => {
       process.env.ADMIN_API_KEY = 'my-admin-key';
       expect(getAdminApiKey()).toBe('my-admin-key');
+    });
+  });
+
+  describe('getLogLevel', () => {
+    it('returns "info" by default', () => {
+      delete process.env.LOG_LEVEL;
+      expect(getLogLevel()).toBe('info');
+    });
+
+    it('returns "info" for empty string', () => {
+      process.env.LOG_LEVEL = '';
+      expect(getLogLevel()).toBe('info');
+    });
+
+    it.each(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const)(
+      'returns "%s" when set',
+      (level) => {
+        process.env.LOG_LEVEL = level;
+        expect(getLogLevel()).toBe(level);
+      }
+    );
+
+    it('returns "info" for invalid value', () => {
+      process.env.LOG_LEVEL = 'verbose';
+      expect(getLogLevel()).toBe('info');
+    });
+  });
+
+  describe('getDebugMode', () => {
+    it('returns false by default', () => {
+      delete process.env.DEBUG_MODE;
+      expect(getDebugMode()).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      process.env.DEBUG_MODE = '';
+      expect(getDebugMode()).toBe(false);
+    });
+
+    it.each(['true', 'TRUE', 'TrUe', '1'])('returns true when set to %j', (value) => {
+      process.env.DEBUG_MODE = value;
+      expect(getDebugMode()).toBe(true);
+    });
+
+    it.each(['false', '0', 'nope'])('returns false when set to %j', (value) => {
+      process.env.DEBUG_MODE = value;
+      expect(getDebugMode()).toBe(false);
     });
   });
 });
