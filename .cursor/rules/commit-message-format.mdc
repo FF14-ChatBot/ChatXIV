@@ -1,0 +1,12 @@
+---
+description: Enforce one-line human-readable git commit messages
+alwaysApply: true
+---
+
+# Commit Message Format
+
+- Use one sentence only, imperative mood, human-readable.
+- Keep the subject line under 72 characters.
+- Use a type prefix: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, or `chore:`.
+- Do not include a multi-line body unless the user explicitly asks for one.
+- Never include AI attribution (`Co-authored-by`, `Generated-by`, etc.).
