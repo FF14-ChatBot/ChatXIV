@@ -7,15 +7,14 @@ alwaysApply: true
 
 After completing a logical task, before committing:
 
-**If source code was changed** (`.ts`, `.tsx`, `.css`, `.json` in `backend/src/` or `frontend/src/`), run in both `backend/` and `frontend/` (as applicable):
+**If source code was changed** (`.ts`, `.tsx`, `.css`, `.json` in `backend/src/` or `frontend/src/`), run these steps from the repo root:
 
 1. `npm run format` — auto-fix formatting
 2. `npm run lint` — fix any lint errors introduced
-3. `npm run test` — all tests pass
-4. `npm run coverage` — 90% thresholds maintained; add tests for new code if coverage drops
-5. `npm run build` — production build succeeds
-6. `npm audit` — fix all findings, or document with justification if no upstream fix exists
+3. `npm run test:coverage` — all tests pass and 90% thresholds maintained; add tests for new code if coverage drops
+4. `npm run build` — production build succeeds
+5. `npm run audit` — fix all findings, or document with justification if no upstream fix exists
+
+The Husky pre-commit hook (`precommit-checks.mjs`) runs these same steps automatically on `git commit`. Fix any failures before proceeding rather than bypassing the hook.
 
 **If only non-code files were changed** (docs, rules, skills, config, `.md`, `.mdc`, `AGENTS.md`), the npm pipeline can be skipped.
-
-If any step fails, fix before proceeding. Do not commit broken code.

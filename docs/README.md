@@ -49,7 +49,8 @@ Succinct guide for running, linting, testing, and building the repo.
 
 - **GitHub Actions** in `.github/workflows/`: backend and frontend have separate workflows.
 - **Triggers:** Path-based — backend CI on changes under `backend/` (and its workflow file); frontend CI on changes under `frontend/` (and its workflow file). Lint, test, coverage, build, and audit run per package.
-- **Lockfiles:** Commit `package-lock.json` in both `backend/` and `frontend/` when you add or change dependencies.
+- **Install:** Workflows run `npm ci` at the **repository root** using the root `package-lock.json` so npm workspaces (and root devDependencies such as Husky) install consistently; job steps still use `backend/` or `frontend/` as their working directory for lint, test, and build.
+- **Lockfiles:** Keep the root `package-lock.json` in sync when you change dependencies. `backend/` and `frontend/` also keep their own lockfiles for local per-package installs.
 
 ## Design docs and other docs
 
@@ -59,7 +60,7 @@ Succinct guide for running, linting, testing, and building the repo.
 
 ## Project structure
 
-This repo uses **npm workspaces** (`backend/`, `frontend/`, `packages/*`). Each package has its own `package.json`; `backend/` and `frontend/` also have their own lockfiles for CI caching. Run `npm install` at the repo root to install everything.
+This repo uses **npm workspaces** (`backend/`, `frontend/`, `packages/*`). Each package has its own `package.json`; `backend/` and `frontend/` also have their own lockfiles for local per-package installs. **CI** uses the root `package-lock.json`. Run `npm install` at the repo root to install everything.
 
 - **backend/** — Express + TypeScript API; own `package.json` and lockfile.
 - **frontend/** — React + Vite app; own `package.json` and lockfile.
@@ -70,7 +71,7 @@ This repo uses **npm workspaces** (`backend/`, `frontend/`, `packages/*`). Each 
 
 ### Why two lockfiles?
 
-Backend and frontend each have their own `package-lock.json` for CI caching. Root `npm install` via workspaces still installs everything.
+Backend and frontend each have their own `package-lock.json` for local installs and tooling. **GitHub Actions** runs `npm ci` from the repo root using the root lockfile. Root `npm install` via workspaces still installs everything.
 
 ### How do I run backend and frontend together?
 

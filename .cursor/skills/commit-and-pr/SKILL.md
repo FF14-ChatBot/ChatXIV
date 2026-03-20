@@ -8,6 +8,10 @@ description: >-
 
 # Commit and PR Workflow
 
+## Prerequisite
+
+Before committing, run the `pre-commit-code-review` skill on staged changes if it has not already been run in this session. Do not proceed with the commit while unresolved `Critical` findings remain.
+
 ## Commit Message Format
 
 - Type prefix: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
