@@ -14,6 +14,7 @@ Succinct guide for running, linting, testing, and building the repo.
    - **Preferred:** `npm install` at the repo root (workspaces install backend, frontend, and `packages/*`).
    - **Or per-package:** `cd backend && npm install`, `cd frontend && npm install`, etc.
 3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored.
+4. **Optional — persist observability (metrics + usage) in SQLite:** set `OBSERVABILITY_SQLITE=1` or `SQLITE_DB_PATH=./data/chatxiv.db` in `backend/.env`. See [Observability-SQLite-Persistence](tasks/backend/Observability-SQLite-Persistence.md) and `backend/.env.example`. Requires `better-sqlite3` (native addon; on Windows you may need build tools if prebuilds are missing).
 
 ## How to run
 

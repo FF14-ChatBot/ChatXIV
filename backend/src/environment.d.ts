@@ -13,6 +13,8 @@ declare global {
       ANTHROPIC_API_KEY?: string;
       ANTHROPIC_MODEL?: string;
       DATA_DIR?: string;
+      SQLITE_DB_PATH?: string;
+      OBSERVABILITY_SQLITE?: string;
     }
   }
 }

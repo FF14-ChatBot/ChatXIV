@@ -19,6 +19,10 @@ export const ENV_KEYS = {
   ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
   ANTHROPIC_MODEL: 'ANTHROPIC_MODEL',
   DATA_DIR: 'DATA_DIR',
+  /** Absolute or relative path to SQLite file for observability (metrics + usage). Enables SQLite when set. */
+  SQLITE_DB_PATH: 'SQLITE_DB_PATH',
+  /** Set to `1` or `true` to use SQLite at `{DATA_DIR}/chatxiv.db` when `SQLITE_DB_PATH` is unset. */
+  OBSERVABILITY_SQLITE: 'OBSERVABILITY_SQLITE',
 } as const;
 
 /** Header and query param names that must be redacted in debug payloads (TR-19a). */
