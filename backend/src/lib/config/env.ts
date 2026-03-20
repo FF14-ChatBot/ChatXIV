@@ -11,6 +11,10 @@ export function getNodeEnv(): NodeEnv {
   return 'development';
 }
 
+export function isProduction(): boolean {
+  return getNodeEnv() === 'production';
+}
+
 export function getPort(): number {
   const raw = process.env[ENV_KEYS.PORT];
   if (raw === undefined || raw === '') return DEFAULT_PORT;
@@ -40,4 +44,27 @@ export function getAnthropicModel(): string | undefined {
 /** Lazy-validated: returns undefined when unset so the admin auth middleware can respond with 401. */
 export function getAdminApiKey(): string | undefined {
   return process.env[ENV_KEYS.ADMIN_API_KEY] || undefined;
+}
+
+export type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+const VALID_LOG_LEVELS: ReadonlySet<string> = new Set<LogLevel>([
+  'fatal',
+  'error',
+  'warn',
+  'info',
+  'debug',
+  'trace',
+  'silent',
+]);
+
+export function getLogLevel(): LogLevel {
+  const raw = process.env[ENV_KEYS.LOG_LEVEL];
+  if (raw && VALID_LOG_LEVELS.has(raw)) return raw as LogLevel;
+  return 'info';
+}
+
+export function getDebugMode(): boolean {
+  const raw = process.env[ENV_KEYS.DEBUG_MODE];
+  if (raw === undefined || raw === '') return false;
+  return raw.toLowerCase() === 'true' || raw === '1';
 }

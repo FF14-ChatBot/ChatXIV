@@ -55,6 +55,15 @@ When you add a new `ERROR_CODES` value in `@chatxiv/cdm`, add a matching entry i
 
 So from the UI’s point of view: call `chatxivApiRequest`, get data or a single error type (`ApiClientError`) with a safe message to show.
 
+### Production domain example (chatxiv.com)
+
+- Frontend origin: `https://www.chatxiv.com`
+- Backend API origin: `https://api.chatxiv.com`
+- Frontend env at build time:
+  - `VITE_CHATXIV_BACKEND_URL=https://api.chatxiv.com`
+- Backend CORS must allow:
+  - `https://www.chatxiv.com`
+
 ### Adding another backend
 
 To add a second (or third) backend:

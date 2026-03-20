@@ -26,10 +26,14 @@ alwaysApply: false
 - `console.error` acceptable only in pre-boot code where logger is not yet available
 
 ## Env Vars
-- Read through typed getters in `lib/config/env.ts` (e.g. `getPort()`)
-- Reference names via `ENV_KEYS` in `lib/config/constants.ts`
-- Adding a new var: (1) `ENV_KEYS`, (2) `environment.d.ts`, (3) `.env.example`, (4) typed getter, (5) tests
+- **`process.env` must only appear in `lib/config/` files.** All other code reads env values through typed getters in `lib/config/env.ts` (e.g. `getPort()`, `getLogLevel()`, `getDebugMode()`).
+- Reference env var names via `ENV_KEYS` in `lib/config/constants.ts`; never use bare string literals like `'NODE_ENV'`
+- Adding a new var: (1) `ENV_KEYS`, (2) `environment.d.ts`, (3) `.env.example`, (4) typed getter in `env.ts`, (5) tests in `env.test.ts`
 - Startup-critical: `STARTUP_REQUIRED` in `validate.ts`; feature secrets: return `undefined`, caller handles 503
+
+## Constants and Magic Strings
+- HTTP headers: use `HEADERS.REQUEST_ID` etc. from `lib/config/constants.ts`; never use raw header string literals
+- Error codes: use `ERROR_CODES` from `@chatxiv/cdm`; never invent inline code strings
 
 ## Naming
 - Files: camelCase — Classes: PascalCase — Constants: UPPER_SNAKE_CASE
