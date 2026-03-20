@@ -7,6 +7,5 @@ alwaysApply: true
 
 - **Prettier:** single quotes, trailing comma `es5`, print width 100
 - **ESLint:** flat config with `typescript-eslint` and `eslint-config-prettier`
-- Run `npm run lint` and `npm run format:check` before committing
 - No `console.log` in request-handling code (use Pino in backend, `logger` in frontend)
 - `console.error` acceptable in pre-boot startup code
