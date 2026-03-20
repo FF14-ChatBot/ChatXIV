@@ -51,6 +51,8 @@ So: **core** = “do the request and give me the response.” **chatxivApi** (an
 5. **HTTP error (4xx/5xx)** – Client parses body as CDM, maps `code` to user-facing message, throws `ApiClientError`.
 6. **Success** – Client parses JSON and returns; caller gets typed data or `undefined` for 204 / non-JSON.
 
+When you add a new `ERROR_CODES` value in `@chatxiv/cdm`, add a matching entry in `clients/chatxivApi/errors/messages.ts` (`ERROR_CODE_TO_MESSAGE`); tests assert every CDM code has a user-facing string.
+
 So from the UI’s point of view: call `chatxivApiRequest`, get data or a single error type (`ApiClientError`) with a safe message to show.
 
 ### Adding another backend
