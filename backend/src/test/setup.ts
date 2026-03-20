@@ -3,3 +3,5 @@
  * TSyringe (used by injectable middleware) requires reflect-metadata first.
  */
 import 'reflect-metadata';
+
+process.env.ADMIN_API_KEY ??= 'test-admin-key';
