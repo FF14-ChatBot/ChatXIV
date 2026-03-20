@@ -11,6 +11,10 @@ env/
 .env.local
 *.pem
 
+# Local SQLite (observability / dev)
+data/
+*.db
+
 # IDE and OS
 .idea/
 .vscode/

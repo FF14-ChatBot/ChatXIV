@@ -20,7 +20,7 @@
  *   (2) in `register()`, add `container.register<Type>(Token, { useFactory: () => ... })`
  *   (3) in the class, add `@inject(Token)` in the constructor.
  *   Swap implementations by changing only the `useFactory` in `register()`. Example:
- *   `useFactory: () => createInMemoryMetrics()` → `useFactory: () => createSqliteMetrics()`;
+ *   `useFactory: () => createInMemoryMetrics()` → SQLite when `SQLITE_DB_PATH` or `OBSERVABILITY_SQLITE=1` is set.
  *   all consumers of that token then get the new implementation without other changes.
  */
 
@@ -46,6 +46,11 @@ import type { FeatureFlagStore, FeatureFlagService } from '../featureFlags/types
 import { setMetrics } from '../observability/metricsInstance.js';
 import { setUsageAnalytics } from '../observability/usageAnalyticsInstance.js';
 import { setFeatureFlagService } from '../featureFlags/featureFlagInstance.js';
+import type { SqliteDatabase } from '../persistence/sqlite/types.js';
+import { shouldUseSqliteObservability } from '../persistence/sqlite/config.js';
+import { openObservabilityDatabaseFromEnv } from '../persistence/sqlite/openDb.js';
+import { createSqliteMetricsStore } from '../persistence/sqlite/sqliteMetricsStore.js';
+import { createSqliteUsageStore } from '../persistence/sqlite/sqliteUsageStore.js';
 
 export const MetricsStoreToken = Symbol('MetricsStore');
 export const UsageStoreToken = Symbol('UsageStore');
@@ -65,11 +70,23 @@ let registered = false;
 /** Call once at app startup (e.g. in server or app entry) to register all tokens and wire globals. */
 export function register(): void {
   if (registered) return;
+
+  let observabilityDb: SqliteDatabase | null = null;
+  if (shouldUseSqliteObservability()) {
+    observabilityDb = openObservabilityDatabaseFromEnv();
+  }
+
   container.register<MetricsStore>(MetricsStoreToken, {
-    useFactory: () => createInMemoryMetrics(),
+    useFactory: () =>
+      observabilityDb !== null
+        ? createSqliteMetricsStore(observabilityDb)
+        : createInMemoryMetrics(),
   });
   container.register<UsageStore>(UsageStoreToken, {
-    useFactory: () => createInMemoryUsageAnalytics(),
+    useFactory: () =>
+      observabilityDb !== null
+        ? createSqliteUsageStore(observabilityDb)
+        : createInMemoryUsageAnalytics(),
   });
   container.register<RateLimitStore>(RateLimitStoreToken, {
     useFactory: () => createMemoryStore(),

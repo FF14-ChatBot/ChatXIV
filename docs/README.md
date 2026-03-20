@@ -16,6 +16,7 @@ Succinct guide for running, linting, testing, and building the repo.
 3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored.
 4. Frontend env: create `frontend/.env` (and/or `frontend/.env.production`) for Vite-exposed variables (must start with `VITE_`), e.g. `VITE_CHATXIV_BACKEND_URL`.
 5. Optional repo root **`.env`:** copy [`.env.example`](../.env.example) if you use **`npm run webhook:listen`**. Not loaded by Vite or the backend.
+6. **Optional — persist observability (metrics + usage) in SQLite:** set `OBSERVABILITY_SQLITE=1` or `SQLITE_DB_PATH=./data/chatxiv.db` in `backend/.env`. See [Observability-SQLite-Persistence](tasks/backend/Observability-SQLite-Persistence.md) and `backend/.env.example`. Requires `better-sqlite3` (native addon; on Windows you may need build tools if prebuilds are missing).
 
 ## How to run
 
