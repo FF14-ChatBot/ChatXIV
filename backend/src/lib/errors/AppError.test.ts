@@ -3,6 +3,13 @@ import { AppError } from './AppError.js';
 import { ERROR_CODES } from '@chatxiv/cdm';
 
 describe('AppError', () => {
+  it('unauthorized() returns 401 UNAUTHORIZED', () => {
+    const err = AppError.unauthorized('Not allowed');
+    expect(err.status).toBe(401);
+    expect(err.code).toBe(ERROR_CODES.UNAUTHORIZED);
+    expect(err.message).toBe('Not allowed');
+  });
+
   it('validation() returns 400 VALIDATION_ERROR', () => {
     const err = AppError.validation('Invalid input');
     expect(err.status).toBe(400);

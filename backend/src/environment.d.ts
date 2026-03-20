@@ -13,6 +13,7 @@ declare global {
       ANTHROPIC_API_KEY?: string;
       ANTHROPIC_MODEL?: string;
       DATA_DIR?: string;
+      ADMIN_API_KEY?: string;
     }
   }
 }

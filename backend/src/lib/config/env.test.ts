@@ -1,5 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { getPort, getNodeEnv, getDataDir, getAnthropicApiKey, getAnthropicModel } from './env.js';
+import {
+  getPort,
+  getNodeEnv,
+  getDataDir,
+  getAnthropicApiKey,
+  getAnthropicModel,
+  getAdminApiKey,
+} from './env.js';
 
 describe('lib/config/env', () => {
   const saved = { ...process.env };
@@ -100,6 +107,23 @@ describe('lib/config/env', () => {
     it('returns the model when set', () => {
       process.env.ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
       expect(getAnthropicModel()).toBe('claude-sonnet-4-20250514');
+    });
+  });
+
+  describe('getAdminApiKey', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.ADMIN_API_KEY;
+      expect(getAdminApiKey()).toBeUndefined();
+    });
+
+    it('returns undefined for empty string', () => {
+      process.env.ADMIN_API_KEY = '';
+      expect(getAdminApiKey()).toBeUndefined();
+    });
+
+    it('returns the key when set', () => {
+      process.env.ADMIN_API_KEY = 'my-admin-key';
+      expect(getAdminApiKey()).toBe('my-admin-key');
     });
   });
 });

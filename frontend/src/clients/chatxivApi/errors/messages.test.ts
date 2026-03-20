@@ -4,6 +4,9 @@ import { getDisplayMessage, ERROR_CODE_TO_MESSAGE, FALLBACK_MESSAGE } from './me
 
 describe('error messages', () => {
   it('returns mapped message for known code', () => {
+    expect(getDisplayMessage(ERROR_CODES.UNAUTHORIZED)).toBe(
+      "You don't have permission to do that."
+    );
     expect(getDisplayMessage(ERROR_CODES.RATE_LIMITED)).toBe(
       "You've reached the limit for now; please try again later."
     );
