@@ -4,7 +4,11 @@
 
 import type { SqliteDatabase } from './types.js';
 import { USAGE_CATEGORIES } from '@chatxiv/cdm';
-import type { UsageRecord, UsageStore, UsageCategory } from '../../observability/usageAnalytics/types.js';
+import type {
+  UsageRecord,
+  UsageStore,
+  UsageCategory,
+} from '../../observability/usageAnalytics/types.js';
 
 /** Match in-memory cap (see inMemoryUsageAnalytics.ts). */
 const MAX_ROWS = 50_000;
