@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
-import { Header } from './header';
+import { Header } from '../Header/Header';
+import styles from './MainLayout.module.css';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -7,11 +8,11 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className={styles.layout}>
       <Header />
-      <main className="flex-1 min-h-0 overflow-auto">{children}</main>
-      <footer className="flex-shrink-0 border-t bg-background/80 backdrop-blur-sm py-3">
-        <p className="text-xs text-center text-muted-foreground px-4">
+      <main className={styles.main}>{children}</main>
+      <footer className={styles.footer}>
+        <p className={styles.footerText}>
           ChatXIV may produce inaccurate information. Please provide feedback and verify with
           official sources.
         </p>

@@ -1,0 +1,18 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.messageArea {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.messageAreaEmpty {
+  composes: messageArea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,21 +1,21 @@
 import { Routes, Route } from 'react-router-dom';
 import { AnalyticsPageView } from './lib/analytics/AnalyticsPageView';
-
-function Home() {
-  return (
-    <main>
-      <h1>ChatXIV</h1>
-      <p>Please ask me anything related to FFXIV.</p>
-    </main>
-  );
-}
+import { MainLayout } from './components/MainLayout/MainLayout';
+import { ChatPage } from './components/ChatPage/ChatPage';
 
 function App() {
   return (
     <>
       <AnalyticsPageView />
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route
+          path="/"
+          element={
+            <MainLayout>
+              <ChatPage />
+            </MainLayout>
+          }
+        />
       </Routes>
     </>
   );

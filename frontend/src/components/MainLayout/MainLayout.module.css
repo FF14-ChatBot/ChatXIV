@@ -1,0 +1,27 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--background) 80%, transparent);
+  backdrop-filter: blur(8px);
+  padding-block: 0.75rem;
+}
+
+.footerText {
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  padding-inline: 1rem;
+  margin: 0;
+}

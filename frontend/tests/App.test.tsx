@@ -3,12 +3,13 @@ import { MemoryRouter } from 'react-router-dom';
 import App from '@/App';
 
 describe('App', () => {
-  it('renders heading', () => {
+  it('renders the app with header and chat page', () => {
     render(
       <MemoryRouter>
         <App />
       </MemoryRouter>
     );
-    expect(screen.getByRole('heading', { name: /chatxiv/i })).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/ask me anything/i)).toBeInTheDocument();
   });
 });
