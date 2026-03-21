@@ -41,9 +41,17 @@ export function getAnthropicModel(): string | undefined {
   return process.env[ENV_KEYS.ANTHROPIC_MODEL] || undefined;
 }
 
+/** Strip UTF-8 BOM if present (some editors add it to `.env`). */
+function stripBom(value: string): string {
+  return value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
+}
+
 /** Lazy-validated: returns undefined when unset so the admin auth middleware can respond with 401. */
 export function getAdminApiKey(): string | undefined {
-  return process.env[ENV_KEYS.ADMIN_API_KEY] || undefined;
+  const raw = process.env[ENV_KEYS.ADMIN_API_KEY];
+  if (raw === undefined || raw === '') return undefined;
+  const trimmed = stripBom(raw).trim();
+  return trimmed === '' ? undefined : trimmed;
 }
 
 export type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';

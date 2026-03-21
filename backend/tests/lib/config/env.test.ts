@@ -145,6 +145,21 @@ describe('lib/config/env', () => {
       process.env.ADMIN_API_KEY = 'my-admin-key';
       expect(getAdminApiKey()).toBe('my-admin-key');
     });
+
+    it('returns undefined for whitespace-only value', () => {
+      process.env.ADMIN_API_KEY = '   \t  ';
+      expect(getAdminApiKey()).toBeUndefined();
+    });
+
+    it('trims surrounding whitespace', () => {
+      process.env.ADMIN_API_KEY = '  my-admin-key  ';
+      expect(getAdminApiKey()).toBe('my-admin-key');
+    });
+
+    it('strips UTF-8 BOM when present', () => {
+      process.env.ADMIN_API_KEY = '\uFEFFmy-admin-key';
+      expect(getAdminApiKey()).toBe('my-admin-key');
+    });
   });
 
   describe('getLogLevel', () => {

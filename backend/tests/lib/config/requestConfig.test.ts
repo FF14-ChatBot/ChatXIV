@@ -62,7 +62,7 @@ describe('requestConfig', () => {
     it('returns defaults when env unset', () => {
       delete process.env.RATE_LIMIT_CAPACITY;
       delete process.env.RATE_LIMIT_REFILL_PER_MIN;
-      expect(getRateLimitConfig()).toEqual({ capacity: 10, refillPerMin: 2 });
+      expect(getRateLimitConfig()).toEqual({ capacity: 20, refillPerMin: 4 });
     });
     it('parses env values', () => {
       process.env.RATE_LIMIT_CAPACITY = '20';

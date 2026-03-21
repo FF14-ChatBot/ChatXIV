@@ -95,8 +95,19 @@ describe('GET /flags/:name', () => {
     expect(res.body).toEqual({ name: 'unknown', enabled: false });
   });
 
+  it('accepts PascalCase flag names', async () => {
+    service.getEntry.mockResolvedValue({
+      name: 'MyFeature',
+      enabled: true,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const res = await request(buildApp(service)).get('/flags/MyFeature');
+    expect(res.status).toBe(200);
+    expect(service.getEntry).toHaveBeenCalledWith('MyFeature');
+  });
+
   it('returns 400 for invalid flag name', async () => {
-    const res = await request(buildApp(service)).get('/flags/BAD');
+    const res = await request(buildApp(service)).get('/flags/bad!');
     expect(res.status).toBe(400);
     expect(service.getEntry).not.toHaveBeenCalled();
   });

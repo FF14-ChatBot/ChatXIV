@@ -1,3 +1,5 @@
+import './lib/config/loadDotenv.js';
+
 import express from 'express';
 import cors from 'cors';
 import {
@@ -21,6 +23,7 @@ import { RateLimitMiddleware } from './middleware/rateLimit/rateLimitMiddleware.
 import { AdminAuthMiddleware } from './middleware/adminAuth.js';
 import { createFlagsRouter } from './routes/v1/flags.js';
 import { createAdminRouter } from './routes/v1/admin/router.js';
+import { registerOpenApiDocs } from './routes/openApiDocs.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();
@@ -62,6 +65,8 @@ app.use(container.resolve(RateLimitMiddleware).handler);
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+registerOpenApiDocs(app);
 
 // ── Public routes (/v1) ──────────────────────────────────────────────
 
