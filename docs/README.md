@@ -112,7 +112,7 @@ When **`dev-www` / `dev-api` point at your laptop** via Cloudflare Tunnel, CI de
 
 - **`GITHUB_WEBHOOK_SECRET`** in repo root **`.env`** must match the GitHub webhook **Secret** (see [`.env.example`](../.env.example); separate from **`frontend/.env`** / **`backend/.env`**).
 - **`npm run webhook:listen`** (repo root): **`http://127.0.0.1:8790`** by default — **`GET /health`**, **`POST /webhooks/github`**.
-- **Branch:** sync runs only if the clone is checked out on **`main`** (so pushes to `main` do not merge into a feature branch by mistake).
+- **Branch:** on each push to **`main`**, the listener **checks out `main`**, **fast-forwards** to **`origin/main`** (refuses if the working tree is not clean), runs **`npm install`** at the repo root when **`package-lock.json`** changed, then runs **`npm run build:cdm`** and **`npm run build:backend`** from the repo root when **`HEAD`** is **`main`** (otherwise the webhook fails so the backend is not built from the wrong branch). Restart **`node dist/server.js`** / **`npm run dev:backend`** / your process manager yourself if you need a live process reload.
 
 ### 2. Cloudflare Tunnel
 
@@ -129,9 +129,11 @@ Add an ingress hostname (e.g. **`dev-hook.chatxiv.com`**) → **`http://127.0.0.
 
 Optional: set **`GITHUB_REPO_FULL_NAME`** (e.g. `Owner/Repo`) in the listener env so deliveries for other repos are ignored after signature verification.
 
+The listener writes **`GET /health`** and every webhook **`→ HTTP …`** response to stderr, and after a valid signature logs the **`push`** JSON body plus a one-line **`← push …`** summary.
+
 ### 4. After a pull
 
-**Vite** usually hot-reloads source changes; **`npm install`** runs automatically when **`package-lock.json`** changes. Restart frontend/backend yourself if something does not pick up (env, native deps, etc.).
+**Vite** usually hot-reloads source changes. The webhook always runs **`npm run build:cdm`** then **`npm run build:backend`** after a successful sync; restart the backend process yourself if you run production **`dist`** or a long-lived dev server.
 
 ### 5. Security
 
