@@ -7,7 +7,8 @@ describe('getChatxivApiBaseUrl', () => {
   });
 
   it('returns empty string when VITE_CHATXIV_BACKEND_URL is unset (same-origin)', () => {
-    expect(getChatxivApiBaseUrl()).toBe('');
+    // Empty env object so local `frontend/.env` cannot change the assertion.
+    expect(getChatxivApiBaseUrl({})).toBe('');
   });
 
   it('returns base URL when set, stripping trailing slash', () => {

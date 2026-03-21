@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Verify Before Commit
 
+**Secrets:** Do not stage `.env`, credentials, or tokens — follow `.cursor/rules/no-secrets-in-commits.mdc`.
+
 After completing a logical task, before committing:
 
 **If source code was changed** (`.ts`, `.tsx`, `.css`, `.json` in `backend/src/` or `frontend/src/`), run these steps from the repo root:
