@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import express, { type RequestHandler } from 'express';
+import express, {
+  type NextFunction,
+  type Request,
+  type RequestHandler,
+  type Response,
+} from 'express';
 import request from 'supertest';
 import {
   chainRequestHandlers,
@@ -55,7 +60,7 @@ describe('chainRequestHandlers', () => {
       next(new Error('chain-fail'));
     };
     app.get('/x', chainRequestHandlers([fail]));
-    app.use((err: unknown, _req, res, next) => {
+    app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
       void next;
       const message = err instanceof Error ? err.message : 'unknown';
       res.status(500).send(message);
