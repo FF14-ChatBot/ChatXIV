@@ -15,12 +15,12 @@ Route and middleware tests should be **unit tests** — inject mock services, no
 
 ## Mock Factories
 
-Shared mock factories live in `<package>/src/test/mocks/<Interface>.mock.ts`. Each exports a `createMock<Interface>()` function that returns an object where every method is a `vi.fn()` with sensible defaults.
+Shared mock factories live in `<package>/tests/mocks/<Interface>.mock.ts` (backend) or next to the feature under `frontend/tests/` when not shared. Each exports a `createMock<Interface>()` function that returns an object where every method is a `vi.fn()` with sensible defaults.
 
 ```typescript
-// test/mocks/myService.mock.ts
+// tests/mocks/myService.mock.ts
 import { vi, type Mocked } from 'vitest';
-import type { MyService } from '../../lib/path/types.js';
+import type { MyService } from '@src/lib/path/types.js';
 
 export function createMockMyService(): Mocked<MyService> {
   return {
@@ -38,7 +38,7 @@ service.doSomething.mockResolvedValue(customResult);
 
 ### When to Use Shared vs Inline Mocks
 
-- **Shared factory** (`test/mocks/`): when the interface is consumed by 2+ test files, or is a core domain interface (services, stores, strategies)
+- **Shared factory** (`tests/mocks/`): when the interface is consumed by 2+ test files, or is a core domain interface (services, stores, strategies)
 - **Inline mock**: when the mock is trivial, test-specific, and unlikely to be reused (e.g. a one-off `req`/`res` stub)
 
 ## Test Patterns by Layer
@@ -56,7 +56,7 @@ service.doSomething.mockResolvedValue(customResult);
 Mount the router factory on a minimal Express app with only `express.json()` and `errorHandler()` — no DI container, no global middleware:
 
 ```typescript
-import { createMockMyService, type MockMyService } from '../test/mocks/myService.mock.js';
+import { createMockMyService, type MockMyService } from '@test/mocks/myService.mock.js';
 
 function buildApp(service: MockMyService) {
   const app = express();

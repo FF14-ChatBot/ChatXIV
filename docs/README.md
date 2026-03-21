@@ -34,6 +34,7 @@ Succinct guide for running, linting, testing, and building the repo.
 ## Test and coverage
 
 - **Runner:** Vitest in both backend and frontend.
+- **Layout:** Spec files and test-only helpers live under `backend/tests/` and `frontend/tests/`, mirroring the `src/` tree (for example `src/lib/config/env.ts` → `tests/lib/config/env.test.ts`). Vitest resolves `@src/…` and `@test/…` (backend) and `@/…` (frontend) to each package’s `src/` (and backend `tests/` for shared mocks).
 - **Coverage target:** 90% (enforced; thresholds in each package’s `vitest.config.ts`). Entry points and test files are excluded from coverage so the threshold applies to application source only.
 - **Commands:**
   - Root (both): `npm run test`; `npm run test:coverage` (coverage for both)

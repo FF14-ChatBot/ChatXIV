@@ -37,11 +37,11 @@ export { router as chatRouter };
 
 3. **Wire into app.ts:** Import and `app.use(chatRouter)` before the error handler.
 
-4. **Write tests** with `supertest`:
+4. **Write tests** under `backend/tests/` (mirror the route or module path) with `supertest`:
 
 ```typescript
 import request from 'supertest';
-import { app } from '../app.js';
+import { app } from '@src/app.js';
 
 describe('POST /v1/chat', () => {
   it('returns 400 for missing query', async () => {

@@ -5,6 +5,7 @@
 - **hooks/** – Reusable React hooks (e.g. `useSessionId` for API config).
 - **features/** – Route or feature-level modules (e.g. chat, settings). Add as you add screens.
 - **test-utils.tsx** – Custom `render` with optional wrapper. Use for new tests so Router/context live in one place.
+- **Tests** – Spec files live under `frontend/tests/`, mirroring `src/` (e.g. `src/clients/...` → `tests/clients/...`). Vitest resolves `@/` to `src/` (see `vitest.config.ts`).
 
 ---
 
