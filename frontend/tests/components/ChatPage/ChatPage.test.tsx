@@ -14,9 +14,7 @@ describe('ChatPage', () => {
   it('shows welcome panel when empty, then messages after send', () => {
     render(<ChatPage />);
 
-    expect(
-      screen.getByText(/hello, i am mammetbot/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/hello, i am mammetbot/i)).toBeInTheDocument();
 
     const input = screen.getByPlaceholderText(/ask me anything/i);
     fireEvent.change(input, { target: { value: 'Hello bot' } });
@@ -28,9 +26,7 @@ describe('ChatPage', () => {
     act(() => {
       vi.advanceTimersByTime(1000);
     });
-    expect(
-      screen.getByText(/i'm mammetbot! this is a demo response/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/i'm mammetbot! this is a demo response/i)).toBeInTheDocument();
   });
 
   it('does not send empty messages', () => {

@@ -36,5 +36,8 @@
   },
   "devDependencies": {
     "husky": "^9.1.7"
+  },
+  "overrides": {
+    "vite": "6.4.1"
   }
 }
