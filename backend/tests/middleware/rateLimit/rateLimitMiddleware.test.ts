@@ -57,8 +57,40 @@ describe('rateLimitMiddleware (factory)', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
+  it('skips rate limit for /docs and subpaths', () => {
+    (req as unknown as { path: string }).path = '/docs/';
+    const mw = rateLimitMiddleware(store, config);
+    mw(req, res, next);
+    expect(store.consume).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('skips rate limit for /v1/openapi.yaml', () => {
+    (req as unknown as { path: string }).path = '/v1/openapi.yaml';
+    const mw = rateLimitMiddleware(store, config);
+    mw(req, res, next);
+    expect(store.consume).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith();
+  });
+
   it('skips rate limit for /v1/admin and subpaths', () => {
     (req as unknown as { path: string }).path = '/v1/admin/metrics';
+    const mw = rateLimitMiddleware(store, config);
+    mw(req, res, next);
+    expect(store.consume).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('skips rate limit for /v1/flags (public FE list)', () => {
+    (req as unknown as { path: string }).path = '/v1/flags';
+    const mw = rateLimitMiddleware(store, config);
+    mw(req, res, next);
+    expect(store.consume).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('skips rate limit for /v1/flags/:name (public FE read)', () => {
+    (req as unknown as { path: string }).path = '/v1/flags/my-feature';
     const mw = rateLimitMiddleware(store, config);
     mw(req, res, next);
     expect(store.consume).not.toHaveBeenCalled();

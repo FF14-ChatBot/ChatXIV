@@ -19,7 +19,7 @@ Succinct guide for running, linting, testing, and building the repo.
 
 ## How to run
 
-- **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`
+- **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: Swagger UI at `http://localhost:3000/docs/`, OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`. See [backend/README.md](../backend/README.md) for curl, Postman, and headers.
 - **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`
 - **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (after root `npm install`)
 

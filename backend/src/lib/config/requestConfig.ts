@@ -3,9 +3,9 @@ import { ENV_KEYS } from './constants.js';
 const DEFAULT_MAX_BODY_KB = 50;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 /** Burst size; then refill gives sustained rate (see getRateLimitConfig). */
-const DEFAULT_RATE_LIMIT_CAPACITY = 10;
-/** Tokens added per minute after use; e.g. 2 = 2 requests/min sustained after burst. */
-const DEFAULT_RATE_LIMIT_REFILL_PER_MIN = 2;
+const DEFAULT_RATE_LIMIT_CAPACITY = 20;
+/** Tokens added per minute after use; e.g. 4 = 4 requests/min sustained after burst. */
+const DEFAULT_RATE_LIMIT_REFILL_PER_MIN = 4;
 
 function parseEnvInt(key: string, defaultVal: number): number {
   const v = process.env[key];

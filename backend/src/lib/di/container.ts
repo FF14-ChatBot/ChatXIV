@@ -84,10 +84,7 @@ export function register(): void {
     useFactory: () => getCorsOrigins(),
   });
   container.register<AuthStrategy>(AuthStrategyToken, {
-    useFactory: () => {
-      const key = getAdminApiKey();
-      return createApiKeyAuthStrategy(key ?? '');
-    },
+    useFactory: () => createApiKeyAuthStrategy(() => getAdminApiKey() ?? ''),
   });
   const flagStore = createInMemoryFeatureFlagStore();
   container.registerInstance<FeatureFlagStore>(FeatureFlagStoreToken, flagStore);

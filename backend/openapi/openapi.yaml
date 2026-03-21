@@ -1,0 +1,242 @@
+openapi: 3.0.3
+info:
+  title: ChatXIV API
+  description: |
+    Versioned HTTP API for the ChatXIV backend. Update `backend/openapi/openapi.yaml` whenever you
+    change request/response shapes or routes under `/v1`.
+  version: 1.0.0
+
+servers:
+  - url: /
+    description: Same host as this Swagger page (use for Try it out on dev/staging/prod — avoids calling localhost from the browser)
+  - url: https://dev-api.chatxiv.com
+    description: Development API host (when the spec is opened off-site or you want an absolute URL)
+  - url: http://localhost:3000
+    description: Local (browser address bar shows localhost)
+  - url: http://127.0.0.1:3000
+    description: Local numeric loopback (must match the page origin)
+
+tags:
+  - name: Health
+  - name: Feature flags
+  - name: Admin
+  - name: Documentation
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /v1/openapi.yaml:
+    get:
+      tags: [Documentation]
+      summary: OpenAPI document (YAML)
+      description: Raw OpenAPI 3 spec for tools (Postman import, codegen, etc.).
+      operationId: getOpenApiYaml
+      responses:
+        '200':
+          description: OpenAPI YAML document
+          content:
+            application/yaml:
+              schema:
+                type: string
+
+  /v1/flags:
+    get:
+      tags: [Feature flags]
+      summary: List feature flags
+      description: Returns all flags sorted by name (public).
+      operationId: listFeatureFlags
+      responses:
+        '200':
+          description: Sorted flag entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureFlagEntry'
+
+  /v1/flags/{name}:
+    get:
+      tags: [Feature flags]
+      summary: Get one feature flag
+      description: |
+        Returns the flag state. Unknown names return `{ name, enabled: false }` without `updatedAt`.
+      operationId: getFeatureFlag
+      parameters:
+        - $ref: '#/components/parameters/FlagName'
+      responses:
+        '200':
+          description: Flag entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagEntry'
+        '400':
+          description: Invalid flag name format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /v1/admin/flags:
+    get:
+      tags: [Admin]
+      summary: List feature flags (admin)
+      description: Same entries as the public list; order is not guaranteed to be sorted.
+      operationId: adminListFeatureFlags
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Flag entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureFlagEntry'
+        '401':
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /v1/admin/flags/{name}:
+    put:
+      tags: [Admin]
+      summary: Create or update a feature flag
+      operationId: adminPutFeatureFlag
+      security:
+        - AdminApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/FlagName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated flag entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagEntry'
+        '400':
+          description: Validation error (body or flag name)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    delete:
+      tags: [Admin]
+      summary: Remove a feature flag
+      description: Returns 400 if the flag does not exist.
+      operationId: adminDeleteFeatureFlag
+      security:
+        - AdminApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/FlagName'
+      responses:
+        '204':
+          description: Flag removed
+        '400':
+          description: Flag does not exist or invalid name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+components:
+  securitySchemes:
+    AdminApiKey:
+      type: apiKey
+      in: header
+      name: X-Admin-Key
+      description: |
+        Same value as `ADMIN_API_KEY` in `backend/.env`.
+        In Swagger **Servers**, pick the entry that matches where the API runs (e.g. **/** on a deployed host, or `localhost` / `127.0.0.1` only when the UI is opened from that same origin).
+
+  parameters:
+    FlagName:
+      name: name
+      in: path
+      required: true
+      description: |
+        ASCII letters (any case, including PascalCase), digits, and internal `.`, `_`, or `-`. Must start and end with a letter or digit.
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$'
+        example: MyFeature
+
+  schemas:
+    FeatureFlagEntry:
+      type: object
+      required: [name, enabled]
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+          description: Present when the flag exists in the store; omitted for unknown names on public GET.
+
+    ApiErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - UNAUTHORIZED
+            - VALIDATION_ERROR
+            - RATE_LIMITED
+            - REQUEST_TIMEOUT
+            - PAYLOAD_TOO_LARGE
+            - SOURCE_UNAVAILABLE
+            - NO_SOURCED_ANSWER
+            - REFUSAL
+            - INTERNAL_ERROR
+        message:
+          type: string
+        requestId:
+          type: string
+        stack:
+          type: string
+          description: Present only in non-production environments.
