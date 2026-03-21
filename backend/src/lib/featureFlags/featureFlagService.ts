@@ -13,6 +13,14 @@ export function createFeatureFlagService(store: FeatureFlagStore): FeatureFlagSe
       }));
     },
 
+    async getEntry(name: string): Promise<FeatureFlagEntry> {
+      const record = await store.get(name);
+      if (record) {
+        return { name, enabled: record.enabled, updatedAt: record.updatedAt };
+      }
+      return { name, enabled: false };
+    },
+
     async setFlag(name: string, enabled: boolean): Promise<FeatureFlagEntry> {
       await store.set(name, enabled);
       const record = await store.get(name);
@@ -24,11 +32,6 @@ export function createFeatureFlagService(store: FeatureFlagStore): FeatureFlagSe
       if (!existed) {
         throw AppError.validation(`Flag "${name}" does not exist`);
       }
-    },
-
-    async isEnabled(name: string): Promise<boolean> {
-      const record = await store.get(name);
-      return record?.enabled ?? false;
     },
   };
 }

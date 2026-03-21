@@ -76,7 +76,7 @@ describe('container', () => {
     expect(typeof featureFlagService.getAll).toBe('function');
     expect(typeof featureFlagService.setFlag).toBe('function');
     expect(typeof featureFlagService.removeFlag).toBe('function');
-    expect(typeof featureFlagService.isEnabled).toBe('function');
+    expect(typeof featureFlagService.getEntry).toBe('function');
   });
 
   it('resolve injectable middleware returns instance with handler', () => {

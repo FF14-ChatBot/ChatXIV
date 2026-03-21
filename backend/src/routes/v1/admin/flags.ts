@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { body, param } from 'express-validator';
 import { validate } from '../../../middleware/validate.js';
 import { wrapAsync } from '../../../middleware/asyncHandler.js';
+import {
+  FLAG_NAME_PATTERN,
+  FLAG_NAME_VALIDATION_MESSAGE,
+} from '../../../lib/featureFlags/flagNameParam.js';
 import type { FeatureFlagService } from '../../../lib/featureFlags/types.js';
-
-const FLAG_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/;
 
 export function createAdminFlagsRouter(service: FeatureFlagService): Router {
   const router = Router();
@@ -20,10 +22,7 @@ export function createAdminFlagsRouter(service: FeatureFlagService): Router {
   router.put(
     '/flags/:name',
     validate([
-      param('name')
-        .isString()
-        .matches(FLAG_NAME_PATTERN)
-        .withMessage('Flag name must be lowercase alphanumeric with hyphens, dots, or underscores'),
+      param('name').isString().matches(FLAG_NAME_PATTERN).withMessage(FLAG_NAME_VALIDATION_MESSAGE),
       body('enabled').isBoolean().withMessage('enabled must be a boolean'),
     ]),
     wrapAsync(async (req, res) => {
@@ -37,10 +36,7 @@ export function createAdminFlagsRouter(service: FeatureFlagService): Router {
   router.delete(
     '/flags/:name',
     validate([
-      param('name')
-        .isString()
-        .matches(FLAG_NAME_PATTERN)
-        .withMessage('Flag name must be lowercase alphanumeric with hyphens, dots, or underscores'),
+      param('name').isString().matches(FLAG_NAME_PATTERN).withMessage(FLAG_NAME_VALIDATION_MESSAGE),
     ]),
     wrapAsync(async (req, res) => {
       const { name } = req.params;

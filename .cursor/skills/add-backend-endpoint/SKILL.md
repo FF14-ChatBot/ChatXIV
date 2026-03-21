@@ -10,7 +10,7 @@ description: >-
 
 ## Steps
 
-1. **Define CDM types** in `packages/cdm/src/index.ts` for new request/response shapes. Rebuild with `npm run build:cdm`.
+1. **Define CDM types** in the appropriate `packages/cdm/src/*.ts` module (e.g. `flags.ts`, `appError.ts`, `usage.ts`, `metrics.ts`) and add a re-export from `index.ts` if you add a new file. Rebuild with `npm run build:cdm`.
 
 2. **Create a router file** (e.g. `backend/src/routes/chat.ts`):
 
