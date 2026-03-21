@@ -1,0 +1,33 @@
+.wrapper {
+  width: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bubble {
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  max-width: 80%;
+}
+
+.bubbleText {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--foreground) 90%, transparent);
+  margin: 0;
+}
+
+.user {
+  composes: bubble;
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  margin-left: auto;
+}
+
+.assistant {
+  composes: bubble;
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  backdrop-filter: blur(8px);
+  margin-right: auto;
+}
