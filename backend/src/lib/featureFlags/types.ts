@@ -17,7 +17,8 @@ export interface FeatureFlagStore {
 /** Business-level operations over feature flags. Routes and other services depend on this. */
 export interface FeatureFlagService {
   getAll(): Promise<FeatureFlagEntry[]>;
+  /** Resolved entry; `updatedAt` omitted when the name is not in the store. */
+  getEntry(name: string): Promise<FeatureFlagEntry>;
   setFlag(name: string, enabled: boolean): Promise<FeatureFlagEntry>;
   removeFlag(name: string): Promise<void>;
-  isEnabled(name: string): Promise<boolean>;
 }
