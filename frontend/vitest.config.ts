@@ -29,6 +29,8 @@ export default defineConfig({
         "**/*.test.{ts,tsx}",
         "**/*.d.ts",
         "src/**/index.ts",
+        /** CSS Modules are styling only; line coverage is not meaningful here */
+        "**/*.module.css",
       ],
       thresholds: {
         lines: 90,
