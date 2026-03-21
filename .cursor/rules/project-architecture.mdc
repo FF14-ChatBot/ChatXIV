@@ -1,0 +1,13 @@
+---
+description: ChatXIV monorepo layout, workspaces, build order, and project structure
+alwaysApply: true
+---
+
+# Project Architecture
+
+- **Monorepo** with npm workspaces: `backend/`, `frontend/`, `packages/*`
+- Shared API contract types live in `@chatxiv/cdm` (`packages/cdm/`) — import from there, never duplicate
+- **Build order:** CDM → backend → frontend (`npm run build` at root handles this)
+- CI runs per-package via path-filtered GitHub Actions
+- `docs/design-documents/` and `docs/tasks/` are git-crypt encrypted; may be unreadable without unlock
+- Developer setup is in `docs/README.md`

@@ -1,7 +1,16 @@
+import './lib/config/loadDotenv.js';
+
 import express from 'express';
 import cors from 'cors';
-import { container, register, RequestConfigToken, CorsOriginsToken } from './lib/di/container.js';
+import {
+  container,
+  register,
+  RequestConfigToken,
+  CorsOriginsToken,
+  FeatureFlagServiceToken,
+} from './lib/di/container.js';
 import type { RequestConfig } from './lib/config/requestConfig.js';
+import type { FeatureFlagService } from './lib/featureFlags/types.js';
 
 register();
 
@@ -10,41 +19,63 @@ import { RequestMetricsMiddleware } from './middleware/requestMetrics.js';
 import { UsageAnalyticsMiddleware } from './middleware/usageAnalytics.js';
 import { securityHeadersMiddleware } from './middleware/securityHeaders.js';
 import { RequestTimeoutMiddleware } from './middleware/requestTimeout.js';
-import { RateLimitMiddleware } from './middleware/rateLimit/index.js';
+import { RateLimitMiddleware } from './middleware/rateLimit/rateLimitMiddleware.js';
+import { AdminAuthMiddleware } from './middleware/adminAuth.js';
+import { createFlagsRouter } from './routes/v1/flags.js';
+import { createAdminRouter } from './routes/v1/admin/router.js';
+import { registerOpenApiDocs } from './routes/openApiDocs.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();
 
+// ── Resolve services ──────────────────────────────────────────────────
+
 const requestConfig = container.resolve<RequestConfig>(RequestConfigToken);
 const corsOrigins = container.resolve<string[]>(CorsOriginsToken);
+const flagService = container.resolve<FeatureFlagService>(FeatureFlagServiceToken);
+
+// ── Global middleware ─────────────────────────────────────────────────
 
 app.use(
   cors({
     origin: corsOrigins,
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
       'Authorization',
       'Idempotency-Key',
       'X-Session-Id',
       'X-Request-Id',
+      'X-Admin-Key',
     ],
     credentials: true,
     maxAge: 86400,
   })
 );
 app.use(securityHeadersMiddleware);
-
 app.use(express.json({ limit: `${requestConfig.maxBodySizeKb}kb` }));
-
 app.use(requestContextMiddleware);
 app.use(container.resolve(RequestTimeoutMiddleware).handler);
 app.use(container.resolve(RequestMetricsMiddleware).handler);
 app.use(container.resolve(UsageAnalyticsMiddleware).handler);
 app.use(container.resolve(RateLimitMiddleware).handler);
 
+// ── Health ───────────────────────────────────────────────────────────
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+registerOpenApiDocs(app);
+
+// ── Public routes (/v1) ──────────────────────────────────────────────
+
+app.use('/v1', createFlagsRouter(flagService));
+
+// ── Admin routes (/v1/admin) — auth enforced by admin router ─────────
+
+app.use('/v1/admin', createAdminRouter(container.resolve(AdminAuthMiddleware), flagService));
+
+// ── Error handler (must be last) ─────────────────────────────────────
 
 app.use(errorHandler());

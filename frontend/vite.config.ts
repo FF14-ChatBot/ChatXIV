@@ -3,14 +3,16 @@ import react from "@vitejs/plugin-react";
 import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
 
-
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Tunnel: allow *.chatxiv.com Host; bind for IPv4 loopback (cloudflared→127.0.0.1:5173), not ::1-only.
+    host: true,
+    allowedHosts: ['.chatxiv.com'],
     proxy: {
-      "/api": {
-        target: "http://localhost:3000",
+      '/api': {
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
     },

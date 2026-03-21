@@ -1,0 +1,10 @@
+---
+description: Keep documentation in sync when code changes affect documented behavior
+alwaysApply: true
+---
+
+# Documentation Sync
+
+- When code changes affect behavior documented in `docs/README.md`, `frontend/src/README.md`, or other docs, update the docs in the same change
+- When adding new env vars, update `backend/.env.example` and `environment.d.ts`
+- When a doc is found to be stale or contradictory, fix it immediately rather than leaving it for later

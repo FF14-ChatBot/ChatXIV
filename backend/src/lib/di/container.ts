@@ -32,13 +32,20 @@ import {
   getRequestConfig,
   getRateLimitConfig,
 } from '../config/requestConfig.js';
-import { getCorsOrigin } from '../config/cors.js';
+import { getCorsOrigins } from '../config/cors.js';
+import { getAdminApiKey } from '../config/env.js';
 import { createMemoryStore } from '../../middleware/rateLimit/memoryStore.js';
-import type { IMetricsStore } from '../observability/metrics/index.js';
-import type { IUsageStore } from '../observability/usageAnalytics/index.js';
+import { createApiKeyAuthStrategy } from '../auth/apiKeyAuthStrategy.js';
+import { createInMemoryFeatureFlagStore } from '../featureFlags/inMemoryFeatureFlagStore.js';
+import { createFeatureFlagService } from '../featureFlags/featureFlagService.js';
+import type { MetricsStore } from '../observability/metrics/types.js';
+import type { UsageStore } from '../observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '../../middleware/rateLimit/types.js';
+import type { AuthStrategy } from '../auth/types.js';
+import type { FeatureFlagStore, FeatureFlagService } from '../featureFlags/types.js';
 import { setMetrics } from '../observability/metricsInstance.js';
 import { setUsageAnalytics } from '../observability/usageAnalyticsInstance.js';
+import { setFeatureFlagService } from '../featureFlags/featureFlagInstance.js';
 
 export const MetricsStoreToken = Symbol('MetricsStore');
 export const UsageStoreToken = Symbol('UsageStore');
@@ -46,6 +53,9 @@ export const RateLimitStoreToken = Symbol('RateLimitStore');
 export const RateLimitConfigToken = Symbol('RateLimitConfig');
 export const RequestConfigToken = Symbol('RequestConfig');
 export const CorsOriginsToken = Symbol('CorsOrigins');
+export const AuthStrategyToken = Symbol('AuthStrategy');
+export const FeatureFlagStoreToken = Symbol('FeatureFlagStore');
+export const FeatureFlagServiceToken = Symbol('FeatureFlagService');
 
 /** The DI container. Call register() once at startup before resolving any dependencies. */
 export const container = tsyringeContainer as DependencyContainer;
@@ -55,10 +65,10 @@ let registered = false;
 /** Call once at app startup (e.g. in server or app entry) to register all tokens and wire globals. */
 export function register(): void {
   if (registered) return;
-  container.register<IMetricsStore>(MetricsStoreToken, {
+  container.register<MetricsStore>(MetricsStoreToken, {
     useFactory: () => createInMemoryMetrics(),
   });
-  container.register<IUsageStore>(UsageStoreToken, {
+  container.register<UsageStore>(UsageStoreToken, {
     useFactory: () => createInMemoryUsageAnalytics(),
   });
   container.register<RateLimitStore>(RateLimitStoreToken, {
@@ -71,9 +81,17 @@ export function register(): void {
     useFactory: () => getRequestConfig(),
   });
   container.register<string[]>(CorsOriginsToken, {
-    useFactory: () => getCorsOrigin(),
+    useFactory: () => getCorsOrigins(),
   });
-  setMetrics(container.resolve<IMetricsStore>(MetricsStoreToken));
-  setUsageAnalytics(container.resolve<IUsageStore>(UsageStoreToken));
+  container.register<AuthStrategy>(AuthStrategyToken, {
+    useFactory: () => createApiKeyAuthStrategy(() => getAdminApiKey() ?? ''),
+  });
+  const flagStore = createInMemoryFeatureFlagStore();
+  container.registerInstance<FeatureFlagStore>(FeatureFlagStoreToken, flagStore);
+  const flagService = createFeatureFlagService(flagStore);
+  container.registerInstance<FeatureFlagService>(FeatureFlagServiceToken, flagService);
+  setMetrics(container.resolve<MetricsStore>(MetricsStoreToken));
+  setUsageAnalytics(container.resolve<UsageStore>(UsageStoreToken));
+  setFeatureFlagService(flagService);
   registered = true;
 }

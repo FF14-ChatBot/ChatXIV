@@ -1,0 +1,11 @@
+---
+description: Prettier and ESLint formatting conventions
+alwaysApply: true
+---
+
+# Code Style
+
+- **Prettier:** single quotes, trailing comma `es5`, print width 100
+- **ESLint:** flat config with `typescript-eslint` and `eslint-config-prettier`
+- No `console.log` in request-handling code (use Pino in backend, `logger` in frontend)
+- `console.error` acceptable in pre-boot startup code

@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "FFXIV data chatbot — BiS, raid plans, story, unlocks, settings",
-  "workspaces": ["backend", "frontend", "packages/*"],
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/*"
+  ],
   "scripts": {
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
@@ -20,9 +24,17 @@
     "format:check": "npm run format:check --prefix backend && npm run format:check --prefix frontend",
     "format:check:backend": "npm run format:check --prefix backend",
     "format:check:frontend": "npm run format:check --prefix frontend",
-    "test": "npm run test --prefix backend && npm run test --prefix frontend",
+    "test": "npm run test:scripts && npm run test --prefix backend && npm run test --prefix frontend",
     "test:backend": "npm run test --prefix backend",
     "test:frontend": "npm run test --prefix frontend",
-    "test:coverage": "npm run coverage --prefix backend && npm run coverage --prefix frontend"
+    "test:coverage": "npm run coverage --prefix backend && npm run coverage --prefix frontend",
+    "audit": "npm run audit --prefix backend && npm run audit --prefix frontend",
+    "precommit:check": "node scripts/precommit-checks.mjs",
+    "prepare": "node scripts/husky-prepare.mjs",
+    "webhook:listen": "node --env-file=.env scripts/github-webhook-listener.mjs",
+    "test:scripts": "node --test scripts/lib/githubWebhookVerify.test.mjs"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }

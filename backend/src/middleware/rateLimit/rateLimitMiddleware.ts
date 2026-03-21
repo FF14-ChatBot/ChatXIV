@@ -9,8 +9,8 @@ import { requestContext } from '../../lib/request/requestContext.js';
 
 const RATE_LIMIT_MESSAGE = "You've reached the limit for now; please try again later.";
 
-/** Paths that skip rate limiting (health, docs, admin). */
-const SKIP_PATHS = ['/health', '/v1/docs', '/v1/admin'];
+/** Paths that skip rate limiting (health, docs, public flags, OpenAPI, admin). */
+const SKIP_PATHS = ['/health', '/docs', '/v1/flags', '/v1/openapi.yaml', '/v1/admin'];
 
 function shouldSkipRateLimit(path: string): boolean {
   return SKIP_PATHS.some((p) => path === p || path.startsWith(p + '/'));

@@ -1,7 +1,7 @@
 /** In-memory metrics implementation. Bounded to avoid unbounded growth. */
 
 import { Builder } from 'builder-pattern';
-import type { RequestMetricEntry, RouteMetricSummary, IMetricsStore } from './types.js';
+import type { RequestMetricEntry, RouteMetricSummary, MetricsStore } from './types.js';
 
 const MAX_ENTRIES = 10_000;
 
@@ -76,7 +76,7 @@ function toRouteSummaries(
 }
 
 /** In-memory metrics store. Inject at app boot via setMetrics(). */
-export function createInMemoryMetrics(): IMetricsStore {
+export function createInMemoryMetrics(): MetricsStore {
   const entries: RequestMetricEntry[] = [];
   return {
     record(entry: RequestMetricEntry): void {

@@ -1,6 +1,10 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import eslintConfigPrettier from "eslint-config-prettier";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   js.configs.recommended,
@@ -8,7 +12,8 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        project: true,
+        project: path.join(__dirname, "tsconfig.eslint.json"),
+        tsconfigRootDir: __dirname,
       },
     },
   },

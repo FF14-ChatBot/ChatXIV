@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'tsyringe';
-import type { IMetricsStore } from '../lib/observability/metrics/index.js';
+import type { MetricsStore } from '../lib/observability/metrics/types.js';
 import { MetricsStoreToken } from '../lib/di/container.js';
 
 @injectable()
 export class RequestMetricsMiddleware {
-  constructor(@inject(MetricsStoreToken) private readonly metricsStore: IMetricsStore) {}
+  constructor(@inject(MetricsStoreToken) private readonly metricsStore: MetricsStore) {}
 
   /** Express middleware handler. Bound once when registering (e.g. app.use(middleware.handler)). */
   handler = (req: Request, res: Response, next: NextFunction): void => {

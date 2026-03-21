@@ -1,0 +1,39 @@
+---
+description: Express + TypeScript backend conventions including DI, errors, env config, and middleware patterns
+globs: backend/**/*.ts
+alwaysApply: false
+---
+
+# Backend Conventions
+
+## DI and Services
+- TSyringe DI; composition root is `backend/src/lib/di/container.ts`
+- **Use DI only for services with swappable dependencies** (stores, HTTP clients). Plain exported functions are preferred for stateless logic.
+
+## Imports
+- ESM with `.js` extensions: `import { AppError } from '../lib/errors/AppError.js'`
+
+## Errors
+- `AppError` factory methods for errors that become HTTP responses (`.validation()`, `.internal()`, etc.)
+- Plain `Error` is correct for startup/config crashes (no HTTP context)
+
+## Middleware
+- DI-injected: class with arrow-function `handler` property, resolved via `container.resolve()`
+- Simple/stateless: plain function
+
+## Logging
+- Pino logger in request-handling code; never `console.log`
+- `console.error` acceptable only in pre-boot code where logger is not yet available
+
+## Env Vars
+- **`process.env` must only appear in `lib/config/` files.** All other code reads env values through typed getters in `lib/config/env.ts` (e.g. `getPort()`, `getLogLevel()`, `getDebugMode()`).
+- Reference env var names via `ENV_KEYS` in `lib/config/constants.ts`; never use bare string literals like `'NODE_ENV'`
+- Adding a new var: (1) `ENV_KEYS`, (2) `environment.d.ts`, (3) `.env.example`, (4) typed getter in `env.ts`, (5) tests in `tests/lib/config/env.test.ts`
+- Startup-critical: `STARTUP_REQUIRED` in `validate.ts`; feature secrets: return `undefined`, caller handles 503
+
+## Constants and Magic Strings
+- HTTP headers: use `HEADERS.REQUEST_ID` etc. from `lib/config/constants.ts`; never use raw header string literals
+- Error codes: use `ERROR_CODES` from `@chatxiv/cdm`; never invent inline code strings
+
+## Naming
+- Files: camelCase — Classes: PascalCase — Constants: UPPER_SNAKE_CASE
