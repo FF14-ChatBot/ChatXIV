@@ -19,8 +19,10 @@ features/<name>/
 ├── <Name>Page.tsx         # main component
 ├── <Name>Page.module.css  # scoped styles
 ├── use<Name>.ts           # hook for state/data (if needed)
-├── types.ts               # feature-specific types (if needed)
-└── <Name>.test.tsx         # tests
+└── types.ts               # feature-specific types (if needed)
+
+tests/features/<name>/
+└── <Name>Page.test.tsx    # tests (mirror src/ tree under frontend/tests/)
 ```
 
 3. **Component pattern:**
@@ -44,12 +46,12 @@ import { ChatPage } from './features/chat/ChatPage';
 <Route path="/chat" element={<ChatPage />} />
 ```
 
-5. **Write tests** using the custom render:
+5. **Write tests** under `frontend/tests/` (mirror the feature path) using the custom render:
 
 ```tsx
-import { render, screen } from '../test-utils';
+import { render, screen } from '@/test-utils';
 import { MemoryRouter } from 'react-router-dom';
-import { ChatPage } from './ChatPage';
+import { ChatPage } from '@/features/chat/ChatPage';
 
 it('renders', () => {
   render(
