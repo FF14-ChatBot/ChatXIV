@@ -1,11 +1,11 @@
 # Frontend source layout
 
-- **clients/** – HTTP clients for external services. **clients/core/** is the generic fetch wrapper (no error mapping). **clients/chatxivApi/** is the ChatXIV app API client (`chatxivApiRequest()`, `ApiClientError`). Each backend gets its own named folder and request function (e.g. future `clients/authApi/` with `authApiRequest`). Import directly from the source file (e.g. `clients/chatxivApi/instance`, `clients/chatxivApi/client`).
+- **clients/** – HTTP clients for external services. **clients/core/** is the generic fetch wrapper (`request`), shared **`HTTP_METHOD`** / **`HttpMethod`**, and types—no per-API error mapping. **clients/chatxivApi/** is the ChatXIV app API client (`chatxivApiRequest()`, `ApiClientError`). Each backend gets its own named folder and request function (e.g. future `clients/authApi/` with `authApiRequest`). Import directly from the source file (e.g. `clients/chatxivApi/instance`, `clients/chatxivApi/client`).
 - **components/** – Shared chrome and cross-cutting UI (e.g. `MainLayout`, `Header`, `ErrorBoundary`, `GlobalErrorHandler`). Prefer composition over large single-file components.
-- **features/** – Route-scoped product modules. **features/chat/** holds the chat screen (`ChatPage`), session context, and chat-only UI (composer, welcome panel). Wire routes in `App.tsx` to feature entry components. `/unavailable` always renders `NotAvailablePage`; `VITE_APP_PRELAUNCH_REDIRECT` (production only, see `appEnv`) only gates `/` by redirecting to `/unavailable` instead of the main app. Unknown paths redirect to `/unavailable`. Optional **AdSense:** `VITE_PUBLIC_ADSENSE_CLIENT` plus slot env vars (see `frontend/.env.example`); `main.tsx` loads `adsbygoogle.js`, `ChatAdSlot` renders units when configured.
+- **features/** – Route-scoped product modules. **features/chat/** holds the chat screen (`ChatPage`), session context, and chat-only UI (composer, welcome panel). Wire routes in `App.tsx` to feature entry components. `/unavailable` renders generic `NotAvailablePage` with a `showHomeLink` prop derived in `App` from the same product-live gate as redirects (no flag import on that page). `main.tsx` fetches `IS_PRODUCT_LIVE` once before render and passes `isProductLive` into `App` (all modes; failures treat as not live). Unknown paths redirect to `/unavailable` when gated. Optional **AdSense:** publisher + display slots in `lib/adsense/adsenseConfig.ts` (see `frontend/.env.example`). `main.tsx` loads `adsbygoogle.js` when `getAdsenseClient()` resolves; `ChatAdSlot` uses `lib/adsense/adsenseRegistry.ts` for placement → slot.
 - **hooks/** – Reusable React hooks (e.g. `useChatConversation` for message state + `ChatAssistantPort`, `useSessionId` for API config). `hooks/useTheme.ts` re-exports `ThemeProvider` / `useTheme` from `theme/ThemeProvider.tsx` for a stable import path.
 - **theme/** – Theme provider implementation (`ThemeProvider`, `useTheme`); `main.tsx` may import from here directly for boot clarity.
-- **config/** – Pure configuration and env-derived flags (e.g. `starterPrompts`, `appEnv`), no React.
+- **config/** – Pure configuration (e.g. `starterPrompts`), no React.
 - **lib/chat/** – Chat-side abstractions that are not React-specific (e.g. `ChatAssistantPort` + demo implementation; swap for API-backed implementation when `/v1/ask` or equivalent exists in CDM).
 - **test-utils.tsx** – Custom `render` with optional wrapper. Use for new tests so Router/context live in one place.
 - **Tests** – Spec files live under `frontend/tests/`, mirroring `src/` (e.g. `src/features/chat/...` → `tests/features/chat/...`). Vitest resolves `@/` to `src/` (see `vitest.config.ts`).
@@ -30,7 +30,7 @@ You import the client you need: `chatxivApiRequest` for the ChatXIV API, and lat
 
 ### What you use in the app (ChatXIV API)
 
-- **Boot:** `main.tsx` calls `setChatxivApiClient(createChatxivApiClient())` so the real client is injected. Tests can inject a mock via `setChatxivApiClient(mock)`.
+- **Boot:** `main.tsx` calls `setChatxivApiClient(createChatxivApiClient())`, reads `isProductLive` from `fetchFeatureFlagEntry(IS_PRODUCT_LIVE)`, then renders `<App isProductLive={…} />`. Tests pass `isProductLive` into `App` directly.
 - **Import:** `chatxivApiRequest` from `clients/chatxivApi/instance`, `ApiClientError` from `clients/chatxivApi/errors/ApiClientError`.
 - **Call:** `chatxivApiRequest('POST', '/v1/ask', { body: { query: '...' }, config: { getSessionId: () => sessionId } })`.
 - **Result:** Parsed JSON body, or a thrown `ApiClientError` with a safe `displayMessage` for the UI.
@@ -48,7 +48,7 @@ So: **core** = “do the request and give me the response.” **chatxivApi** (an
 
 ### Flow when you call `chatxivApiRequest`
 
-1. **Config** – ChatXIV client gets base URL (`VITE_CHATXIV_BACKEND_URL` or same-origin) and optional `getSessionId()` for the X-Session-Id header.
+1. **Config** – ChatXIV client gets base URL (`VITE_CHATXIV_BACKEND_URL` or same-origin) and optional `getSessionId()` for the X-Session-Id header. Feature flags use `fetchFeatureFlagEntry()` in `clients/chatxivApi/featureFlags.ts` with CDM name constants (e.g. `IS_PRODUCT_LIVE`).
 2. **Headers** – Builds headers (Content-Type, X-Request-Id, optional X-Session-Id) and passes them to the core via `getHeaders`.
 3. **HTTP** – Core builds URL, calls `fetch`, returns `Response` to the client.
 4. **Network failure** – Client catches and throws `ApiClientError` with a generic message.
@@ -65,7 +65,7 @@ So from the UI’s point of view: call `chatxivApiRequest`, get data or a single
 - Backend API origin: `https://api.chatxiv.com`
 - Frontend env at build time:
   - `VITE_CHATXIV_BACKEND_URL=https://api.chatxiv.com`
-  - Optional pre-release gate: `VITE_APP_PRELAUNCH_REDIRECT=true` (production builds only) redirects `/` and unknown paths to `/unavailable`; `/unavailable` still renders directly.
+  - Product live: every boot calls the API for `isProductLive` (`IS_PRODUCT_LIVE` in CDM). When disabled or unreachable, `/` and unknown paths redirect to `/unavailable`; enable the flag per environment when ready. `/unavailable` still renders directly.
 - Backend CORS must allow:
   - `https://www.chatxiv.com`
 

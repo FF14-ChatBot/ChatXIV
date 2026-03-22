@@ -25,13 +25,13 @@ export function ChatPage() {
           <div className={styles.messageArea}>
             <MessageList messages={messages} />
           </div>
-          <ChatAdSlot variant="messages" className={styles.adSlot} />
+          <ChatAdSlot placement="messages" className={styles.adSlot} />
         </>
       ) : (
         <div className={styles.emptyColumn}>
           <div className={styles.emptyStack}>
             <WelcomePanel onPromptSubmit={sendMessage} />
-            <ChatAdSlot variant="welcome" className={styles.adSlot} />
+            <ChatAdSlot placement="welcome" className={styles.adSlot} />
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { IS_PRODUCT_LIVE } from '@chatxiv/cdm';
 import { setAnalytics } from './lib/analytics/instance';
 import { createPostHogAnalytics } from './lib/analytics/posthogAnalytics';
 import { createNoopAnalytics } from './lib/analytics/noopAnalytics';
@@ -8,46 +9,69 @@ import { setLogger, logger } from './lib/logger/instance';
 import { createConsoleLogger } from './lib/logger/consoleLogger';
 import { setChatxivApiClient } from './clients/chatxivApi/instance';
 import { createChatxivApiClient } from './clients/chatxivApi/client';
+import { fetchFeatureFlagEntry } from './clients/chatxivApi/featureFlags';
+import { ApiClientError } from './clients/chatxivApi/errors/ApiClientError';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { GlobalErrorHandler } from './components/GlobalErrorHandler';
 import { ThemeProvider } from './theme/ThemeProvider';
 import App from './App';
+import { getAdsenseClient } from './lib/adsense/adsenseRegistry.js';
 import { loadAdsenseScript } from './lib/adsense/loadAdsenseScript';
 import './index.css';
 
 setChatxivApiClient(createChatxivApiClient());
-
-const adsenseClient = import.meta.env.VITE_PUBLIC_ADSENSE_CLIENT;
-if (typeof adsenseClient === 'string' && adsenseClient.trim().length > 0) {
-  loadAdsenseScript(adsenseClient);
-}
 setLogger(createConsoleLogger());
 
-const posthogToken = import.meta.env.VITE_PUBLIC_POSTHOG_TOKEN as string | undefined;
-const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST as string | undefined;
+async function resolveIsProductLiveAtBoot(): Promise<boolean> {
+  try {
+    const entry = await fetchFeatureFlagEntry(IS_PRODUCT_LIVE);
+    return entry.enabled === true;
+  } catch (error: unknown) {
+    const context =
+      error instanceof ApiClientError
+        ? { code: error.code, status: error.status }
+        : { reason: 'unexpected_error' as const };
+    logger.warn('isProductLive flag fetch failed; main routes blocked until it succeeds', context);
+    return false;
+  }
+}
 
-const analytics = posthogToken
-  ? createPostHogAnalytics({
-      token: posthogToken,
-      host: posthogHost || 'https://us.i.posthog.com',
-      capturePageview: false,
-      personProfiles: 'identified_only',
-    })
-  : createNoopAnalytics();
-setAnalytics(analytics);
+async function boot(): Promise<void> {
+  const isProductLive = await resolveIsProductLiveAtBoot();
 
-logger.debug('App boot');
+  const adsenseClient = getAdsenseClient();
+  if (adsenseClient !== undefined) {
+    loadAdsenseScript(adsenseClient);
+  }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <GlobalErrorHandler>
-        <BrowserRouter>
-          <ThemeProvider>
-            <App />
-          </ThemeProvider>
-        </BrowserRouter>
-      </GlobalErrorHandler>
-    </ErrorBoundary>
-  </StrictMode>
-);
+  const posthogToken = import.meta.env.VITE_PUBLIC_POSTHOG_TOKEN as string | undefined;
+  const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST as string | undefined;
+
+  const analytics = posthogToken
+    ? createPostHogAnalytics({
+        token: posthogToken,
+        host: posthogHost || 'https://us.i.posthog.com',
+        capturePageview: false,
+        personProfiles: 'identified_only',
+      })
+    : createNoopAnalytics();
+  setAnalytics(analytics);
+
+  logger.debug('App boot');
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <ErrorBoundary>
+        <GlobalErrorHandler>
+          <BrowserRouter>
+            <ThemeProvider>
+              <App isProductLive={isProductLive} />
+            </ThemeProvider>
+          </BrowserRouter>
+        </GlobalErrorHandler>
+      </ErrorBoundary>
+    </StrictMode>
+  );
+}
+
+void boot();

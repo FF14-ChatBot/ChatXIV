@@ -1,17 +1,15 @@
 import { ENV_KEYS } from './constants.js';
 
-/** Fallback origins used when CORS_ORIGIN env var is not set. */
+/** Used when `CORS_ORIGIN` is unset. */
 const DEFAULT_CORS_ORIGINS: readonly string[] = [
   'https://chatxiv.com',
   'https://www.chatxiv.com',
   'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://dev-www.chatxiv.com',
 ];
 
-/**
- * Returns allowed CORS origins.
- * Reads from the CORS_ORIGIN env var (comma-separated) when set;
- * falls back to the hardcoded defaults otherwise.
- */
+/** `CORS_ORIGIN` (comma-separated) replaces this list entirely when set. */
 export function getCorsOrigins(): string[] {
   const raw = process.env[ENV_KEYS.CORS_ORIGIN];
   if (raw) {
