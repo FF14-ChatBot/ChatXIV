@@ -35,9 +35,13 @@
     "test:scripts": "node --test scripts/lib/githubWebhookVerify.test.mjs"
   },
   "devDependencies": {
+    "@types/react": "18.3.28",
+    "@types/react-dom": "18.3.7",
     "husky": "^9.1.7"
   },
   "overrides": {
-    "vite": "6.4.1"
+    "vite": "6.4.1",
+    "@types/react": "18.3.28",
+    "@types/react-dom": "18.3.7"
   }
 }

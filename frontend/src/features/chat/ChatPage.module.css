@@ -1,0 +1,60 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.messageArea {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+/* Empty state: center hero + carousel + ad as one column above the composer (ad sits
+   directly under the carousel, not separated by flex-grow dead space). */
+.emptyColumn {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  padding: 1rem;
+  padding-block: clamp(1rem, 5vmin, 2.5rem);
+}
+
+.emptyStack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  /* Breathing room: carousel → ad → composer */
+  gap: clamp(1.5rem, 5vmin, 2.75rem);
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Under messages or under carousel: centered column, blends with main canvas (not chrome). */
+.adSlot {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+  min-height: 5rem;
+  margin-block: 0.55rem 0.45rem;
+  padding-block: 0.65rem;
+  padding-inline: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px dashed color-mix(in srgb, var(--panel-emphasis-border) 52%, transparent);
+  /* Use --card (always a solid) so this works when --background is a gradient (dark). */
+  background: color-mix(in srgb, var(--foreground) 4.5%, var(--card));
+  backdrop-filter: blur(6px);
+}
+
+.emptyStack .adSlot {
+  margin-block: 0;
+  margin-bottom: clamp(1rem, 3vmin, 1.75rem);
+}

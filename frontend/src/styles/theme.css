@@ -1,24 +1,26 @@
+/* Default light mode: neutral “true” light UI (not the scenic Island gradient). */
 :root {
   --font-size: 16px;
-  --background: linear-gradient(to bottom, #87ceeb 0%, #f0e68c 50%, #f4a460 100%);
+  /* Bright center column; header / composer / disclaimer use dimmer chrome rails. */
+  --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
-  --card: rgba(255, 255, 255, 0.9);
+  --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   --primary: #1e90ff;
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
+  --secondary: oklch(0.96 0.0058 264.53);
   --secondary-foreground: #030213;
-  --muted: rgba(236, 236, 240, 0.8);
+  --muted: oklch(0.96 0.005 264);
   --muted-foreground: #717182;
-  --accent: rgba(233, 235, 239, 0.8);
+  --accent: oklch(0.96 0.005 264);
   --accent-foreground: #030213;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
   --border: rgba(0, 0, 0, 0.1);
   --input: transparent;
-  --input-background: rgba(243, 243, 245, 0.9);
+  --input-background: oklch(0.98 0 0);
   --switch-background: #cbced4;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
@@ -41,6 +43,37 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Welcome / suggestion panels: stronger outline on pale backgrounds */
+  --panel-emphasis-border: color-mix(in srgb, var(--primary) 42%, oklch(0.42 0.06 264) 58%);
+  --panel-emphasis-border-hover: color-mix(in srgb, var(--primary) 58%, oklch(0.35 0.05 264) 42%);
+  /* Chrome rails: ~7–8% L* below white so bars read as real strips, not a faint wash. */
+  --chrome-bg: oklch(0.925 0.016 264);
+  --chrome-border: rgba(0, 0, 0, 0.14);
+  --composer-field-bg: oklch(0.995 0.003 264);
+  --chrome-backdrop: none;
+  --welcome-meta: oklch(0.48 0.02 264);
+  --prompt-card-bg: color-mix(in srgb, var(--card) 92%, var(--foreground) 4%);
+  --prompt-card-hover-bg: color-mix(in srgb, var(--card) 96%, var(--primary) 4%);
+  --prompt-card-border: color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+
+/* Island: full preset (overrides light/dark). Frosted rails pick up sky/sand behind them. */
+html[data-theme-preset='island'] {
+  --background: linear-gradient(to bottom, #87ceeb 0%, #f0e68c 50%, #f4a460 100%);
+  --card: rgba(255, 255, 255, 0.9);
+  --muted: rgba(236, 236, 240, 0.8);
+  --accent: rgba(233, 235, 239, 0.8);
+  --input-background: rgba(243, 243, 245, 0.9);
+  --panel-emphasis-border: color-mix(in srgb, var(--primary) 38%, #3d4f5f 62%);
+  --panel-emphasis-border-hover: color-mix(in srgb, var(--primary) 55%, #2f3d4a 45%);
+  --chrome-bg: rgba(255, 252, 246, 0.44);
+  --chrome-border: rgba(55, 95, 120, 0.22);
+  --chrome-backdrop: blur(20px) saturate(145%);
+  --composer-field-bg: rgba(255, 255, 255, 0.9);
+  --welcome-meta: #5a5d72;
+  --prompt-card-bg: rgba(255, 255, 255, 0.88);
+  --prompt-card-hover-bg: rgba(255, 255, 255, 0.96);
+  --prompt-card-border: rgba(0, 0, 0, 0.1);
 }
 
 .dark {
@@ -79,6 +112,16 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  --panel-emphasis-border: rgba(255, 255, 255, 0.18);
+  --panel-emphasis-border-hover: rgba(255, 255, 255, 0.28);
+  --chrome-bg: #12131d;
+  --chrome-border: rgba(255, 255, 255, 0.06);
+  --composer-field-bg: #1c1e2e;
+  --welcome-meta: #8b90b0;
+  --prompt-card-bg: rgba(28, 30, 46, 0.88);
+  --prompt-card-hover-bg: rgba(36, 39, 58, 0.95);
+  --prompt-card-border: rgba(255, 255, 255, 0.09);
+  --chrome-backdrop: none;
 }
 
 * {
@@ -91,6 +134,11 @@ body {
   background: var(--background);
   background-attachment: fixed;
   color: var(--foreground);
+}
+
+html[data-theme-preset='island'] body {
+  background: linear-gradient(to bottom, #87ceeb 0%, #f0e68c 50%, #f4a460 100%);
+  background-attachment: fixed;
 }
 
 .dark body {
@@ -138,7 +186,8 @@ button {
   line-height: 1.5;
 }
 
-input {
+input,
+textarea {
   font-size: 1rem;
   font-weight: var(--font-weight-normal);
   line-height: 1.5;

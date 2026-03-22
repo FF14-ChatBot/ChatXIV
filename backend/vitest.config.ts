@@ -26,8 +26,8 @@ export default defineConfig({
         "**/*.config.*",
         "src/server.ts",
         "src/app.ts",
-        "tests/setup.ts",
-        "**/*.test.ts",
+        /** Entire tests tree: specs, setup, mocks — not product code */
+        "tests/**",
         "src/lib/observability/metrics/index.ts",
         "src/lib/observability/usageAnalytics/index.ts",
         "src/middleware/rateLimit/index.ts",

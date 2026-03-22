@@ -1,11 +1,14 @@
 # Frontend source layout
 
 - **clients/** – HTTP clients for external services. **clients/core/** is the generic fetch wrapper (no error mapping). **clients/chatxivApi/** is the ChatXIV app API client (`chatxivApiRequest()`, `ApiClientError`). Each backend gets its own named folder and request function (e.g. future `clients/authApi/` with `authApiRequest`). Import directly from the source file (e.g. `clients/chatxivApi/instance`, `clients/chatxivApi/client`).
-- **components/** – Shared UI (e.g. `ErrorBoundary` for render errors, `GlobalErrorHandler` for unhandled async/window errors). Prefer composition over large single-file components.
-- **hooks/** – Reusable React hooks (e.g. `useSessionId` for API config).
-- **features/** – Route or feature-level modules (e.g. chat, settings). Add as you add screens.
+- **components/** – Shared chrome and cross-cutting UI (e.g. `MainLayout`, `Header`, `ErrorBoundary`, `GlobalErrorHandler`). Prefer composition over large single-file components.
+- **features/** – Route-scoped product modules. **features/chat/** holds the chat screen (`ChatPage`), session context, and chat-only UI (composer, welcome panel). Wire routes in `App.tsx` to feature entry components.
+- **hooks/** – Reusable React hooks (e.g. `useChatConversation` for message state + `ChatAssistantPort`, `useSessionId` for API config). `hooks/useTheme.ts` re-exports `ThemeProvider` / `useTheme` from `theme/ThemeProvider.tsx` for a stable import path.
+- **theme/** – Theme provider implementation (`ThemeProvider`, `useTheme`); `main.tsx` may import from here directly for boot clarity.
+- **config/** – Pure configuration and env-derived flags (e.g. `starterPrompts`, `appEnv`), no React.
+- **lib/chat/** – Chat-side abstractions that are not React-specific (e.g. `ChatAssistantPort` + demo implementation; swap for API-backed implementation when `/v1/ask` or equivalent exists in CDM).
 - **test-utils.tsx** – Custom `render` with optional wrapper. Use for new tests so Router/context live in one place.
-- **Tests** – Spec files live under `frontend/tests/`, mirroring `src/` (e.g. `src/clients/...` → `tests/clients/...`). Vitest resolves `@/` to `src/` (see `vitest.config.ts`).
+- **Tests** – Spec files live under `frontend/tests/`, mirroring `src/` (e.g. `src/features/chat/...` → `tests/features/chat/...`). Vitest resolves `@/` to `src/` (see `vitest.config.ts`).
 
 ---
 
@@ -62,6 +65,7 @@ So from the UI’s point of view: call `chatxivApiRequest`, get data or a single
 - Backend API origin: `https://api.chatxiv.com`
 - Frontend env at build time:
   - `VITE_CHATXIV_BACKEND_URL=https://api.chatxiv.com`
+  - Optional pre-release gate: `VITE_APP_PRELAUNCH_REDIRECT=true` (production builds only) redirects all routes to `/unavailable`.
 - Backend CORS must allow:
   - `https://www.chatxiv.com`
 

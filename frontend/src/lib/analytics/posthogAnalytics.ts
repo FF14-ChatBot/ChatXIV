@@ -1,4 +1,4 @@
-import posthog from 'posthog-js';
+import posthog, { type ConfigDefaults } from 'posthog-js';
 import type { IAnalytics } from './types.js';
 
 export interface PostHogAnalyticsConfig {
@@ -6,7 +6,7 @@ export interface PostHogAnalyticsConfig {
   host?: string;
   capturePageview?: boolean;
   personProfiles?: 'always' | 'identified_only' | 'never';
-  defaults?: string;
+  defaults?: ConfigDefaults;
 }
 
 /**
