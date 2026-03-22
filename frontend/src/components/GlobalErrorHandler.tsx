@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { isResourceLoadErrorEvent } from '../lib/errors/isResourceLoadErrorEvent';
 
 interface Props {
   children: ReactNode;
@@ -17,6 +18,9 @@ export function GlobalErrorHandler({ children }: Props): ReactNode {
     }
 
     function onError(e: ErrorEvent): void {
+      if (isResourceLoadErrorEvent(e)) {
+        return;
+      }
       const err = e.error instanceof Error ? e.error : new Error(e.message);
       console.error('Uncaught error:', err);
       setError(err);
