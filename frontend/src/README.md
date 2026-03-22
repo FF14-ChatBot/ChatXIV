@@ -2,7 +2,7 @@
 
 - **clients/** – HTTP clients for external services. **clients/core/** is the generic fetch wrapper (no error mapping). **clients/chatxivApi/** is the ChatXIV app API client (`chatxivApiRequest()`, `ApiClientError`). Each backend gets its own named folder and request function (e.g. future `clients/authApi/` with `authApiRequest`). Import directly from the source file (e.g. `clients/chatxivApi/instance`, `clients/chatxivApi/client`).
 - **components/** – Shared chrome and cross-cutting UI (e.g. `MainLayout`, `Header`, `ErrorBoundary`, `GlobalErrorHandler`). Prefer composition over large single-file components.
-- **features/** – Route-scoped product modules. **features/chat/** holds the chat screen (`ChatPage`), session context, and chat-only UI (composer, welcome panel). Wire routes in `App.tsx` to feature entry components.
+- **features/** – Route-scoped product modules. **features/chat/** holds the chat screen (`ChatPage`), session context, and chat-only UI (composer, welcome panel). Wire routes in `App.tsx` to feature entry components. `/unavailable` always renders `NotAvailablePage`; `VITE_APP_PRELAUNCH_REDIRECT` (production only, see `appEnv`) only gates `/` by redirecting to `/unavailable` instead of the main app. Unknown paths redirect to `/unavailable`.
 - **hooks/** – Reusable React hooks (e.g. `useChatConversation` for message state + `ChatAssistantPort`, `useSessionId` for API config). `hooks/useTheme.ts` re-exports `ThemeProvider` / `useTheme` from `theme/ThemeProvider.tsx` for a stable import path.
 - **theme/** – Theme provider implementation (`ThemeProvider`, `useTheme`); `main.tsx` may import from here directly for boot clarity.
 - **config/** – Pure configuration and env-derived flags (e.g. `starterPrompts`, `appEnv`), no React.
@@ -65,7 +65,7 @@ So from the UI’s point of view: call `chatxivApiRequest`, get data or a single
 - Backend API origin: `https://api.chatxiv.com`
 - Frontend env at build time:
   - `VITE_CHATXIV_BACKEND_URL=https://api.chatxiv.com`
-  - Optional pre-release gate: `VITE_APP_PRELAUNCH_REDIRECT=true` (production builds only) redirects all routes to `/unavailable`.
+  - Optional pre-release gate: `VITE_APP_PRELAUNCH_REDIRECT=true` (production builds only) redirects `/` and unknown paths to `/unavailable`; `/unavailable` still renders directly.
 - Backend CORS must allow:
   - `https://www.chatxiv.com`
 

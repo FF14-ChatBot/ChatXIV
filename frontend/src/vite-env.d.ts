@@ -5,7 +5,7 @@ interface ImportMetaEnv {
   VITE_PUBLIC_POSTHOG_TOKEN?: string;
   VITE_PUBLIC_POSTHOG_HOST?: string;
   VITE_CHATXIV_BACKEND_URL?: string;
-  /** When `true`, production builds show only the /unavailable page (pre-release gate). */
+  /** When `true`, production builds redirect `/` and unknown paths to `/unavailable` (pre-release gate). */
   VITE_APP_PRELAUNCH_REDIRECT?: string;
 }
 

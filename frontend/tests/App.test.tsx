@@ -27,7 +27,7 @@ describe('App', () => {
     expect(screen.getByRole('textbox', { name: /message/i })).toBeInTheDocument();
   });
 
-  it('shows unavailable page when prelaunch redirect is enabled in production', () => {
+  it('redirects home to unavailable when prelaunch redirect is enabled in production', () => {
     import.meta.env.PROD = true;
     import.meta.env.VITE_APP_PRELAUNCH_REDIRECT = 'true';
     render(
@@ -37,7 +37,34 @@ describe('App', () => {
         </ThemeProvider>
       </MemoryRouter>
     );
-    expect(screen.getByRole('heading', { name: /page not found/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /uh-oh\. page not found/i })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /message/i })).not.toBeInTheDocument();
+  });
+
+  it('still serves /unavailable when prelaunch redirect is enabled', () => {
+    import.meta.env.PROD = true;
+    import.meta.env.VITE_APP_PRELAUNCH_REDIRECT = 'true';
+    render(
+      <MemoryRouter initialEntries={['/unavailable']}>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('heading', { name: /uh-oh\. page not found/i })).toBeInTheDocument();
+  });
+
+  it('renders not available page at /unavailable in development', () => {
+    import.meta.env.PROD = false;
+    import.meta.env.VITE_APP_PRELAUNCH_REDIRECT = undefined;
+    render(
+      <MemoryRouter initialEntries={['/unavailable']}>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('heading', { name: /uh-oh\. page not found/i })).toBeInTheDocument();
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
   });
 });
