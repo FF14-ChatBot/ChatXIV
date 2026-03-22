@@ -112,7 +112,7 @@ When **`dev-www` / `dev-api` point at your laptop** via Cloudflare Tunnel, CI de
 
 - **`GITHUB_WEBHOOK_SECRET`** in repo root **`.env`** must match the GitHub webhook **Secret** (see [`.env.example`](../.env.example); separate from **`frontend/.env`** / **`backend/.env`**).
 - **`npm run webhook:listen`** (repo root): **`http://127.0.0.1:8790`** by default — **`GET /health`**, **`POST /webhooks/github`**.
-- **Branch:** on each push to **`main`**, the listener **checks out `main`**, **fast-forwards** to **`origin/main`** (refuses if the working tree is not clean), runs **`npm install`** at the repo root when **`package-lock.json`** changed, then runs **`npm run build:cdm`** and **`npm run build:backend`** from the repo root when **`HEAD`** is **`main`** (otherwise the webhook fails so the backend is not built from the wrong branch). Restart **`node dist/server.js`** / **`npm run dev:backend`** / your process manager yourself if you need a live process reload.
+- **Branch:** on each push to **`main`**, the listener **checks out `main`**, **fast-forwards** to **`origin/main`** (refuses if the working tree is not clean), runs **`npm install`** at the repo root when **`package-lock.json`** changed, then runs **`npm run build:cdm`** and **`npm run build:backend`** from the repo root when **`HEAD`** is **`main`** (otherwise the webhook fails so the backend is not built from the wrong branch). It then updates the mtime of **`backend/src/server.ts`** and **`frontend/scripts/dev.mjs`** so **`npm run dev:backend`** and **`npm run dev:frontend`** (each uses **`node --watch`** on its dev entry) pick up a restart. For production **`node dist/server.js`** or other process managers, restart those yourself if needed.
 
 ### 2. Cloudflare Tunnel
 
@@ -133,7 +133,7 @@ The listener writes **`GET /health`** and every webhook **`→ HTTP …`** respo
 
 ### 4. After a pull
 
-**Vite** usually hot-reloads source changes. The webhook always runs **`npm run build:cdm`** then **`npm run build:backend`** after a successful sync; restart the backend process yourself if you run production **`dist`** or a long-lived dev server.
+**Vite** hot-reloads many edits while the dev server runs. After a webhook sync it still runs **`npm run build:cdm`** and **`npm run build:backend`**, then touches **`backend/src/server.ts`** and **`frontend/scripts/dev.mjs`** so **`dev:backend`** and **`dev:frontend`** restart via **`node --watch`** (useful when dependencies, env, or the dev bootstrap change). Production **`dist`** still needs a manual or external restart.
 
 ### 5. Security
 
