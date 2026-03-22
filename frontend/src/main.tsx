@@ -12,9 +12,15 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { GlobalErrorHandler } from './components/GlobalErrorHandler';
 import { ThemeProvider } from './theme/ThemeProvider';
 import App from './App';
+import { loadAdsenseScript } from './lib/adsense/loadAdsenseScript';
 import './index.css';
 
 setChatxivApiClient(createChatxivApiClient());
+
+const adsenseClient = import.meta.env.VITE_PUBLIC_ADSENSE_CLIENT;
+if (typeof adsenseClient === 'string' && adsenseClient.trim().length > 0) {
+  loadAdsenseScript(adsenseClient);
+}
 setLogger(createConsoleLogger());
 
 const posthogToken = import.meta.env.VITE_PUBLIC_POSTHOG_TOKEN as string | undefined;

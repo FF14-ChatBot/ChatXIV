@@ -217,3 +217,45 @@
   background: var(--primary);
   transform: scale(1.15);
 }
+
+/* Narrow viewports: one suggestion card per slide — drop the desktop “billboard” min-heights
+   and padding so the ad sits closer without a long scroll. */
+@media (max-width: 767px) {
+  .wrapper {
+    gap: clamp(0.65rem, 2.2vmin, 1.1rem);
+  }
+
+  .hero {
+    gap: 0.65rem;
+  }
+
+  .heroAvatar {
+    width: 4.75rem;
+    height: 4.75rem;
+  }
+
+  .heroBotIcon {
+    width: 3.55rem;
+    height: 3.55rem;
+  }
+
+  .carousel {
+    gap: 0.5rem;
+  }
+
+  .promptRow {
+    gap: 0.5rem;
+  }
+
+  .suggestionCard {
+    gap: 0.35rem;
+    padding: 0.65rem 0.85rem;
+    min-height: 0;
+  }
+
+  .cardPrompt {
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    min-height: 0;
+  }
+}

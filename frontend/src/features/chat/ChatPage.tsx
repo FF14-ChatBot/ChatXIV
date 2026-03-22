@@ -4,6 +4,7 @@ import { useChatConversation } from '../../hooks/useChatConversation';
 import { WelcomePanel } from './WelcomePanel';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
+import { ChatAdSlot } from './ChatAdSlot';
 import styles from './ChatPage.module.css';
 
 export function ChatPage() {
@@ -24,14 +25,13 @@ export function ChatPage() {
           <div className={styles.messageArea}>
             <MessageList messages={messages} />
           </div>
-          {/* AdSense (or similar): inject async script + ins.adsbygoogle inside this region per publisher docs. */}
-          <aside className={styles.adSlot} aria-label="Advertisement" />
+          <ChatAdSlot variant="messages" className={styles.adSlot} />
         </>
       ) : (
         <div className={styles.emptyColumn}>
           <div className={styles.emptyStack}>
             <WelcomePanel onPromptSubmit={sendMessage} />
-            <aside className={styles.adSlot} aria-label="Advertisement" />
+            <ChatAdSlot variant="welcome" className={styles.adSlot} />
           </div>
         </div>
       )}
