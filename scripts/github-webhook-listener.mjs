@@ -1,5 +1,5 @@
 /**
- * GitHub `push` webhooks: verify HMAC, fast-forward clone to `origin/main`, rebuild CDM/backend, bump dev `--watch` mtimes.
+ * GitHub `push` webhooks: verify HMAC, fast-forward clone to `origin/main`, rebuild CDM/backend, bump backend dev `--watch` mtime.
  * Intended behind a tunnel + Access on a dedicated hostname.
  *
  * Env: `GITHUB_WEBHOOK_SECRET` (required); optional `PORT`, `WEBHOOK_PATH`, `GITHUB_REPO_FULL_NAME` — `.env.example`.

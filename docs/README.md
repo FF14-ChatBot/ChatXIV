@@ -20,7 +20,7 @@ Succinct guide for running, linting, testing, and building the repo.
 ## How to run
 
 - **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: Swagger UI at `http://localhost:3000/docs/`, OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`. See [backend/README.md](../backend/README.md) for curl, Postman, and headers.
-- **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`. Uses **`node --watch`** on **`scripts/dev.mjs`** only (not **`vite.config.ts`**, to avoid a common **5173** restart race). **`npm run dev:plain`** runs Vite without the watcher. If **5173** is busy, another **`node`** (or a second dev tab) still holds it. The deploy **webhook** can bump **`frontend/scripts/dev.mjs`**, which restarts **`npm run dev:frontend`** on the machine where that listener runs.
+- **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`. No **`node --watch`**: **`src/`** updates hot-reload via Vite; restart the dev server yourself after **`vite.config.ts`** or **`scripts/dev.mjs`** changes. The bootstrap **retries binding 5173** briefly if the port is still releasing. If **5173** stays busy, stop the other process.
 - **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (after root `npm install`)
 
 ## Lint and format
@@ -125,7 +125,7 @@ When **`dev-www` / `dev-api` point at your laptop** via Cloudflare Tunnel, CI de
 
 - **`GITHUB_WEBHOOK_SECRET`** in repo root **`.env`** must match the GitHub webhook **Secret** (see [`.env.example`](../.env.example); separate from **`frontend/.env`** / **`backend/.env`**).
 - **`npm run webhook:listen`** (repo root): **`http://127.0.0.1:8790`** by default — **`GET /health`**, **`POST /webhooks/github`**.
-- **Branch:** on each push to **`main`**, the listener **checks out `main`**, **fast-forwards** to **`origin/main`** (refuses if the working tree is not clean), runs **`npm install`** at the repo root when **`package-lock.json`** changed, then runs **`npm run build:cdm`** and **`npm run build:backend`** from the repo root when **`HEAD`** is **`main`** (otherwise the webhook fails so the backend is not built from the wrong branch). It then updates the mtime of **`backend/src/server.ts`** and **`frontend/scripts/dev.mjs`** so **`npm run dev:backend`** and **`npm run dev:frontend`** (each uses **`node --watch`** on its dev entry) pick up a restart. For production **`node dist/server.js`** or other process managers, restart those yourself if needed.
+- **Branch:** on each push to **`main`**, the listener **checks out `main`**, **fast-forwards** to **`origin/main`** (refuses if the working tree is not clean), runs **`npm install`** at the repo root when **`package-lock.json`** changed, then runs **`npm run build:cdm`** and **`npm run build:backend`** from the repo root when **`HEAD`** is **`main`** (otherwise the webhook fails so the backend is not built from the wrong branch). It then updates the mtime of **`backend/src/server.ts`** so **`npm run dev:backend`** (**`node --watch`**) picks up a restart. **`dev:frontend`** is not watch-driven; Vite HMR applies pulled app code—restart it yourself if **`vite.config`** or dev bootstrap changed. For production **`node dist/server.js`** or other process managers, restart those yourself if needed.
 
 ### 2. Cloudflare Tunnel
 
@@ -146,7 +146,7 @@ The listener writes **`GET /health`** and every webhook **`→ HTTP …`** respo
 
 ### 4. After a pull
 
-**Vite** hot-reloads many edits while the dev server runs. After a webhook sync it still runs **`npm run build:cdm`** and **`npm run build:backend`**, then touches **`backend/src/server.ts`** and **`frontend/scripts/dev.mjs`** so **`dev:backend`** and **`dev:frontend`** restart via **`node --watch`** (useful when dependencies, env, or the dev bootstrap change). Production **`dist`** still needs a manual or external restart.
+**Vite** hot-reloads many edits while the dev server runs. After a webhook sync it still runs **`npm run build:cdm`** and **`npm run build:backend`**, then touches **`backend/src/server.ts`** so **`dev:backend`** restarts via **`node --watch`**. Restart **`dev:frontend`** yourself when **`vite.config`**, env, or dev bootstrap changes. Production **`dist`** still needs a manual or external restart.
 
 ### 5. Security
 

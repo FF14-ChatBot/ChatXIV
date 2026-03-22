@@ -20,13 +20,13 @@ function localBranchMainExists(repoRoot) {
 
 /**
  * Rebuild shared CDM types then backend (same order as root `npm run build`), from repo root.
- * Touches **`backend/src/server.ts`** and **`frontend/scripts/dev.mjs`** mtime so
- * **`npm run dev:backend`** and **`npm run dev:frontend`** (`node --watch` on each entry) reload.
+ * Touches **`backend/src/server.ts`** mtime so **`npm run dev:backend`** (`node --watch` on that entry) reloads.
+ * Frontend **`npm run dev:frontend`** has no watch: Vite HMR picks up pulled **`src/`** changes; restart manually if **`vite.config`** or bootstrap scripts change.
  * Only runs when `HEAD` is branch **main**.
  *
  * @param {string} repoRoot
  */
-function runPostSyncBuildAndBumpDevWatchers(repoRoot) {
+function runPostSyncBuildAndBumpBackendDevWatcher(repoRoot) {
   const branch = execSync('git rev-parse --abbrev-ref HEAD', {
     cwd: repoRoot,
     encoding: 'utf8',
@@ -47,16 +47,12 @@ function runPostSyncBuildAndBumpDevWatchers(repoRoot) {
   if (fs.existsSync(serverTs)) {
     fs.utimesSync(serverTs, now, now);
   }
-  const frontendDevMjs = path.join(repoRoot, 'frontend', 'scripts', 'dev.mjs');
-  if (fs.existsSync(frontendDevMjs)) {
-    fs.utimesSync(frontendDevMjs, now, now);
-  }
 }
 
 /**
  * On a push to `main`: fetch, switch this clone to `main`, fast-forward to `origin/main`,
  * run `npm install` at repo root if `package-lock.json` changed, then **`npm run build:cdm`** and **`npm run build:backend`**,
- * then bump **`backend/src/server.ts`** and **`frontend/scripts/dev.mjs`** mtime for dev **`--watch`** (only after verifying `HEAD` is branch **main**).
+ * then bump **`backend/src/server.ts`** mtime for **`dev:backend`** **`--watch`** (only after verifying `HEAD` is branch **main**).
  *
  * Refuses if the working tree is not clean so a forced checkout cannot drop work.
  *
@@ -107,9 +103,9 @@ export function syncFromOriginMain(repoRoot) {
     }
   }
 
-  runPostSyncBuildAndBumpDevWatchers(repoRoot);
+  runPostSyncBuildAndBumpBackendDevWatcher(repoRoot);
   message +=
-    ' Ran build:cdm + build:backend; bumped backend/src/server.ts and frontend/scripts/dev.mjs mtime for dev --watch.';
+    ' Ran build:cdm + build:backend; bumped backend/src/server.ts mtime for dev:backend --watch.';
 
   return { updated, message };
 }
