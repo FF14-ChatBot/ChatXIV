@@ -46,17 +46,17 @@
   justify-content: center;
   width: 5.5rem;
   height: 5.5rem;
+  overflow: visible;
   border-radius: var(--radius-xl);
   background: color-mix(in srgb, var(--card) 75%, transparent);
   border: 2px solid color-mix(in srgb, var(--primary) 45%, transparent);
   box-shadow: 0 0.5rem 1.75rem rgb(0 0 0 / 0.18);
 }
 
+/* Icon 75% of 2× base (= 1.5× original); .heroAvatar stays 5.5rem */
 .heroBotIcon {
-  width: 2.75rem;
-  height: 2.75rem;
-  color: var(--primary);
-  opacity: 0.95;
+  width: calc(2.75rem * 2 * 0.75);
+  height: calc(2.75rem * 2 * 0.75);
 }
 
 .heroText {
@@ -125,14 +125,15 @@
   }
 }
 
-/* Cards: category primes the question (progressive disclosure); start-aligned for F-pattern scan. */
+/* Cards: fixed vertical footprint so carousel slides do not shift when prompts differ in length. */
 .suggestionCard {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.5rem;
   padding: 1rem 1.1rem;
-  min-height: 6.75rem;
+  /* ~5 lines of .cardPrompt + emoji/category/chrome (see .cardPrompt line-clamp) */
+  min-height: 11.75rem;
   border: 1px solid var(--prompt-card-border, var(--panel-emphasis-border));
   border-radius: var(--radius-xl);
   background: var(--prompt-card-bg, color-mix(in srgb, var(--card) 72%, transparent));
@@ -178,6 +179,13 @@
   font-weight: 500;
   color: color-mix(in srgb, var(--foreground) 94%, transparent);
   text-wrap: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+  line-clamp: 5;
+  /* Reserve prompt block height so short questions do not collapse the card */
+  min-height: calc(1.4em * 5);
 }
 
 .dots {
