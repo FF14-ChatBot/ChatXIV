@@ -56,4 +56,23 @@ describe('DropdownMenu', () => {
     expect(screen.getByText('One')).toBeInTheDocument();
     expect(screen.getByText('Delete')).toBeInTheDocument();
   });
+
+  it('supports leading chevron on sub trigger', () => {
+    render(
+      <DropdownMenu defaultOpen>
+        <DropdownMenuTrigger asChild>
+          <Button>Open</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger chevronSide="leading">Themes</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem>Island</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+    expect(screen.getByText('Themes')).toBeInTheDocument();
+  });
 });

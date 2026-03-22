@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
-import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
 import clsx from 'clsx';
 import styles from './DropdownMenu.module.css';
 
@@ -161,19 +161,37 @@ function DropdownMenuSubTrigger({
   className,
   inset,
   children,
+  chevronSide = 'trailing',
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
   inset?: boolean;
+  /** `leading` uses a left-pointing chevron (e.g. menus anchored on the viewport right). */
+  chevronSide?: 'leading' | 'trailing';
 }) {
+  const chevronTrailing = (
+    <ChevronRightIcon className={styles.subTriggerChevron} style={{ marginLeft: 'auto' }} />
+  );
+  const chevronLeading = <ChevronLeftIcon className={styles.subTriggerChevron} />;
+
   return (
     <DropdownMenuPrimitive.SubTrigger
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset || undefined}
+      data-chevron-side={chevronSide}
       className={clsx(styles.subTrigger, className)}
       {...props}
     >
-      {children}
-      <ChevronRightIcon style={{ marginLeft: 'auto', width: '1rem', height: '1rem' }} />
+      {chevronSide === 'leading' ? (
+        <>
+          {chevronLeading}
+          {children}
+        </>
+      ) : (
+        <>
+          {children}
+          {chevronTrailing}
+        </>
+      )}
     </DropdownMenuPrimitive.SubTrigger>
   );
 }

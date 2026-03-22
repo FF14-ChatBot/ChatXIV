@@ -99,9 +99,40 @@
   composes: menuItem;
 }
 
+.subTrigger[data-chevron-side='leading'] {
+  justify-content: flex-end;
+}
+
+.subTriggerChevron {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+}
+
 .subTrigger[data-state='open'] {
   background: var(--accent);
   color: var(--accent-foreground);
+}
+
+/* Right-anchored root menus (e.g. header ⋮): align labels to the panel edge. */
+.contentAlignEnd .menuItem {
+  justify-content: flex-end;
+}
+
+.contentAlignEnd .checkableItem {
+  justify-content: flex-end;
+  padding-left: 0.5rem;
+  padding-right: 2rem;
+}
+
+.contentAlignEnd .indicator {
+  left: auto;
+  right: 0.5rem;
+}
+
+.contentAlignEnd .subTrigger[data-chevron-side='leading'] {
+  flex-direction: row;
+  gap: 0.5rem;
 }
 
 .subContent {

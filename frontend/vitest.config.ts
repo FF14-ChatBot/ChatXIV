@@ -26,9 +26,15 @@ export default defineConfig({
         "dist/",
         "**/*.config.*",
         "src/main.tsx",
+        /** Re-exports ThemeProvider/useTheme from src/theme */
+        "src/hooks/useTheme.ts",
+        /** Entire tests tree: specs, setup, mocks — not product code */
+        "tests/**",
         "**/*.test.{ts,tsx}",
         "**/*.d.ts",
         "src/**/index.ts",
+        /** Shared test helpers co-located under src */
+        "src/test-utils.tsx",
         /** CSS Modules are styling only; line coverage is not meaningful here */
         "**/*.module.css",
       ],

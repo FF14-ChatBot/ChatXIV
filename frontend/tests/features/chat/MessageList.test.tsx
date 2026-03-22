@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MessageList } from '@/components/ChatPage/MessageList';
+import { MessageList } from '@/features/chat/MessageList';
 
 describe('MessageList', () => {
   it('renders user and assistant messages', () => {

@@ -90,6 +90,19 @@ Access sits **in front of** the tunnel hostname on Cloudflare’s edge: users si
 - **[`frontend/vite.config.ts`](../frontend/vite.config.ts):** **`server.allowedHosts: ['.chatxiv.com']`** accepts tunnel **`Host`** headers; **`server.host: true`** avoids an IPv6-only bind when **`cloudflared`** forwards to **`127.0.0.1:5173`** (otherwise Cloudflare **502** / host errors). **[`frontend/scripts/dev.mjs`](../frontend/scripts/dev.mjs)** sets the same **`server`** options on **`createServer()`** because programmatic startup can drop them after config merge while still inheriting proxy/port from the file.
 - **`frontend/.env`:** **`VITE_CHATXIV_BACKEND_URL`** = your **https** API tunnel URL (e.g. `https://dev-alex-api.chatxiv.com`).
 
+#### Tunnel: public URL works but UI is unstyled (localhost looks fine)
+
+If **`https://dev-www…`** shows a flat white page, missing header/composer chrome, gradients, or a stuck light theme, while **`http://localhost:5173`** looks correct, try the following before changing app code.
+
+1. **Cookies and site data (try this first)** — Stale **cookies**, **local storage**, or **Access** session data for the dev hostname can leave the page in a bad state in **one browser** while another still looks fine. **Clear cookies and site data** for **`dev-www…`** (or the whole **`chatxiv.com`** dev host), or use a **private/incognito** window. In Firefox: site permissions / “Clear cookies and site data” for that site; unregister **service workers** under **`about:debugging`** if you use them on that origin.
+
+2. **Content-Security-Policy** — Cloudflare **Zero Trust → Access → application**, **Transform Rules**, or zone **HTTP response headers** may send a strict **`style-src`** (or full CSP) that blocks **Vite dev** from applying CSS. Dev mode injects styles in ways strict CSP often rejects. **Localhost** has no such headers, so it still works.
+
+   - **Fix (Cloudflare):** On the **dev hostname only**, remove that CSP or relax **`style-src`** for development (team policy permitting).
+   - **Alternative:** Run **`npm run build`** then **`npm run preview`** in **`frontend/`** and point tunnel ingress at the preview port; preview serves linked stylesheets, which often satisfies strict CSP. You may need to set **`preview.host`** / **`preview.allowedHosts`** in **`vite.config.ts`** if the tunnel **`Host`** header is rejected.
+
+3. **Confirm:** Browser **DevTools → Console** for CSP violations (`style-src`, `Refused to apply inline style`, etc.) and **Network** for failed CSS requests.
+
 ### Add a tunnel for another developer (checklist)
 
 Have them (or an admin) do the following; names are examples — pick a consistent prefix per person.

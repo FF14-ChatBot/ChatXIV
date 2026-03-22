@@ -10,6 +10,7 @@ import { setChatxivApiClient } from './clients/chatxivApi/instance';
 import { createChatxivApiClient } from './clients/chatxivApi/client';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { GlobalErrorHandler } from './components/GlobalErrorHandler';
+import { ThemeProvider } from './theme/ThemeProvider';
 import App from './App';
 import './index.css';
 
@@ -36,7 +37,9 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <GlobalErrorHandler>
         <BrowserRouter>
-          <App />
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
         </BrowserRouter>
       </GlobalErrorHandler>
     </ErrorBoundary>
