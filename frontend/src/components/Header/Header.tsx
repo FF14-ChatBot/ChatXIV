@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquarePlus, MoreVertical, Bot } from 'lucide-react';
+import { MessageSquarePlus, MoreVertical } from 'lucide-react';
+import { MammetLucideMark } from '../MammetLucideMark/MammetLucideMark';
 import { OutlineButton } from '../ui/Button';
 import { GhostButton } from '../ui/Button';
 import {
@@ -33,7 +34,7 @@ export function Header() {
       <div className={styles.inner}>
         <Link to="/" className={styles.lockup} onClick={goHome} aria-label="ChatXIV home">
           <div className={styles.lockupMark} aria-hidden="true">
-            <Bot className={styles.lockupIcon} strokeWidth={2} />
+            <MammetLucideMark className={styles.lockupIcon} />
           </div>
           <span className={styles.lockupTitle}>ChatXIV</span>
         </Link>

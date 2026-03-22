@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Bot } from 'lucide-react';
+import { MammetLucideMark } from '../../components/MammetLucideMark/MammetLucideMark';
 import { useStarterPromptSlides } from '../../hooks/useStarterPromptSlides';
 import styles from './WelcomePanel.module.css';
 
@@ -40,7 +40,7 @@ export function WelcomePanel({ onPromptSubmit }: WelcomePanelProps) {
         <div className={styles.heroVisual} aria-hidden="true">
           <div className={styles.heroGlow} />
           <div className={styles.heroAvatar}>
-            <Bot className={styles.heroBotIcon} strokeWidth={1.75} aria-hidden />
+            <MammetLucideMark className={styles.heroBotIcon} />
           </div>
         </div>
         <div className={styles.heroText}>
@@ -70,6 +70,7 @@ export function WelcomePanel({ onPromptSubmit }: WelcomePanelProps) {
                 key={`${active.id}-${index}`}
                 type="button"
                 className={styles.suggestionCard}
+                title={item.prompt}
                 onClick={() => onPromptSubmit(item.prompt)}
               >
                 <span className={styles.cardEmoji} aria-hidden>

@@ -1,0 +1,24 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  aria-hidden="true"
+>
+  <!--
+    Robotic / helper-style FFXIV mammet (hat bump joined to visor top, rectangular eyes, stub arms).
+    Lucide-like: stroke 2, round caps/joins. Fan art; Square Enix owns FFXIV.
+  -->
+  <g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 9.25 19.2 7.5 22 h9 L 14.75 19.2" />
+    <rect x="4.5" y="4.2" width="15" height="12.3" rx="3.5" />
+    <path d="M 9.25 4.2 L 9.25 3.05 Q 12 0.55 14.75 3.05 L 14.75 4.2" />
+    <path d="M 8 16.5 L 9.25 19.2 M 16 16.5 L 14.75 19.2 M 12 16.5 V 19.2" />
+    <!-- Forearm = 25% of original reach (elbow→hand); stub hands -->
+    <path d="M 8.375 20.6 L 7.275 19.5 Q 6.55 19.28 6.44 19.16" />
+    <path d="M 15.625 20.6 L 16.725 19.5 Q 17.45 19.28 17.56 19.16" />
+  </g>
+  <rect x="6.65" y="7.92" width="2" height="6.15" fill="currentColor" />
+  <rect x="15.35" y="7.92" width="2" height="6.15" fill="currentColor" />
+</svg>
