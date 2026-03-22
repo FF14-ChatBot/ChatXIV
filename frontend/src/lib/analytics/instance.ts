@@ -1,15 +1,15 @@
-import type { IAnalytics } from './types.js';
+import type { Analytics } from './types.js';
 import { createNoopAnalytics } from './noopAnalytics.js';
 
-let instance: IAnalytics = createNoopAnalytics();
+let instance: Analytics = createNoopAnalytics();
 
 /** Set the analytics implementation (call once at app boot). Enables swapping PostHog for another provider. */
-export function setAnalytics(analytics: IAnalytics): void {
+export function setAnalytics(analytics: Analytics): void {
   instance = analytics;
 }
 
 /** Get the current implementation. Prefer using capturePageView/capture from the public API. */
-export function getAnalytics(): IAnalytics {
+export function getAnalytics(): Analytics {
   return instance;
 }
 

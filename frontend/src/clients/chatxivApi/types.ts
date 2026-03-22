@@ -11,7 +11,7 @@ export interface ChatxivApiRequestOptions {
 }
 
 /** ChatXIV API client interface. Swap implementation at app boot for tests or alternate backends. */
-export interface IChatxivApiClient {
+export interface ChatxivApiClient {
   request<T = unknown>(
     method: string,
     path: string,

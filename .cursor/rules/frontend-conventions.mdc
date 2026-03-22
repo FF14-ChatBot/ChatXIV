@@ -25,6 +25,12 @@ alwaysApply: false
 ## DI at Boot
 - Singletons wired in `main.tsx` via `set*()` / `create*()` functions
 
+## Naming
+- Types, interfaces, and type aliases: PascalCase; do not prefix with `I` (enforced by ESLint `naming-convention`, same rule as backend)
+- Constants: UPPER_SNAKE_CASE
+- React components and their modules: PascalCase (e.g. `Button.tsx`, `ChatPage.tsx`)
+- Hooks, utilities, and other non-component modules: camelCase (e.g. `useTheme.ts`, `request.ts`)
+
 ## Styling
 - **CSS Modules** (`.module.css`) for component styles; scoped by default, no class name collisions
 - `import styles from './MyComponent.module.css'` then `className={styles.container}`

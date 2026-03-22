@@ -6,6 +6,6 @@ alwaysApply: true
 # Code Style
 
 - **Prettier:** single quotes, trailing comma `es5`, print width 100
-- **ESLint:** flat config with `typescript-eslint` and `eslint-config-prettier`
+- **ESLint:** flat config with `typescript-eslint` and `eslint-config-prettier`; backend and frontend both use `@typescript-eslint/naming-convention` so `interface` / `type` names are PascalCase and must not use an `I` + uppercase prefix (e.g. `Logger`, not `ILogger`)
 - No `console.log` in request-handling code (use Pino in backend, `logger` in frontend)
 - `console.error` acceptable in pre-boot startup code

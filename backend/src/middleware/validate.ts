@@ -8,7 +8,7 @@ import { requestContext } from '../lib/request/requestContext.js';
  * calls next(AppError.validation(...)) so the global error handler
  * returns 400 with CDM shape (code: VALIDATION_ERROR, message, requestId).
  */
-export function validateMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function validateMiddleware(req: Request, _res: Response, next: NextFunction): void {
   const result = validationResult(req);
   if (result.isEmpty()) {
     next();

@@ -1,8 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 import { setLogger } from '@/lib/logger/instance';
-import type { ILogger } from '@/lib/logger/types';
+import type { Logger } from '@/lib/logger/types';
 
-const noopLogger: ILogger = {
+const noopLogger: Logger = {
   debug: () => {},
   info: () => {},
   warn: () => {},
