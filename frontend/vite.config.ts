@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    /* Fail fast if 5173 is still held (orphan dev, or node --watch restart race). */
+    /* Fail fast if 5173 is still held (second dev tab, orphan process). */
     strictPort: true,
     // Tunnel: allow *.chatxiv.com Host; bind for IPv4 loopback (cloudflared→127.0.0.1:5173), not ::1-only.
     host: true,
