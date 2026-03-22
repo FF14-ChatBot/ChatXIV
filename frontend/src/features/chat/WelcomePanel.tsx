@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MammetLucideMark } from '../../components/MammetLucideMark/MammetLucideMark';
 import { useStarterPromptSlides } from '../../hooks/useStarterPromptSlides';
+import { expandStarterPromptSlidesOnePerSlide } from '../../lib/starterPrompts/expandStarterPromptSlidesOnePerSlide';
 import styles from './WelcomePanel.module.css';
 
 const CAROUSEL_INTERVAL_MS = 6000;
+/** Matches `WelcomePanel.module.css` — below this width, prompt row is a single column. */
+const ONE_CARD_PER_SLIDE_MQ = '(max-width: 767px)';
 
 interface WelcomePanelProps {
   readonly onPromptSubmit: (query: string) => void;
@@ -12,24 +15,45 @@ interface WelcomePanelProps {
 export function WelcomePanel({ onPromptSubmit }: WelcomePanelProps) {
   const slides = useStarterPromptSlides();
   const [slideIndex, setSlideIndex] = useState(0);
+  const [oneCardPerSlide, setOneCardPerSlide] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return false;
+    }
+    return window.matchMedia(ONE_CARD_PER_SLIDE_MQ).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+    const mq = window.matchMedia(ONE_CARD_PER_SLIDE_MQ);
+    const sync = () => setOneCardPerSlide(mq.matches);
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const displaySlides = useMemo(
+    () => (oneCardPerSlide ? expandStarterPromptSlidesOnePerSlide(slides) : slides),
+    [oneCardPerSlide, slides]
+  );
 
   useEffect(() => {
     setSlideIndex(0);
-  }, [slides]);
+  }, [displaySlides]);
 
   useEffect(() => {
-    if (slides.length <= 1) return undefined;
+    if (displaySlides.length <= 1) return undefined;
     const id = window.setInterval(() => {
-      setSlideIndex((i) => (i + 1) % slides.length);
+      setSlideIndex((i) => (i + 1) % displaySlides.length);
     }, CAROUSEL_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [slides.length]);
+  }, [displaySlides.length]);
 
   const goToSlide = useCallback((index: number) => {
     setSlideIndex(index);
   }, []);
 
-  const active = slides[slideIndex];
+  const active = displaySlides[slideIndex];
   if (!active) {
     return null;
   }
@@ -83,9 +107,9 @@ export function WelcomePanel({ onPromptSubmit }: WelcomePanelProps) {
           </div>
         </div>
 
-        {slides.length > 1 ? (
+        {displaySlides.length > 1 ? (
           <div className={styles.dots} role="tablist" aria-label="Suggested question sets">
-            {slides.map((slide, index) => (
+            {displaySlides.map((slide, index) => (
               <button
                 key={slide.id}
                 type="button"
