@@ -1,5 +1,5 @@
 /**
- * GitHub `push` webhooks: verify HMAC, fast-forward clone to `origin/main`.
+ * GitHub `push` webhooks: verify HMAC, fast-forward clone to `origin/main`, rebuild CDM/backend, bump dev `--watch` mtimes.
  * Intended behind a tunnel + Access on a dedicated hostname.
  *
  * Env: `GITHUB_WEBHOOK_SECRET` (required); optional `PORT`, `WEBHOOK_PATH`, `GITHUB_REPO_FULL_NAME` — `.env.example`.
@@ -165,7 +165,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     process.stderr.write(
-      `[webhook] ${deliveryPrefix(deliveryTag)}running sync + build:cdm + build:backend\n`
+      `[webhook] ${deliveryPrefix(deliveryTag)}running sync + build:cdm + build:backend + FE/BE dev watch bump\n`
     );
     const result = syncFromOriginMain(repoRoot);
     return sendAndLog(res, deliveryTag, 200, `${result.message}\n`);

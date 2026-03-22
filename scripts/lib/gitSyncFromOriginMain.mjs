@@ -20,11 +20,13 @@ function localBranchMainExists(repoRoot) {
 
 /**
  * Rebuild shared CDM types then backend (same order as root `npm run build`), from repo root.
+ * Touches **`backend/src/server.ts`** and **`frontend/scripts/dev.mjs`** mtime so
+ * **`npm run dev:backend`** and **`npm run dev:frontend`** (`node --watch` on each entry) reload.
  * Only runs when `HEAD` is branch **main**.
  *
  * @param {string} repoRoot
  */
-function runDefaultBackendBuild(repoRoot) {
+function runPostSyncBuildAndBumpDevWatchers(repoRoot) {
   const branch = execSync('git rev-parse --abbrev-ref HEAD', {
     cwd: repoRoot,
     encoding: 'utf8',
@@ -39,12 +41,22 @@ function runDefaultBackendBuild(repoRoot) {
     stdio: 'inherit',
     shell: true,
   });
+
+  const now = new Date();
+  const serverTs = path.join(repoRoot, 'backend', 'src', 'server.ts');
+  if (fs.existsSync(serverTs)) {
+    fs.utimesSync(serverTs, now, now);
+  }
+  const frontendDevMjs = path.join(repoRoot, 'frontend', 'scripts', 'dev.mjs');
+  if (fs.existsSync(frontendDevMjs)) {
+    fs.utimesSync(frontendDevMjs, now, now);
+  }
 }
 
 /**
  * On a push to `main`: fetch, switch this clone to `main`, fast-forward to `origin/main`,
- * run `npm install` at repo root if `package-lock.json` changed, then **`npm run build:cdm`** and **`npm run build:backend`**
- * (only after verifying `HEAD` is branch **main**).
+ * run `npm install` at repo root if `package-lock.json` changed, then **`npm run build:cdm`** and **`npm run build:backend`**,
+ * then bump **`backend/src/server.ts`** and **`frontend/scripts/dev.mjs`** mtime for dev **`--watch`** (only after verifying `HEAD` is branch **main**).
  *
  * Refuses if the working tree is not clean so a forced checkout cannot drop work.
  *
@@ -95,8 +107,9 @@ export function syncFromOriginMain(repoRoot) {
     }
   }
 
-  runDefaultBackendBuild(repoRoot);
-  message += ' Ran build:cdm + build:backend.';
+  runPostSyncBuildAndBumpDevWatchers(repoRoot);
+  message +=
+    ' Ran build:cdm + build:backend; bumped backend/src/server.ts and frontend/scripts/dev.mjs mtime for dev --watch.';
 
   return { updated, message };
 }
