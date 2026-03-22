@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch --watch-path=./scripts/dev.mjs --watch-path=./scripts/gracefulShutdown.mjs --watch-path=./vite.config.ts scripts/dev.mjs",
+    "dev": "node --watch --watch-path=./scripts/dev.mjs --watch-path=./scripts/gracefulShutdown.mjs scripts/dev.mjs",
+    "dev:plain": "node scripts/dev.mjs",
     "build": "vite build",
     "preview": "node scripts/preview.mjs",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",

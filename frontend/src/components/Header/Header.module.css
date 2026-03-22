@@ -8,7 +8,8 @@
 
 .inner {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* minmax(0, 1fr) lets side columns shrink so centered Home does not overlap lockup/nav */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 0.75rem;
   min-height: 3.75rem;
@@ -103,4 +104,25 @@
   width: 1rem;
   height: 1rem;
   margin-right: 0.5rem;
+}
+
+/* Lockup already links home; hiding the duplicate avoids crowding. When the Home link is
+   display:none it is removed from the grid — keep two columns so nav stays end-aligned
+   instead of auto-placing into the old center track (which overlapped ChatXIV). */
+@media (max-width: 639px) {
+  .inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .homeLink {
+    display: none;
+  }
+
+  .newChatLabel {
+    display: none;
+  }
+
+  .newChatIcon {
+    margin-right: 0;
+  }
 }

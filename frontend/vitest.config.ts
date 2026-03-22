@@ -37,6 +37,8 @@ export default defineConfig({
         "src/test-utils.tsx",
         /** CSS Modules are styling only; line coverage is not meaningful here */
         "**/*.module.css",
+        /** Binary assets skew per-file coverage */
+        "**/*.{png,jpg,jpeg,gif,webp,svg,ico}",
       ],
       thresholds: {
         lines: 90,

@@ -20,7 +20,7 @@ Succinct guide for running, linting, testing, and building the repo.
 ## How to run
 
 - **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: Swagger UI at `http://localhost:3000/docs/`, OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`. See [backend/README.md](../backend/README.md) for curl, Postman, and headers.
-- **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`
+- **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`. Uses **`node --watch`** on **`scripts/dev.mjs`** only (not **`vite.config.ts`**, to avoid a common **5173** restart race). **`npm run dev:plain`** runs Vite without the watcher. If **5173** is busy, another **`node`** (or a second dev tab) still holds it. The deploy **webhook** can bump **`frontend/scripts/dev.mjs`**, which restarts **`npm run dev:frontend`** on the machine where that listener runs.
 - **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (after root `npm install`)
 
 ## Lint and format

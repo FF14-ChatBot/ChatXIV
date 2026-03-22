@@ -46,7 +46,7 @@ export function ChatInput({ value, onChange, onSend }: ChatInputProps) {
           ref={textareaRef}
           className={styles.field}
           rows={1}
-          placeholder="Ask me anything about the critically acclaimed MMORPG FFXIV"
+          placeholder="Ask me anything about FFXIV."
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}

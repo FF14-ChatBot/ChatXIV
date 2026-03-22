@@ -27,6 +27,14 @@
   padding-block: clamp(1rem, 5vmin, 2.5rem);
 }
 
+/* Center + overflow:auto clips the wrong slice at scrollTop 0 when content is taller than
+   the pane (fixed viewport shell). Top-align on narrow viewports so MammetBot hero is visible. */
+@media (max-width: 767px) {
+  .emptyColumn {
+    justify-content: flex-start;
+  }
+}
+
 .emptyStack {
   display: flex;
   flex-direction: column;

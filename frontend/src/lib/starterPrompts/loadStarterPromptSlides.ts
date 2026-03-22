@@ -16,7 +16,8 @@ export async function loadStarterPromptSlides(): Promise<readonly StarterPromptS
     // TODO: return fromApi.length > 0 ? fromApi : STARTER_PROMPT_SLIDES;
     return STARTER_PROMPT_SLIDES;
   } catch {
-    /* v8 ignore next */
+    /* v8 ignore start — unreachable until API fetch runs in try */
     return STARTER_PROMPT_SLIDES;
+    /* v8 ignore end */
   }
 }
