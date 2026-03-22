@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useStarterPromptSlides } from '@/hooks/useStarterPromptSlides';
 import * as loader from '@/lib/starterPrompts/loadStarterPromptSlides';
 import { STARTER_PROMPT_SLIDES } from '@/config/starterPrompts';
@@ -20,5 +20,19 @@ describe('useStarterPromptSlides', () => {
       expect(loader.loadStarterPromptSlides).toHaveBeenCalled();
     });
     expect(result.current).toBe(STARTER_PROMPT_SLIDES);
+  });
+
+  it('ignores loader result after unmount', async () => {
+    let resolveLoader!: (value: typeof STARTER_PROMPT_SLIDES) => void;
+    const deferred = new Promise<typeof STARTER_PROMPT_SLIDES>((resolve) => {
+      resolveLoader = resolve;
+    });
+    vi.spyOn(loader, 'loadStarterPromptSlides').mockReturnValue(deferred);
+
+    const { unmount } = renderHook(() => useStarterPromptSlides());
+    unmount();
+    await act(async () => {
+      resolveLoader(STARTER_PROMPT_SLIDES);
+    });
   });
 });

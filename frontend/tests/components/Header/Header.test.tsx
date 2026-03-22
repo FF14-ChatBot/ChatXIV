@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ChatSessionProvider, useChatSession } from '@/features/chat/ChatSessionContext';
@@ -70,5 +70,72 @@ describe('Header', () => {
     await waitFor(() => {
       expect(document.documentElement.dataset.themePreset).toBe('island');
     });
+  });
+});
+
+describe('Header matchMedia (compact nav)', () => {
+  type MediaListener = (e: { matches: boolean }) => void;
+  let matches: boolean;
+  let listeners: MediaListener[];
+  let removeSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    matches = false;
+    listeners = [];
+    removeSpy = vi.fn((_: string, cb: MediaListener) => {
+      const i = listeners.indexOf(cb);
+      if (i >= 0) listeners.splice(i, 1);
+    });
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => {
+        expect(query).toBe('(max-width: 639px)');
+        return {
+          get matches() {
+            return matches;
+          },
+          media: query,
+          addEventListener: (_event: string, cb: MediaListener) => {
+            listeners.push(cb);
+          },
+          removeEventListener: removeSpy,
+        };
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('uses aria-label for New chat when the compact media query matches', () => {
+    matches = true;
+    render(
+      <MemoryRouter>
+        <ChatSessionProvider>
+          <ThemeProvider>
+            <Header />
+          </ThemeProvider>
+        </ChatSessionProvider>
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('button', { name: /^new chat$/i })).toBeInTheDocument();
+  });
+
+  it('removes the media query listener on unmount', () => {
+    matches = false;
+    const { unmount } = render(
+      <MemoryRouter>
+        <ChatSessionProvider>
+          <ThemeProvider>
+            <Header />
+          </ThemeProvider>
+        </ChatSessionProvider>
+      </MemoryRouter>
+    );
+    expect(window.matchMedia).toHaveBeenCalled();
+    expect(removeSpy).not.toHaveBeenCalled();
+    unmount();
+    expect(removeSpy).toHaveBeenCalledWith('change', expect.any(Function));
   });
 });

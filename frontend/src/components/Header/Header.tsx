@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MessageSquarePlus, MoreVertical } from 'lucide-react';
 import { MammetLucideMark } from '../MammetLucideMark/MammetLucideMark';
@@ -20,10 +20,24 @@ import dropdownMenuStyles from '../ui/DropdownMenu/DropdownMenu.module.css';
 import { ThemeToggle } from './ThemeToggle';
 import styles from './Header.module.css';
 
+const COMPACT_HEADER_NAV_MQ = '(max-width: 639px)';
+
 export function Header() {
   const { pathname } = useLocation();
   const { themePreset, setThemePreset } = useTheme();
   const { startNewChat } = useChatSession();
+  const [compactNav, setCompactNav] = useState(false);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') {
+      return;
+    }
+    const mq = window.matchMedia(COMPACT_HEADER_NAV_MQ);
+    const sync = () => setCompactNav(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   const goHome = useCallback(() => {
     startNewChat();
@@ -52,9 +66,16 @@ export function Header() {
         <nav className={styles.nav} aria-label="App actions">
           <ThemeToggle />
 
-          <OutlineButton type="button" size="sm" onClick={startNewChat}>
-            <MessageSquarePlus className={styles.newChatIcon} />
-            New Chat
+          <OutlineButton
+            type="button"
+            size="sm"
+            onClick={startNewChat}
+            aria-label={compactNav ? 'New chat' : undefined}
+          >
+            <MessageSquarePlus className={styles.newChatIcon} aria-hidden />
+            <span className={styles.newChatLabel} aria-hidden={compactNav}>
+              New Chat
+            </span>
           </OutlineButton>
 
           <DropdownMenu>

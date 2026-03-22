@@ -59,4 +59,15 @@ describe('ChatInput', () => {
     fireEvent.click(screen.getByRole('button', { name: /send message/i }));
     expect(onSend).toHaveBeenCalled();
   });
+
+  it('does not throw if unmounted before textarea height sync runs', async () => {
+    const onChange = vi.fn();
+    const { unmount } = render(<ChatInput value="" onChange={onChange} onSend={vi.fn()} />);
+
+    fireEvent.change(getField(), { target: { value: 'x' } });
+    unmount();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onChange).toHaveBeenCalledWith('x');
+  });
 });

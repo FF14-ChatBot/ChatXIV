@@ -1,10 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatConversation } from '@/hooks/useChatConversation';
 import type { ChatAssistantPort } from '@/lib/chat/chatAssistantPort';
 import { DEMO_ASSISTANT_REPLY } from '@/lib/chat/chatAssistantPort';
+import { logger } from '@/lib/logger/instance';
 
 describe('useChatConversation', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('adds user message then assistant reply after demo delay', async () => {
     const { result } = renderHook(() => useChatConversation(0));
 
@@ -54,5 +59,46 @@ describe('useChatConversation', () => {
       expect(result.current.messages).toHaveLength(2);
       expect(result.current.messages[1]?.text).toBe('from mock');
     });
+  });
+
+  it('does not log when assistant reply throws AbortError', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const assistantPort: ChatAssistantPort = {
+      getReply: async () => {
+        throw new DOMException('Aborted', 'AbortError');
+      },
+    };
+    const { result } = renderHook(() => useChatConversation(0, { assistantPort }));
+
+    act(() => {
+      result.current.sendMessage('q');
+    });
+
+    await waitFor(() => {
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+    expect(result.current.messages).toHaveLength(1);
+  });
+
+  it('logs when assistant reply fails with a non-abort error', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const assistantPort: ChatAssistantPort = {
+      getReply: async () => {
+        throw new Error('assistant down');
+      },
+    };
+    const { result } = renderHook(() => useChatConversation(0, { assistantPort }));
+
+    act(() => {
+      result.current.sendMessage('q');
+    });
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Chat assistant reply failed',
+        expect.objectContaining({ error: 'assistant down' })
+      );
+    });
+    expect(result.current.messages).toHaveLength(1);
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { ChatSessionProvider, useChatSession } from '@/features/chat/ChatSessionContext';
@@ -8,6 +8,18 @@ function wrapper({ children }: { readonly children: ReactNode }) {
 }
 
 describe('ChatSessionContext', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('throws when useChatSession is used outside ChatSessionProvider', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => renderHook(() => useChatSession())).toThrow(
+      'useChatSession must be used within ChatSessionProvider'
+    );
+    consoleSpy.mockRestore();
+  });
+
   it('increments sessionGeneration when startNewChat is called', () => {
     const { result } = renderHook(() => useChatSession(), { wrapper });
     expect(result.current.sessionGeneration).toBe(0);

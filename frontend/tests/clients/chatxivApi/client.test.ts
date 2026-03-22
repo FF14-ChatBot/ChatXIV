@@ -154,6 +154,22 @@ describe('chatxivApiRequest', () => {
     expect(result).toBeUndefined();
   });
 
+  it('returns undefined for 201 with non-JSON Content-Type without reading body', async () => {
+    const json = vi.fn();
+    vi.stubGlobal('fetch', () =>
+      Promise.resolve({
+        ok: true,
+        status: 201,
+        headers: new Headers({ 'Content-Type': 'text/html' }),
+        json,
+      })
+    );
+
+    const result = await chatxivApiRequest('POST', '/v1/item');
+    expect(result).toBeUndefined();
+    expect(json).not.toHaveBeenCalled();
+  });
+
   it('uses fallback X-Request-Id when crypto.randomUUID is missing', async () => {
     vi.stubGlobal('crypto', {});
     const fetchMock = vi.fn().mockResolvedValue({
@@ -174,6 +190,28 @@ describe('chatxivApiRequest', () => {
 });
 
 describe('parseErrorBody', () => {
+  it('returns undefined when Content-Type is not JSON', async () => {
+    const json = vi.fn();
+    const res = {
+      headers: new Headers({ 'Content-Type': 'text/plain' }),
+      json,
+    } as unknown as Response;
+    const result = await parseErrorBody(res);
+    expect(result).toBeUndefined();
+    expect(json).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined when Content-Type header is missing', async () => {
+    const json = vi.fn();
+    const res = {
+      headers: new Headers(),
+      json,
+    } as unknown as Response;
+    const result = await parseErrorBody(res);
+    expect(result).toBeUndefined();
+    expect(json).not.toHaveBeenCalled();
+  });
+
   it('returns parsed body when Content-Type is application/json and json() resolves', async () => {
     const body = { code: 'VALIDATION_ERROR', message: 'Bad input' };
     const res = {

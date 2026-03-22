@@ -1,7 +1,13 @@
+/* Pin height to the dynamic viewport so the main column stays flex-constrained and
+   the composer does not sit below the fold when welcome content is tall (mobile). */
 .layout {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .main {
