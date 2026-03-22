@@ -6,30 +6,26 @@ import { ChatPage } from './features/chat/ChatPage';
 import { NotAvailablePage } from './components/NotAvailablePage/NotAvailablePage';
 
 function App() {
-  if (isPrelaunchRedirectEnabled()) {
-    return (
-      <>
-        <AnalyticsPageView />
-        <Routes>
-          <Route path="/unavailable" element={<NotAvailablePage />} />
-          <Route path="*" element={<Navigate to="/unavailable" replace />} />
-        </Routes>
-      </>
-    );
-  }
+  const prelaunch = isPrelaunchRedirectEnabled();
 
   return (
     <>
       <AnalyticsPageView />
       <Routes>
+        <Route path="/unavailable" element={<NotAvailablePage />} />
         <Route
           path="/"
           element={
-            <MainLayout>
-              <ChatPage />
-            </MainLayout>
+            prelaunch ? (
+              <Navigate to="/unavailable" replace />
+            ) : (
+              <MainLayout>
+                <ChatPage />
+              </MainLayout>
+            )
           }
         />
+        <Route path="*" element={<Navigate to="/unavailable" replace />} />
       </Routes>
     </>
   );
