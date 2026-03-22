@@ -36,6 +36,17 @@ export default tseslint.config(
       "react/react-in-jsx-scope": "off",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: ["interface", "typeAlias"],
+          format: ["PascalCase"],
+          custom: {
+            regex: "^I[A-Z]",
+            match: false,
+          },
+        },
+      ],
     },
   },
   eslintConfigPrettier

@@ -37,3 +37,4 @@ alwaysApply: false
 
 ## Naming
 - Files: camelCase — Classes: PascalCase — Constants: UPPER_SNAKE_CASE
+- Types and interfaces: PascalCase; do not prefix with `I` (enforced by ESLint `naming-convention`)

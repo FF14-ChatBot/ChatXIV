@@ -3,7 +3,7 @@ import { ERROR_CODES } from '@chatxiv/cdm';
 import { request as coreRequest } from '../core/request';
 import { getChatxivApiBaseUrl } from './config';
 import { ApiClientError } from './errors/ApiClientError';
-import type { ChatxivApiConfig, ChatxivApiRequestOptions, IChatxivApiClient } from './types';
+import type { ChatxivApiConfig, ChatxivApiRequestOptions, ChatxivApiClient } from './types';
 
 function randomRequestId(): string {
   return crypto.randomUUID?.() ?? `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -74,7 +74,7 @@ async function runRequest<T = unknown>(
 }
 
 /** Default ChatXIV API client implementation. Inject at app boot via setChatxivApiClient(). */
-export function createChatxivApiClient(): IChatxivApiClient {
+export function createChatxivApiClient(): ChatxivApiClient {
   return {
     request<T = unknown>(
       method: string,

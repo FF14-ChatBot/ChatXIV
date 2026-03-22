@@ -35,7 +35,7 @@ You import the client you need: `chatxivApiRequest` for the ChatXIV API, and lat
 - **Call:** `chatxivApiRequest('POST', '/v1/ask', { body: { query: '...' }, config: { getSessionId: () => sessionId } })`.
 - **Result:** Parsed JSON body, or a thrown `ApiClientError` with a safe `displayMessage` for the UI.
 
-You never call the core directly from app code. The core is used only inside each client module. The client implements `IChatxivApiClient`; swap implementations at boot to use a different backend or a test double.
+You never call the core directly from app code. The core is used only inside each client module. The client implements `ChatxivApiClient`; swap implementations at boot to use a different backend or a test double.
 
 ### Two layers
 

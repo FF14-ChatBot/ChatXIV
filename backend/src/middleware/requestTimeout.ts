@@ -13,7 +13,7 @@ export class RequestTimeoutMiddleware {
   constructor(@inject(RequestConfigToken) private readonly config: RequestConfig) {}
 
   /** Express middleware handler. Bound once when registering (e.g. app.use(middleware.handler)). */
-  handler = (req: Request, res: Response, next: NextFunction): void => {
+  handler = (_req: Request, res: Response, next: NextFunction): void => {
     const timer = setTimeout(() => {
       if (!res.headersSent) {
         const requestId = requestContext.get()?.requestId;
@@ -27,7 +27,7 @@ export class RequestTimeoutMiddleware {
 
 /** Factory for tests or explicit wiring. Prefer container.resolve(RequestTimeoutMiddleware) in app. */
 export function requestTimeoutMiddleware(ms: number) {
-  return function timeout(req: Request, res: Response, next: NextFunction): void {
+  return function timeout(_req: Request, res: Response, next: NextFunction): void {
     const timer = setTimeout(() => {
       if (!res.headersSent) {
         const requestId = requestContext.get()?.requestId;

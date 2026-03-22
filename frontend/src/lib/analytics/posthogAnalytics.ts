@@ -1,5 +1,5 @@
 import posthog, { type ConfigDefaults } from 'posthog-js';
-import type { IAnalytics } from './types.js';
+import type { Analytics } from './types.js';
 
 export interface PostHogAnalyticsConfig {
   token: string;
@@ -10,10 +10,10 @@ export interface PostHogAnalyticsConfig {
 }
 
 /**
- * PostHog implementation of IAnalytics. Inits the SDK and returns an implementation.
+ * PostHog implementation of Analytics. Inits the SDK and returns an implementation.
  * Only this file imports posthog-js; swap by using a different implementation at boot.
  */
-export function createPostHogAnalytics(config: PostHogAnalyticsConfig): IAnalytics {
+export function createPostHogAnalytics(config: PostHogAnalyticsConfig): Analytics {
   const {
     token,
     host = 'https://us.i.posthog.com',
