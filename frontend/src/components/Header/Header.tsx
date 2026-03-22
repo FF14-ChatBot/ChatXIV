@@ -94,7 +94,7 @@ export function Header() {
                       setThemePreset(checked === true ? 'island' : 'none')
                     }
                   >
-                    Island
+                    Island Sanctuary
                   </DropdownMenuCheckboxItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>

@@ -2,11 +2,7 @@ import { Link } from 'react-router-dom';
 import constructionMammet from './construction-mammet.png';
 import styles from './NotAvailablePage.module.css';
 
-export function NotAvailablePage() {
-  const homeLinkVisible = !(
-    import.meta.env.PROD === true && import.meta.env.VITE_APP_PRELAUNCH_REDIRECT === 'true'
-  );
-
+export function NotAvailablePage({ showHomeLink }: { readonly showHomeLink: boolean }) {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
@@ -19,7 +15,7 @@ export function NotAvailablePage() {
         <p className={styles.lead}>
           This page is not available yet. Check back later, or verify you opened the correct URL.
         </p>
-        {homeLinkVisible ? (
+        {showHomeLink ? (
           <p className={styles.actions}>
             <Link to="/" className={styles.homeLink}>
               Return to ChatXIV

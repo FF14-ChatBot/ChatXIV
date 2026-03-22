@@ -1,9 +1,16 @@
-/**
- * Feature flag record for public and admin APIs (`GET /v1/flags`, `GET /v1/flags/:name`, admin CRUD).
- * When `updatedAt` is omitted, the name is not present in the store (lookup still returns `enabled: false`).
- */
+/** Public/admin flag shape. Missing `updatedAt` means not in store (lookup returns `enabled: false`). */
 export interface FeatureFlagEntry {
   readonly name: string;
   readonly enabled: boolean;
   readonly updatedAt?: string;
+}
+
+/** When off/absent, SPA treats product as not live (`/` → `/unavailable`). */
+export const IS_PRODUCT_LIVE = 'isProductLive' as const;
+
+/** Base path for public flag routes (OpenAPI). */
+export const FEATURE_FLAGS_PUBLIC_BASE_PATH = '/v1/flags' as const;
+
+export function featureFlagEntryPath(flagName: string): string {
+  return `${FEATURE_FLAGS_PUBLIC_BASE_PATH}/${encodeURIComponent(flagName)}`;
 }

@@ -1,18 +1,18 @@
 import { AdsenseDisplayAd } from '../../components/AdsenseDisplayAd/AdsenseDisplayAd';
 import {
+  type AdsensePlacement,
   getAdsenseClient,
-  getAdsenseSlotMessages,
-  getAdsenseSlotWelcome,
-} from '../../lib/adsense/adsenseEnv';
+  getAdsenseDisplaySlot,
+} from '../../lib/adsense/adsenseRegistry';
 
 interface ChatAdSlotProps {
-  readonly variant: 'welcome' | 'messages';
+  readonly placement: AdsensePlacement;
   readonly className: string;
 }
 
-export function ChatAdSlot({ variant, className }: ChatAdSlotProps) {
+export function ChatAdSlot({ placement, className }: ChatAdSlotProps) {
   const client = getAdsenseClient();
-  const slot = variant === 'welcome' ? getAdsenseSlotWelcome() : getAdsenseSlotMessages();
+  const slot = getAdsenseDisplaySlot(placement);
 
   if (client !== undefined && slot !== undefined) {
     return <AdsenseDisplayAd client={client} slot={slot} className={className} />;

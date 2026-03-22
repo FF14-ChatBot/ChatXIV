@@ -44,7 +44,7 @@ describe('Header', () => {
     expect(screen.getByTestId('session-generation')).toHaveTextContent('2');
   });
 
-  it('toggles Island preset from the Themes submenu', async () => {
+  it('toggles Island Sanctuary preset from the Themes submenu', async () => {
     render(
       <MemoryRouter>
         <ChatSessionProvider>
@@ -64,9 +64,11 @@ describe('Header', () => {
     });
     fireEvent.click(screen.getByRole('menuitem', { name: /themes/i }));
     await waitFor(() => {
-      expect(screen.getByRole('menuitemcheckbox', { name: /island/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('menuitemcheckbox', { name: /island sanctuary/i })
+      ).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: /island/i }));
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: /island sanctuary/i }));
     await waitFor(() => {
       expect(document.documentElement.dataset.themePreset).toBe('island');
     });

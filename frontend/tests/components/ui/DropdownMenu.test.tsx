@@ -67,7 +67,7 @@ describe('DropdownMenu', () => {
           <DropdownMenuSub>
             <DropdownMenuSubTrigger chevronSide="leading">Themes</DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              <DropdownMenuItem>Island</DropdownMenuItem>
+              <DropdownMenuItem>Island Sanctuary</DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         </DropdownMenuContent>

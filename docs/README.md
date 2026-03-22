@@ -87,8 +87,8 @@ Access sits **in front of** the tunnel hostname on Cloudflare’s edge: users si
 
 ### Local app config (Vite + env)
 
-- **[`frontend/vite.config.ts`](../frontend/vite.config.ts):** **`server.allowedHosts: ['.chatxiv.com']`** accepts tunnel **`Host`** headers; **`server.host: true`** avoids an IPv6-only bind when **`cloudflared`** forwards to **`127.0.0.1:5173`** (otherwise Cloudflare **502** / host errors). **[`frontend/scripts/dev.mjs`](../frontend/scripts/dev.mjs)** sets the same **`server`** options on **`createServer()`** because programmatic startup can drop them after config merge while still inheriting proxy/port from the file.
-- **`frontend/.env`:** **`VITE_CHATXIV_BACKEND_URL`** = your **https** API tunnel URL (e.g. `https://dev-alex-api.chatxiv.com`). Optional **AdSense:** **`VITE_PUBLIC_ADSENSE_CLIENT`** (`ca-pub-…`) plus **`VITE_PUBLIC_ADSENSE_SLOT`** (and optionally **`VITE_PUBLIC_ADSENSE_SLOT_WELCOME`** / **`VITE_PUBLIC_ADSENSE_SLOT_MESSAGES`**) — see **`frontend/.env.example`**.
+- **[`frontend/vite.config.ts`](../frontend/vite.config.ts):** **`server.allowedHosts: ['.chatxiv.com']`** for tunnel **`Host`**; **`server.host: true`** so **`cloudflared`** → **`127.0.0.1:5173`** does not hit an IPv6-only bind (**502**). **`server.proxy`** maps **`/v1`**, **`/health`**, **`/docs`** → **`localhost:3000`** (no **`/api`** prefix). **[`frontend/scripts/dev.mjs`](../frontend/scripts/dev.mjs)** repeats **`server`** on **`createServer()`** so merge does not drop **`host`** / **`allowedHosts`** while proxy/port still come from the file.
+- **`frontend/.env`:** **`VITE_CHATXIV_BACKEND_URL`** = your **https** API tunnel URL (e.g. `https://dev-alex-api.chatxiv.com`). Optional **AdSense** publisher + slot ids live in **`frontend/src/lib/adsense/adsenseConfig.ts`** — see **`frontend/.env.example`**.
 
 #### Tunnel: public URL works but UI is unstyled (localhost looks fine)
 
