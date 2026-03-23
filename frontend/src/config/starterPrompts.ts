@@ -1,3 +1,5 @@
+import { UsageCategory, type UsageCategory as UsageCategoryValue } from '@chatxiv/cdm';
+
 /**
  * Welcome-screen suggested questions (carousel slides).
  * Each card uses emoji + short category (primes expectations) + the question sent on click.
@@ -14,19 +16,55 @@ export type StarterPromptSlide = {
   readonly items: readonly StarterPromptCard[];
 };
 
-export const STARTER_PROMPT_SLIDES: readonly StarterPromptSlide[] = [
+export const USAGE_CATEGORY_EMOJI: Readonly<Record<UsageCategoryValue, string>> = {
+  [UsageCategory.UNCATEGORIZED]: '❓',
+  [UsageCategory.BIS]: '🥋',
+  [UsageCategory.RAIDING]: '⚔️',
+  [UsageCategory.MSQ]: '📜',
+  [UsageCategory.UNLOCKS]: '🔐',
+  [UsageCategory.SETTINGS]: '⚙️',
+  [UsageCategory.CRAFTING]: '🛠️',
+  [UsageCategory.GATHERING]: '⛏️',
+  [UsageCategory.ITEMS]: '📦',
+  [UsageCategory.VENDORS]: '💰',
+  [UsageCategory.EXPLORATION]: '🗺️',
+  [UsageCategory.BLUE_MAGE]: '📘',
+  [UsageCategory.FIELD_OPERATIONS]: '🏕️',
+  [UsageCategory.DEEP_DUNGEONS]: '🕳️',
+  [UsageCategory.GLAMOUR]: '👗',
+  [UsageCategory.HOUSING]: '🏠',
+  [UsageCategory.PVP]: '🏆',
+  [UsageCategory.FATES]: '🎯',
+  [UsageCategory.LIFESTYLE_CONTENT]: '🌿',
+  [UsageCategory.RELIC_WEAPONS]: '🗡️',
+  [UsageCategory.CRITERION]: '🛤️',
+  [UsageCategory.COLLECTIBLES]: '🐴',
+  [UsageCategory.PATCH_NOTES]: '📋',
+  [UsageCategory.GOLD_SAUCER]: '🎰',
+  [UsageCategory.SEASONAL_EVENTS]: '🎉',
+};
+
+type StarterPromptSeed = {
+  readonly category: UsageCategoryValue | readonly UsageCategoryValue[];
+  readonly prompt: string;
+};
+
+type StarterPromptSlideSeed = {
+  readonly id: string;
+  readonly items: readonly StarterPromptSeed[];
+};
+
+const STARTER_PROMPT_SLIDE_SEEDS: readonly StarterPromptSlideSeed[] = [
   {
     id: 'progression-patches-gathering',
     items: [
-      { emoji: '📜', category: 'Main story', prompt: 'Where am I in the MSQ?' },
+      { category: UsageCategory.MSQ, prompt: 'Where am I in the MSQ?' },
       {
-        emoji: '📋',
-        category: 'Patch notes',
+        category: UsageCategory.PATCH_NOTES,
         prompt: 'What were the changes in the latest patch notes?',
       },
       {
-        emoji: '⛏️',
-        category: 'Gathering',
+        category: UsageCategory.GATHERING,
         prompt: 'What are the current gatherable timed nodes?',
       },
     ],
@@ -34,32 +72,48 @@ export const STARTER_PROMPT_SLIDES: readonly StarterPromptSlide[] = [
   {
     id: 'jobs-zones-unlocks',
     items: [
-      { emoji: '🥋', category: 'Job rotation', prompt: "What is Monk's rotation for Endwalker?" },
+      { category: UsageCategory.RAIDING, prompt: "What is Monk's rotation for Endwalker?" },
       {
-        emoji: '🪶',
-        category: 'Exploration',
+        category: UsageCategory.EXPLORATION,
         prompt: 'Where are the Aether currents in Coerthas Western Highlands?',
       },
-      { emoji: '🗡️', category: 'Job unlock', prompt: 'How do I unlock Ninja?' },
+      { category: UsageCategory.UNLOCKS, prompt: 'How do I unlock Ninja?' },
     ],
   },
   {
     id: 'raids-items-mechs',
     items: [
-      { emoji: '⚔️', category: 'Best-in-slot', prompt: 'What is BiS for Melee DPS in UCoB?' },
+      { category: UsageCategory.BIS, prompt: 'What is BiS for Melee DPS in UCoB?' },
       {
-        emoji: '🥚',
-        category: 'Items & vendors',
+        category: [UsageCategory.ITEMS, UsageCategory.VENDORS],
         prompt: 'Where is the NPC that I can purchase Egg of Elpis from?',
       },
       {
-        emoji: '✨',
-        category: 'Raid mechanics',
+        category: UsageCategory.RAIDING,
         prompt: 'Please show me the mechs for Light Rampant in FRU!',
       },
     ],
   },
 ];
+
+function toStarterPromptCard(item: StarterPromptSeed): StarterPromptCard {
+  const categories = Array.isArray(item.category) ? item.category : [item.category];
+  const displayCategory = categories.join(' & ');
+  const firstCategory = categories[0] ?? UsageCategory.UNCATEGORIZED;
+
+  return {
+    emoji: USAGE_CATEGORY_EMOJI[firstCategory],
+    category: displayCategory,
+    prompt: item.prompt,
+  };
+}
+
+export const STARTER_PROMPT_SLIDES: readonly StarterPromptSlide[] = STARTER_PROMPT_SLIDE_SEEDS.map(
+  (slide) => ({
+    id: slide.id,
+    items: slide.items.map(toStarterPromptCard),
+  })
+);
 
 /** Synchronous read of bundled defaults (tests and non-React callers). */
 export function getStarterPromptSlides(): readonly StarterPromptSlide[] {
