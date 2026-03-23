@@ -55,8 +55,9 @@
 
 /* Icon 75% of 2× base (= 1.5× original); .heroAvatar stays 5.5rem */
 .heroBotIcon {
-  width: calc(2.75rem * 2 * 0.75);
-  height: calc(2.75rem * 2 * 0.75);
+  width: 5.785rem;
+  height: 5.785rem;
+  filter: drop-shadow(0 0 0.85rem color-mix(in srgb, var(--primary) 50%, transparent));
 }
 
 .heroText {
@@ -235,8 +236,8 @@
   }
 
   .heroBotIcon {
-    width: 3.55rem;
-    height: 3.55rem;
+    width: 5.07rem;
+    height: 5.07rem;
   }
 
   .carousel {
