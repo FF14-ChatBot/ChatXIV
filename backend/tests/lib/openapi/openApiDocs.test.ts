@@ -80,6 +80,19 @@ describe('OpenAPI docs', () => {
     expect(res.text.toLowerCase()).toContain('swagger');
   });
 
+  it('GET /v1/docs/swagger-ui-init.js does not embed admin spec (isolated from /v1/admin/docs)', async () => {
+    const res = await request(buildApp(noopAdminAuth())).get('/v1/docs/swagger-ui-init.js');
+    expect(res.status).toBe(200);
+    expect(res.type).toMatch(/javascript/);
+    expect(res.text).not.toContain('/v1/admin/flags');
+  });
+
+  it('GET /v1/admin/docs/swagger-ui-init.js embeds admin paths when authorized', async () => {
+    const res = await request(buildApp(noopAdminAuth())).get('/v1/admin/docs/swagger-ui-init.js');
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('/v1/admin/flags');
+  });
+
   it('GET /v1/admin/docs/ returns 401 when admin auth rejects', async () => {
     const res = await request(buildApp(rejectingAdminAuth())).get('/v1/admin/docs/');
     expect(res.status).toBe(401);

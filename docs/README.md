@@ -46,6 +46,7 @@ Succinct guide for running, linting, testing, and building the repo.
 - Root (both): `npm run build` (builds backend then frontend)
 - Root (per side): `npm run build:backend` or `npm run build:frontend`
 - Per package: `cd backend && npm run build`; `cd frontend && npm run build`
+- **Clean outputs:** `npm run clean` removes `dist`, `dist-node`, and `coverage` under backend, frontend, and CDM (does **not** delete `node_modules`). Use when you suspect stale compiled files before rebuilding. To fully reset dependencies, delete **`node_modules`** at the repo root (and any workspace copies) and run **`npm ci`**.
 
 ## CI
 

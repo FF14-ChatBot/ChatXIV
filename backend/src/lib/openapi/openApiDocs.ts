@@ -75,12 +75,20 @@ export function mountPublicOpenApiDocs(router: Router): void {
     res.send(readPublicOpenApiYaml());
   });
 
-  const publicUiSetup = swaggerUi.setup(undefined, {
+  /**
+   * Use `serveFiles` + `setup` per mount. Default `swaggerUi.serve` shares one module-global
+   * `swagger-ui-init.js` payload; the last `setup()` wins, so admin docs would overwrite public.
+   */
+  const publicOpts = {
     swaggerOptions: {
       url: '/v1/openapi.yaml',
     },
-  });
-  const publicSwaggerStack = [...swaggerUi.serve, publicUiSetup] as unknown as RequestHandler[];
+  };
+  const publicUiSetup = swaggerUi.setup(undefined, publicOpts);
+  const publicSwaggerStack = [
+    ...swaggerUi.serveFiles(undefined, publicOpts),
+    publicUiSetup,
+  ] as unknown as RequestHandler[];
   router.use('/docs', chainRequestHandlers(publicSwaggerStack));
 }
 
@@ -90,12 +98,16 @@ export function mountPublicOpenApiDocs(router: Router): void {
  */
 export function createAdminSwaggerUiHandlers(): RequestHandler[] {
   const adminDoc = loadAdminOpenApiDocument();
-  const adminUiSetup = swaggerUi.setup(adminDoc, {
+  const adminOpts = {
     swaggerOptions: {
       persistAuthorization: true,
     },
-  });
-  return [...swaggerUi.serve, adminUiSetup] as unknown as RequestHandler[];
+  };
+  const adminUiSetup = swaggerUi.setup(adminDoc, adminOpts);
+  return [
+    ...swaggerUi.serveFiles(adminDoc, adminOpts),
+    adminUiSetup,
+  ] as unknown as RequestHandler[];
 }
 
 /**
