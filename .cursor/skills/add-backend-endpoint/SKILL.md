@@ -12,7 +12,7 @@ description: >-
 
 1. **Define CDM types** in the appropriate `packages/cdm/src/*.ts` module (e.g. `flags.ts`, `appError.ts`, `usage.ts`, `metrics.ts`) and add a re-export from `index.ts` if you add a new file. Rebuild with `npm run build:cdm`.
 
-2. **Update OpenAPI** — Edit `backend/openapi/openapi.yaml` so paths, schemas, and security match the new route (same PR as the code change). See `backend/README.md` for how the spec is served.
+2. **Update OpenAPI** — Edit `backend/openapi/openapi.public.yaml` and/or `backend/openapi/openapi.admin.yaml` so paths, schemas, and security match the new route (public vs admin; same PR as the code change). See `backend/README.md` for how the specs are served.
 
 3. **Create a router file** (e.g. `backend/src/routes/chat.ts`):
 
