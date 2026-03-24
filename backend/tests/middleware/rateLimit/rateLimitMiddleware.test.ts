@@ -57,8 +57,16 @@ describe('rateLimitMiddleware (factory)', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
-  it('skips rate limit for /docs and subpaths', () => {
-    (req as unknown as { path: string }).path = '/docs/';
+  it('skips rate limit for /v1/docs and subpaths', () => {
+    (req as unknown as { path: string }).path = '/v1/docs/';
+    const mw = rateLimitMiddleware(store, config);
+    mw(req, res, next);
+    expect(store.consume).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('skips rate limit for /v1/admin/docs (prefix /v1/admin)', () => {
+    (req as unknown as { path: string }).path = '/v1/admin/docs/';
     const mw = rateLimitMiddleware(store, config);
     mw(req, res, next);
     expect(store.consume).not.toHaveBeenCalled();

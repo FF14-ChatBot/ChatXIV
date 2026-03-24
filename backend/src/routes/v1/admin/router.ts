@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import type { FeatureFlagService } from '../../../lib/featureFlags/types.js';
 import { AdminAuthMiddleware } from '../../../middleware/adminAuth.js';
+import {
+  chainRequestHandlers,
+  createAdminOpenApiYamlHandler,
+  createAdminSwaggerUiHandlers,
+} from '../../../lib/openapi/openApiDocs.js';
 import { createAdminFlagsRouter } from './flags.js';
 
 /**
@@ -14,6 +19,8 @@ export function createAdminRouter(
   const router = Router();
 
   router.use(authMiddleware.handler);
+  router.get('/openapi.yaml', createAdminOpenApiYamlHandler());
+  router.use('/docs', chainRequestHandlers(createAdminSwaggerUiHandlers()));
   router.use(createAdminFlagsRouter(flagService));
 
   return router;

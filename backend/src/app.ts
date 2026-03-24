@@ -21,9 +21,8 @@ import { securityHeadersMiddleware } from './middleware/securityHeaders.js';
 import { RequestTimeoutMiddleware } from './middleware/requestTimeout.js';
 import { RateLimitMiddleware } from './middleware/rateLimit/rateLimitMiddleware.js';
 import { AdminAuthMiddleware } from './middleware/adminAuth.js';
-import { createFlagsRouter } from './routes/v1/flags.js';
+import { createPublicRouter } from './routes/v1/public/router.js';
 import { createAdminRouter } from './routes/v1/admin/router.js';
-import { registerOpenApiDocs } from './routes/openApiDocs.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();
@@ -33,6 +32,7 @@ export const app = express();
 const requestConfig = container.resolve<RequestConfig>(RequestConfigToken);
 const corsOrigins = container.resolve<string[]>(CorsOriginsToken);
 const flagService = container.resolve<FeatureFlagService>(FeatureFlagServiceToken);
+const adminAuth = container.resolve(AdminAuthMiddleware);
 
 // ── Global middleware ─────────────────────────────────────────────────
 
@@ -66,15 +66,13 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-registerOpenApiDocs(app);
-
 // ── Public routes (/v1) ──────────────────────────────────────────────
 
-app.use('/v1', createFlagsRouter(flagService));
+app.use('/v1', createPublicRouter(flagService));
 
 // ── Admin routes (/v1/admin) — auth enforced by admin router ─────────
 
-app.use('/v1/admin', createAdminRouter(container.resolve(AdminAuthMiddleware), flagService));
+app.use('/v1/admin', createAdminRouter(adminAuth, flagService));
 
 // ── Error handler (must be last) ─────────────────────────────────────
 

@@ -1,0 +1,151 @@
+openapi: 3.0.3
+info:
+  title: ChatXIV API (public)
+  description: |
+    Public HTTP surface for the ChatXIV backend (no admin routes).
+    Update `backend/openapi/openapi.public.yaml` when you change public `/v1` contracts.
+
+    Full API (including admin) is documented in `openapi.admin.yaml` and served at
+    `GET /v1/admin/openapi.yaml` with admin authentication — see `/v1/admin/docs` in the browser
+    (requires `X-Admin-Key`).
+  version: 1.0.0
+
+servers:
+  - url: /
+    description: Same host as this Swagger page (use for Try it out on dev/staging/prod — avoids calling localhost from the browser)
+  - url: https://dev-api.chatxiv.com
+    description: Development API host (when the spec is opened off-site or you want an absolute URL)
+  - url: http://localhost:3000
+    description: Local (browser address bar shows localhost)
+  - url: http://127.0.0.1:3000
+    description: Local numeric loopback (must match the page origin)
+
+tags:
+  - name: Health
+  - name: Feature flags
+  - name: Documentation
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /v1/openapi.yaml:
+    get:
+      tags: [Documentation]
+      summary: Public OpenAPI document (YAML)
+      description: |
+        Returns this public specification only. For the full API (admin routes), use
+        `GET /v1/admin/openapi.yaml` with a valid `X-Admin-Key`.
+      operationId: getOpenApiPublicYaml
+      responses:
+        '200':
+          description: Public OpenAPI YAML document
+          content:
+            application/yaml:
+              schema:
+                type: string
+
+  /v1/flags:
+    get:
+      tags: [Feature flags]
+      summary: List feature flags
+      description: Returns all flags sorted by name (public).
+      operationId: listFeatureFlags
+      responses:
+        '200':
+          description: Sorted flag entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureFlagEntry'
+
+  /v1/flags/{name}:
+    get:
+      tags: [Feature flags]
+      summary: Get one feature flag
+      description: |
+        Returns the flag state. Unknown names return `{ name, enabled: false }` without `updatedAt`.
+      operationId: getFeatureFlag
+      parameters:
+        - $ref: '#/components/parameters/FlagName'
+      responses:
+        '200':
+          description: Flag entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagEntry'
+        '400':
+          description: Invalid flag name format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+components:
+  parameters:
+    FlagName:
+      name: name
+      in: path
+      required: true
+      description: |
+        ASCII letters (any case, including PascalCase), digits, and internal `.`, `_`, or `-`. Must start and end with a letter or digit.
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$'
+        example: MyFeature
+
+  schemas:
+    FeatureFlagEntry:
+      type: object
+      required: [name, enabled]
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+          description: Present when the flag exists in the store; omitted for unknown names on public GET.
+
+    ApiErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - UNAUTHORIZED
+            - VALIDATION_ERROR
+            - RATE_LIMITED
+            - REQUEST_TIMEOUT
+            - PAYLOAD_TOO_LARGE
+            - SOURCE_UNAVAILABLE
+            - NO_SOURCED_ANSWER
+            - REFUSAL
+            - INTERNAL_ERROR
+        message:
+          type: string
+        requestId:
+          type: string
+        stack:
+          type: string
+          description: Present only in non-production environments.
