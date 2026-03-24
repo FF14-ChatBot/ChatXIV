@@ -97,9 +97,11 @@ const STARTER_PROMPT_SLIDE_SEEDS: readonly StarterPromptSlideSeed[] = [
 ];
 
 function toStarterPromptCard(item: StarterPromptSeed): StarterPromptCard {
-  const categories = Array.isArray(item.category) ? item.category : [item.category];
+  const categories: readonly UsageCategoryValue[] = Array.isArray(item.category)
+    ? item.category
+    : [item.category];
   const displayCategory = categories.join(' & ');
-  const firstCategory = categories[0] ?? UsageCategory.UNCATEGORIZED;
+  const firstCategory: UsageCategoryValue = categories[0] ?? UsageCategory.UNCATEGORIZED;
 
   return {
     emoji: USAGE_CATEGORY_EMOJI[firstCategory],
