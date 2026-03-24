@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { getAdsenseClient } from './src/lib/adsense/adsenseConfig.ts';
+import { getAdsenseClient } from './src/lib/adsense/adsenseConfig';
 
 function escapeHtmlAttribute(value: string): string {
   return value
@@ -41,10 +41,6 @@ export default defineConfig(() => {
           changeOrigin: true,
         },
         '/health': {
-          target: 'http://localhost:3000',
-          changeOrigin: true,
-        },
-        '/docs': {
           target: 'http://localhost:3000',
           changeOrigin: true,
         },
