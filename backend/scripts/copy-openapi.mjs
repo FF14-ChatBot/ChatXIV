@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.join(__dirname, '..');
-const srcFile = path.join(backendRoot, 'openapi', 'openapi.yaml');
 const destDir = path.join(backendRoot, 'dist', 'openapi');
-const destFile = path.join(destDir, 'openapi.yaml');
+const specs = ['openapi.public.yaml', 'openapi.admin.yaml'];
 
 fs.mkdirSync(destDir, { recursive: true });
-fs.copyFileSync(srcFile, destFile);
+for (const name of specs) {
+  fs.copyFileSync(path.join(backendRoot, 'openapi', name), path.join(destDir, name));
+}

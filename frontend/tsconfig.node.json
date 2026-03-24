@@ -9,5 +9,10 @@
     "outDir": "dist-node",
     "rootDir": "."
   },
-  "include": ["vite.config.ts", "vitest.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "src/lib/adsense/adsenseConfig.ts",
+    "src/lib/adsense/adsensePublisher.ts"
+  ]
 }

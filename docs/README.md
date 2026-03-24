@@ -19,7 +19,7 @@ Succinct guide for running, linting, testing, and building the repo.
 
 ## How to run
 
-- **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: Swagger UI at `http://localhost:3000/docs/`, OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`. See [backend/README.md](../backend/README.md) for curl, Postman, and headers.
+- **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: public Swagger UI at `http://localhost:3000/v1/docs/`, admin Swagger UI at `http://localhost:3000/v1/admin/docs/` (requires `X-Admin-Key`); public OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`, full YAML at `http://localhost:3000/v1/admin/openapi.yaml` (with admin key). See [backend/README.md](../backend/README.md) for curl, Postman, and headers.
 - **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`. No **`node --watch`**: **`src/`** updates hot-reload via Vite; restart the dev server yourself after **`vite.config.ts`** or **`scripts/dev.mjs`** changes. The bootstrap **retries binding 5173** briefly if the port is still releasing. If **5173** stays busy, stop the other process.
 - **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (after root `npm install`)
 
@@ -46,6 +46,7 @@ Succinct guide for running, linting, testing, and building the repo.
 - Root (both): `npm run build` (builds backend then frontend)
 - Root (per side): `npm run build:backend` or `npm run build:frontend`
 - Per package: `cd backend && npm run build`; `cd frontend && npm run build`
+- **Clean outputs:** `npm run clean` removes `dist`, `dist-node`, and `coverage` under backend, frontend, and CDM (does **not** delete `node_modules`). Use when you suspect stale compiled files before rebuilding. To fully reset dependencies, delete **`node_modules`** at the repo root (and any workspace copies) and run **`npm ci`**.
 
 ## CI
 
@@ -87,7 +88,7 @@ Access sits **in front of** the tunnel hostname on Cloudflare’s edge: users si
 
 ### Local app config (Vite + env)
 
-- **[`frontend/vite.config.ts`](../frontend/vite.config.ts):** **`server.allowedHosts: ['.chatxiv.com']`** for tunnel **`Host`**; **`server.host: true`** so **`cloudflared`** → **`127.0.0.1:5173`** does not hit an IPv6-only bind (**502**). **`server.proxy`** maps **`/v1`**, **`/health`**, **`/docs`** → **`localhost:3000`** (no **`/api`** prefix). **[`frontend/scripts/dev.mjs`](../frontend/scripts/dev.mjs)** repeats **`server`** on **`createServer()`** so merge does not drop **`host`** / **`allowedHosts`** while proxy/port still come from the file.
+- **[`frontend/vite.config.ts`](../frontend/vite.config.ts):** **`server.allowedHosts: ['.chatxiv.com']`** for tunnel **`Host`**; **`server.host: true`** so **`cloudflared`** → **`127.0.0.1:5173`** does not hit an IPv6-only bind (**502**). **`server.proxy`** maps **`/v1`**, **`/health`** → **`localhost:3000`** (no **`/api`** prefix). **[`frontend/scripts/dev.mjs`](../frontend/scripts/dev.mjs)** repeats **`server`** on **`createServer()`** so merge does not drop **`host`** / **`allowedHosts`** while proxy/port still come from the file.
 - **`frontend/.env`:** **`VITE_CHATXIV_BACKEND_URL`** = your **https** API tunnel URL (e.g. `https://dev-alex-api.chatxiv.com`). Optional **AdSense** publisher + slot ids live in **`frontend/src/lib/adsense/adsenseConfig.ts`** — see **`frontend/.env.example`**.
 
 #### Tunnel: public URL works but UI is unstyled (localhost looks fine)
@@ -156,6 +157,7 @@ The secret proves the body came from GitHub. **Access** on the tunnel hostname b
 
 - **[Design Documents](design-documents)** — Contains initial designs and scope of this project. Encrypted for the owners of the project only.
 - **[git-crypt setup](git-crypt-setup.md)** — How `docs/design-documents/` encryption works and how to get access.
+- **[Task specs and implementation status](tasks/README.md)** — Backend/frontend/CDM milestone docs under `docs/tasks/` plus a **repo scan** of what is done vs remaining.
 - Other docs live under `docs/`.
 
 ## Project structure

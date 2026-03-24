@@ -38,4 +38,23 @@ describe('admin router', () => {
     expect(res.status).toBe(200);
     expect(service.getAll).toHaveBeenCalledOnce();
   });
+
+  it('GET /openapi.yaml returns full OpenAPI YAML when authenticated', async () => {
+    const strategy = createMockAuthStrategy(true);
+    const service = createMockFeatureFlagService();
+    const res = await request(buildApp(strategy, service)).get('/openapi.yaml');
+    expect(res.status).toBe(200);
+    expect(res.type).toMatch(/yaml/);
+    expect(res.text).toContain('ChatXIV API (full)');
+    expect(res.text).toContain('/v1/admin/flags');
+  });
+
+  it('GET /docs/ serves Swagger UI when authenticated', async () => {
+    const strategy = createMockAuthStrategy(true);
+    const service = createMockFeatureFlagService();
+    const res = await request(buildApp(strategy, service)).get('/docs/');
+    expect(res.status).toBe(200);
+    expect(res.type).toMatch(/html/);
+    expect(res.text.toLowerCase()).toContain('swagger');
+  });
 });

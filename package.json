@@ -15,6 +15,7 @@
     "build": "npm run build:cdm && npm run build --prefix backend && npm run build --prefix frontend",
     "build:backend": "npm run build --prefix backend",
     "build:frontend": "npm run build --prefix frontend",
+    "clean": "node scripts/clean.mjs",
     "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
     "lint:backend": "npm run lint --prefix backend",
     "lint:frontend": "npm run lint --prefix frontend",

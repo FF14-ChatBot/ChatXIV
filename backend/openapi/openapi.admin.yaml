@@ -1,9 +1,13 @@
 openapi: 3.0.3
 info:
-  title: ChatXIV API
+  title: ChatXIV API (full)
   description: |
-    Versioned HTTP API for the ChatXIV backend. Update `backend/openapi/openapi.yaml` whenever you
-    change request/response shapes or routes under `/v1`.
+    Complete HTTP API for the ChatXIV backend (public + admin).
+
+    **Public-only** spec for tools that must not see admin paths: `GET /v1/openapi.yaml`.
+
+    **This document** is returned from `GET /v1/admin/openapi.yaml` (requires `X-Admin-Key`).
+    Update `backend/openapi/openapi.admin.yaml` when you change any `/v1` contract.
   version: 1.0.0
 
 servers:
@@ -44,16 +48,38 @@ paths:
   /v1/openapi.yaml:
     get:
       tags: [Documentation]
-      summary: OpenAPI document (YAML)
-      description: Raw OpenAPI 3 spec for tools (Postman import, codegen, etc.).
-      operationId: getOpenApiYaml
+      summary: Public OpenAPI document (YAML)
+      description: Returns the **public** specification only (no admin paths).
+      operationId: getOpenApiPublicYaml
       responses:
         '200':
-          description: OpenAPI YAML document
+          description: Public OpenAPI YAML document
           content:
             application/yaml:
               schema:
                 type: string
+
+  /v1/admin/openapi.yaml:
+    get:
+      tags: [Documentation]
+      summary: Full OpenAPI document (YAML)
+      description: Same content as this file — admin + public routes. Requires admin authentication.
+      operationId: getOpenApiAdminYaml
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Full OpenAPI YAML document
+          content:
+            application/yaml:
+              schema:
+                type: string
+        '401':
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 
   /v1/flags:
     get:
