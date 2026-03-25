@@ -6,6 +6,7 @@ import type { FeatureFlagRow } from '../persistence/sqlite/models/featureFlagRow
 function rowToRecord(row: FeatureFlagRow): FeatureFlagRecord {
   return {
     enabled: row.enabled === 1,
+    createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
   };
 }

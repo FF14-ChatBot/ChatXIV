@@ -30,23 +30,55 @@ describe('GET /flags', () => {
 
   it('returns entries sorted by name', async () => {
     service.getAll.mockResolvedValue([
-      { name: 'feature-b', enabled: false, updatedAt: '2026-01-01T00:00:00.000Z' },
-      { name: 'feature-a', enabled: true, updatedAt: '2026-01-01T00:00:00.000Z' },
+      {
+        name: 'feature-b',
+        enabled: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        name: 'feature-a',
+        enabled: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
     ]);
     const res = await request(buildApp(service)).get('/flags');
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
-      { name: 'feature-a', enabled: true, updatedAt: '2026-01-01T00:00:00.000Z' },
-      { name: 'feature-b', enabled: false, updatedAt: '2026-01-01T00:00:00.000Z' },
+      {
+        name: 'feature-a',
+        enabled: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        name: 'feature-b',
+        enabled: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
     ]);
   });
 
   it('includes metadata on each entry', async () => {
     service.getAll.mockResolvedValue([
-      { name: 'x', enabled: true, updatedAt: '2026-01-01T00:00:00.000Z' },
+      {
+        name: 'x',
+        enabled: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
     ]);
     const res = await request(buildApp(service)).get('/flags');
-    expect(res.body).toEqual([{ name: 'x', enabled: true, updatedAt: '2026-01-01T00:00:00.000Z' }]);
+    expect(res.body).toEqual([
+      {
+        name: 'x',
+        enabled: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
   });
 });
 
@@ -61,6 +93,7 @@ describe('GET /flags/:name', () => {
     service.getEntry.mockResolvedValue({
       name: 'my.feature',
       enabled: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     });
     const res = await request(buildApp(service)).get('/flags/my.feature');
@@ -68,6 +101,7 @@ describe('GET /flags/:name', () => {
     expect(res.body).toEqual({
       name: 'my.feature',
       enabled: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     });
     expect(service.getEntry).toHaveBeenCalledWith('my.feature');
@@ -77,6 +111,7 @@ describe('GET /flags/:name', () => {
     service.getEntry.mockResolvedValue({
       name: 'my-feature',
       enabled: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     });
     const res = await request(buildApp(service)).get('/flags/my-feature');
@@ -84,6 +119,7 @@ describe('GET /flags/:name', () => {
     expect(res.body).toEqual({
       name: 'my-feature',
       enabled: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     });
   });
@@ -99,6 +135,7 @@ describe('GET /flags/:name', () => {
     service.getEntry.mockResolvedValue({
       name: 'MyFeature',
       enabled: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     });
     const res = await request(buildApp(service)).get('/flags/MyFeature');

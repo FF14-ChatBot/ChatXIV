@@ -16,7 +16,7 @@ Succinct guide for running, linting, testing, and building the repo.
 3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored.
 4. Frontend env: create `frontend/.env` (and/or `frontend/.env.production`) for Vite-exposed variables (must start with `VITE_`), e.g. `VITE_CHATXIV_BACKEND_URL`.
 5. Optional repo root **`.env`:** copy [`.env.example`](../.env.example) if you use **`npm run webhook:listen`**. Not loaded by Vite or the backend.
-6. **Observability (metrics + usage) uses SQLite** at `{DATA_DIR}/observability.db` (`DATA_DIR` defaults to `./data`). See [Observability-SQLite-Persistence](tasks/backend/Observability-SQLite-Persistence.md) and `backend/.env.example`. Uses Node’s built-in [`node:sqlite`](https://nodejs.org/download//nightly/v24.0.0-nightly202412035ef4985175/docs/api/sqlite.html) module (no native addon toolchain required).
+6. **Backend persistence uses SQLite** at `{DATA_DIR}/app.db` (`DATA_DIR` defaults to `./data`). See [Observability-SQLite-Persistence](tasks/backend/Observability-SQLite-Persistence.md) and `backend/.env.example`. Uses Node’s built-in [`node:sqlite`](https://nodejs.org/download//nightly/v24.0.0-nightly202412035ef4985175/docs/api/sqlite.html) module (no native addon toolchain required).
 
 ## How to run
 
