@@ -4,7 +4,7 @@ Succinct guide for running, linting, testing, and building the repo.
 
 ## What you'll need
 
-- **Node 20+** and **npm**
+- **Node 24+** and **npm**
 - Optional: **git-crypt** if you need access to encrypted design docs in `docs/design-documents/` (see [git-crypt setup](git-crypt-setup.md))
 
 ## First-time setup

@@ -109,6 +109,9 @@
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.59.0"
   },
+  "engines": {
+    "node": ">=24"
+  },
   "pnpm": {
     "overrides": {
       "vite": "6.4.1"
