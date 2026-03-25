@@ -13,7 +13,7 @@ Succinct guide for running, linting, testing, and building the repo.
 2. Install dependencies:
    - **Preferred:** `npm install` at the repo root (workspaces install backend, frontend, and `packages/*`).
    - **Or per-package:** `cd backend && npm install`, `cd frontend && npm install`, etc.
-3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored.
+3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored. If you enable OIDC login (see `backend/.env.example`), set **`FRONTEND_ORIGIN`** to the SPA’s public URL (e.g. `http://localhost:5173` in dev, `https://www.chatxiv.com` in production) so the browser returns there after OAuth instead of the API host (`/` on port 3000).
 4. Frontend env: create `frontend/.env` (and/or `frontend/.env.production`) for Vite-exposed variables (must start with `VITE_`), e.g. `VITE_CHATXIV_BACKEND_URL`.
 5. Optional repo root **`.env`:** copy [`.env.example`](../.env.example) if you use **`npm run webhook:listen`**. Not loaded by Vite or the backend.
 6. **Backend persistence uses SQLite** at `{DATA_DIR}/app.db` (`DATA_DIR` defaults to `./data`). See [Observability-SQLite-Persistence](tasks/backend/Observability-SQLite-Persistence.md) and `backend/.env.example`. Uses Node’s built-in [`node:sqlite`](https://nodejs.org/download//nightly/v24.0.0-nightly202412035ef4985175/docs/api/sqlite.html) module (no native addon toolchain required).

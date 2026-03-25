@@ -6,10 +6,17 @@ import {
   getDataDir,
   getAnthropicApiKey,
   getAnthropicModel,
-  getAdminApiKey,
   getLogLevel,
   getDebugMode,
   getAppDatabasePath,
+  getOidcIssuer,
+  getOidcClientId,
+  getOidcClientSecret,
+  getOidcRedirectUri,
+  getFrontendOrigin,
+  getOauthSuccessRedirectUrl,
+  getSessionSecret,
+  getBootstrapAdminSubs,
 } from '@src/lib/config/env.js';
 
 describe('lib/config/env', () => {
@@ -147,38 +154,6 @@ describe('lib/config/env', () => {
     });
   });
 
-  describe('getAdminApiKey', () => {
-    it('returns undefined when unset', () => {
-      delete process.env.ADMIN_API_KEY;
-      expect(getAdminApiKey()).toBeUndefined();
-    });
-
-    it('returns undefined for empty string', () => {
-      process.env.ADMIN_API_KEY = '';
-      expect(getAdminApiKey()).toBeUndefined();
-    });
-
-    it('returns the key when set', () => {
-      process.env.ADMIN_API_KEY = 'my-admin-key';
-      expect(getAdminApiKey()).toBe('my-admin-key');
-    });
-
-    it('returns undefined for whitespace-only value', () => {
-      process.env.ADMIN_API_KEY = '   \t  ';
-      expect(getAdminApiKey()).toBeUndefined();
-    });
-
-    it('trims surrounding whitespace', () => {
-      process.env.ADMIN_API_KEY = '  my-admin-key  ';
-      expect(getAdminApiKey()).toBe('my-admin-key');
-    });
-
-    it('strips UTF-8 BOM when present', () => {
-      process.env.ADMIN_API_KEY = '\uFEFFmy-admin-key';
-      expect(getAdminApiKey()).toBe('my-admin-key');
-    });
-  });
-
   describe('getLogLevel', () => {
     it('returns "info" by default', () => {
       delete process.env.LOG_LEVEL;
@@ -223,6 +198,142 @@ describe('lib/config/env', () => {
     it.each(['false', '0', 'nope'])('returns false when set to %j', (value) => {
       process.env.DEBUG_MODE = value;
       expect(getDebugMode()).toBe(false);
+    });
+  });
+
+  describe('getOidcIssuer', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.OIDC_ISSUER;
+      expect(getOidcIssuer()).toBeUndefined();
+    });
+
+    it('returns undefined for empty string', () => {
+      process.env.OIDC_ISSUER = '';
+      expect(getOidcIssuer()).toBeUndefined();
+    });
+
+    it('returns the value when set', () => {
+      process.env.OIDC_ISSUER = 'https://accounts.google.com';
+      expect(getOidcIssuer()).toBe('https://accounts.google.com');
+    });
+  });
+
+  describe('getOidcClientId', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.OIDC_CLIENT_ID;
+      expect(getOidcClientId()).toBeUndefined();
+    });
+
+    it('returns the value when set', () => {
+      process.env.OIDC_CLIENT_ID = 'my-client-id';
+      expect(getOidcClientId()).toBe('my-client-id');
+    });
+  });
+
+  describe('getOidcClientSecret', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.OIDC_CLIENT_SECRET;
+      expect(getOidcClientSecret()).toBeUndefined();
+    });
+
+    it('returns the value when set', () => {
+      process.env.OIDC_CLIENT_SECRET = 'secret-123';
+      expect(getOidcClientSecret()).toBe('secret-123');
+    });
+  });
+
+  describe('getFrontendOrigin', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.FRONTEND_ORIGIN;
+      expect(getFrontendOrigin()).toBeUndefined();
+    });
+
+    it('returns normalized origin (no path)', () => {
+      process.env.FRONTEND_ORIGIN = 'https://www.chatxiv.com/app/';
+      expect(getFrontendOrigin()).toBe('https://www.chatxiv.com');
+    });
+
+    it('accepts http with port', () => {
+      process.env.FRONTEND_ORIGIN = 'http://localhost:5173';
+      expect(getFrontendOrigin()).toBe('http://localhost:5173');
+    });
+
+    it('returns undefined for invalid URL', () => {
+      process.env.FRONTEND_ORIGIN = 'not-a-url';
+      expect(getFrontendOrigin()).toBeUndefined();
+    });
+
+    it('returns undefined for non-http(s) schemes', () => {
+      process.env.FRONTEND_ORIGIN = 'javascript:alert(1)';
+      expect(getFrontendOrigin()).toBeUndefined();
+    });
+  });
+
+  describe('getOauthSuccessRedirectUrl', () => {
+    it('returns / when FRONTEND_ORIGIN unset', () => {
+      delete process.env.FRONTEND_ORIGIN;
+      expect(getOauthSuccessRedirectUrl()).toBe('/');
+    });
+
+    it('returns frontend root when FRONTEND_ORIGIN set', () => {
+      process.env.FRONTEND_ORIGIN = 'http://localhost:5173';
+      expect(getOauthSuccessRedirectUrl()).toBe('http://localhost:5173/');
+    });
+  });
+
+  describe('getOidcRedirectUri', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.OIDC_REDIRECT_URI;
+      expect(getOidcRedirectUri()).toBeUndefined();
+    });
+
+    it('returns env value when set', () => {
+      process.env.OIDC_REDIRECT_URI = 'https://example.com/callback';
+      expect(getOidcRedirectUri()).toBe('https://example.com/callback');
+    });
+  });
+
+  describe('getSessionSecret', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.SESSION_SECRET;
+      expect(getSessionSecret()).toBeUndefined();
+    });
+
+    it('returns the value when set', () => {
+      process.env.SESSION_SECRET = 'my-secret';
+      expect(getSessionSecret()).toBe('my-secret');
+    });
+  });
+
+  describe('getBootstrapAdminSubs', () => {
+    it('returns empty array when unset', () => {
+      delete process.env.BOOTSTRAP_ADMIN_SUBS;
+      expect(getBootstrapAdminSubs()).toEqual([]);
+    });
+
+    it('returns empty array for empty string', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = '';
+      expect(getBootstrapAdminSubs()).toEqual([]);
+    });
+
+    it('returns empty array for whitespace-only', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = '   ';
+      expect(getBootstrapAdminSubs()).toEqual([]);
+    });
+
+    it('splits comma-separated values', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = 'sub1,sub2,sub3';
+      expect(getBootstrapAdminSubs()).toEqual(['sub1', 'sub2', 'sub3']);
+    });
+
+    it('trims whitespace around values', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = ' sub1 , sub2 ';
+      expect(getBootstrapAdminSubs()).toEqual(['sub1', 'sub2']);
+    });
+
+    it('filters out empty segments', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = 'sub1,,sub2,';
+      expect(getBootstrapAdminSubs()).toEqual(['sub1', 'sub2']);
     });
   });
 });

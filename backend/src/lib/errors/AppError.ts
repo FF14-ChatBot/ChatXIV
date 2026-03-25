@@ -19,6 +19,10 @@ export class AppError extends Error implements NormalizableError {
     return new AppError(401, ERROR_CODES.UNAUTHORIZED, message, requestId);
   }
 
+  static forbidden(message: string, requestId?: string): AppError {
+    return new AppError(403, ERROR_CODES.FORBIDDEN, message, requestId);
+  }
+
   static validation(message: string, requestId?: string): AppError {
     return new AppError(400, ERROR_CODES.VALIDATION_ERROR, message, requestId);
   }

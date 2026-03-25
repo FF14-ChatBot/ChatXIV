@@ -6,8 +6,8 @@ info:
     Update `backend/openapi/openapi.public.yaml` when you change public `/v1` contracts.
 
     Full API (including admin) is documented in `openapi.admin.yaml` and served at
-    `GET /v1/admin/openapi.yaml` with admin authentication — see `/v1/admin/docs` in the browser
-    (requires `X-Admin-Key`).
+    `GET /v1/admin/openapi.yaml` — see `/v1/admin/docs` in the browser
+    (requires admin session cookie).
   version: 1.0.0
 
 servers:
@@ -50,7 +50,7 @@ paths:
       summary: Public OpenAPI document (YAML)
       description: |
         Returns this public specification only. For the full API (admin routes), use
-        `GET /v1/admin/openapi.yaml` with a valid `X-Admin-Key`.
+        `GET /v1/admin/openapi.yaml` (requires admin session).
       operationId: getOpenApiPublicYaml
       responses:
         '200':

@@ -9,17 +9,21 @@ import { setLogger, logger } from './lib/logger/instance';
 import { createConsoleLogger } from './lib/logger/consoleLogger';
 import { setChatxivApiClient } from './clients/chatxivApi/instance';
 import { createChatxivApiClient } from './clients/chatxivApi/client';
+import { setAuthApiClient } from './clients/authApi/instance';
+import { createAuthApiClient } from './clients/authApi/client';
 import { fetchFeatureFlagEntry } from './clients/chatxivApi/featureFlags';
 import { ApiClientError } from './clients/chatxivApi/errors/ApiClientError';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { GlobalErrorHandler } from './components/GlobalErrorHandler';
 import { ThemeProvider } from './theme/ThemeProvider';
+import { AuthProvider } from './features/auth/AuthProvider';
 import App from './App';
 import { getAdsenseClient } from './lib/adsense/adsenseRegistry.js';
 import { loadAdsenseScript } from './lib/adsense/loadAdsenseScript';
 import './index.css';
 
 setChatxivApiClient(createChatxivApiClient());
+setAuthApiClient(createAuthApiClient());
 setLogger(createConsoleLogger());
 
 async function resolveIsProductLiveAtBoot(): Promise<boolean> {
@@ -65,7 +69,9 @@ async function boot(): Promise<void> {
         <GlobalErrorHandler>
           <BrowserRouter>
             <ThemeProvider>
-              <App isProductLive={isProductLive} />
+              <AuthProvider>
+                <App isProductLive={isProductLive} />
+              </AuthProvider>
             </ThemeProvider>
           </BrowserRouter>
         </GlobalErrorHandler>

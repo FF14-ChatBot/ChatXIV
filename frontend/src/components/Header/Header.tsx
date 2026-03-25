@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquarePlus, MoreVertical } from 'lucide-react';
+import { LogIn, LogOut, MessageSquarePlus, MoreVertical } from 'lucide-react';
 import { MammetLucideMark } from '../MammetLucideMark/MammetLucideMark';
 import { OutlineButton } from '../ui/Button';
 import { GhostButton } from '../ui/Button';
@@ -9,12 +9,14 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '../ui/DropdownMenu';
 import { useChatSession } from '../../features/chat/ChatSessionContext';
+import { useAuth } from '../../features/auth/AuthProvider';
 import { useTheme } from '../../hooks/useTheme';
 import dropdownMenuStyles from '../ui/DropdownMenu/DropdownMenu.module.css';
 import { ThemeToggle } from './ThemeToggle';
@@ -22,10 +24,24 @@ import styles from './Header.module.css';
 
 const COMPACT_HEADER_NAV_MQ = '(max-width: 639px)';
 
+function getInitials(displayName?: string, email?: string): string {
+  if (displayName) {
+    return displayName
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((s) => s[0])
+      .join('')
+      .toUpperCase();
+  }
+  if (email) return email[0].toUpperCase();
+  return '?';
+}
+
 export function Header() {
   const { pathname } = useLocation();
   const { themePreset, setThemePreset } = useTheme();
   const { startNewChat } = useChatSession();
+  const { user, login, logout } = useAuth();
   const [compactNav, setCompactNav] = useState(false);
 
   useEffect(() => {
@@ -80,11 +96,30 @@ export function Header() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <GhostButton size="icon" aria-label="More options">
-                <MoreVertical />
-              </GhostButton>
+              {user ? (
+                <button type="button" className={styles.avatarButton} aria-label="User menu">
+                  <span className={styles.avatarInitials}>
+                    {getInitials(user.displayName, user.email)}
+                  </span>
+                </button>
+              ) : (
+                <GhostButton size="icon" aria-label="More options">
+                  <MoreVertical />
+                </GhostButton>
+              )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className={dropdownMenuStyles.contentAlignEnd}>
+              {user && (
+                <>
+                  <div className={styles.userInfo}>
+                    <span className={styles.userName}>{user.displayName ?? user.email}</span>
+                    {user.displayName && user.email && (
+                      <span className={styles.userEmail}>{user.email}</span>
+                    )}
+                  </div>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger chevronSide="leading">Themes</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className={dropdownMenuStyles.contentAlignEnd}>
@@ -101,6 +136,23 @@ export function Header() {
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuItem>Help</DropdownMenuItem>
               <DropdownMenuItem>About</DropdownMenuItem>
+              {user ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => void logout()}>
+                    <LogOut className={styles.menuIcon} aria-hidden />
+                    Sign out
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={login}>
+                    <LogIn className={styles.menuIcon} aria-hidden />
+                    Sign in
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>

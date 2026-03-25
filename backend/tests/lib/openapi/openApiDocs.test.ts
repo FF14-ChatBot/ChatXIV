@@ -14,29 +14,20 @@ import {
   registerOpenApiDocs,
 } from '@src/lib/openapi/openApiDocs.js';
 import { readFileSync } from 'node:fs';
-import type { AdminAuthMiddleware } from '@src/middleware/adminAuth.js';
 import { AppError } from '@src/lib/errors/AppError.js';
 import { errorHandler } from '@src/middleware/errorHandler.js';
 
-function noopAdminAuth(): AdminAuthMiddleware {
-  return {
-    handler: (_req: Request, _res: Response, next: NextFunction) => {
-      next();
-    },
-  } as AdminAuthMiddleware;
-}
+const noopAdminGuard: RequestHandler = (_req, _res, next) => {
+  next();
+};
 
-function rejectingAdminAuth(): AdminAuthMiddleware {
-  return {
-    handler: (_req: Request, _res: Response, next: NextFunction) => {
-      next(AppError.unauthorized('Valid admin credentials required', 'test-req-id'));
-    },
-  } as AdminAuthMiddleware;
-}
+const rejectingAdminGuard: RequestHandler = (_req, _res, next) => {
+  next(AppError.unauthorized('Valid admin credentials required', 'test-req-id'));
+};
 
-function buildApp(adminAuth: AdminAuthMiddleware): express.Express {
+function buildApp(adminGuard: RequestHandler): express.Express {
   const app = express();
-  registerOpenApiDocs(app, adminAuth);
+  registerOpenApiDocs(app, adminGuard);
   app.use(errorHandler());
   return app;
 }
@@ -64,7 +55,7 @@ describe('OpenAPI docs', () => {
   });
 
   it('GET /v1/openapi.yaml returns public YAML without admin paths', async () => {
-    const res = await request(buildApp(noopAdminAuth())).get('/v1/openapi.yaml');
+    const res = await request(buildApp(noopAdminGuard)).get('/v1/openapi.yaml');
     expect(res.status).toBe(200);
     expect(res.type).toMatch(/yaml/);
     expect(res.text).toContain('openapi: 3.0.3');
@@ -74,32 +65,32 @@ describe('OpenAPI docs', () => {
   });
 
   it('GET /v1/docs/ serves Swagger UI', async () => {
-    const res = await request(buildApp(noopAdminAuth())).get('/v1/docs/');
+    const res = await request(buildApp(noopAdminGuard)).get('/v1/docs/');
     expect(res.status).toBe(200);
     expect(res.type).toMatch(/html/);
     expect(res.text.toLowerCase()).toContain('swagger');
   });
 
   it('GET /v1/docs/swagger-ui-init.js does not embed admin spec (isolated from /v1/admin/docs)', async () => {
-    const res = await request(buildApp(noopAdminAuth())).get('/v1/docs/swagger-ui-init.js');
+    const res = await request(buildApp(noopAdminGuard)).get('/v1/docs/swagger-ui-init.js');
     expect(res.status).toBe(200);
     expect(res.type).toMatch(/javascript/);
     expect(res.text).not.toContain('/v1/admin/flags');
   });
 
   it('GET /v1/admin/docs/swagger-ui-init.js embeds admin paths when authorized', async () => {
-    const res = await request(buildApp(noopAdminAuth())).get('/v1/admin/docs/swagger-ui-init.js');
+    const res = await request(buildApp(noopAdminGuard)).get('/v1/admin/docs/swagger-ui-init.js');
     expect(res.status).toBe(200);
     expect(res.text).toContain('/v1/admin/flags');
   });
 
   it('GET /v1/admin/docs/ returns 401 when admin auth rejects', async () => {
-    const res = await request(buildApp(rejectingAdminAuth())).get('/v1/admin/docs/');
+    const res = await request(buildApp(rejectingAdminGuard)).get('/v1/admin/docs/');
     expect(res.status).toBe(401);
   });
 
   it('GET /v1/admin/docs/ serves Swagger UI when admin auth passes', async () => {
-    const res = await request(buildApp(noopAdminAuth())).get('/v1/admin/docs/');
+    const res = await request(buildApp(noopAdminGuard)).get('/v1/admin/docs/');
     expect(res.status).toBe(200);
     expect(res.type).toMatch(/html/);
     expect(res.text.toLowerCase()).toContain('swagger');

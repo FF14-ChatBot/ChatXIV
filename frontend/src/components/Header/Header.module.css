@@ -106,6 +106,71 @@
   margin-right: 0.5rem;
 }
 
+.avatarButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--primary) 50%, transparent);
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--foreground);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.avatarButton:hover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.avatarButton:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.avatarInitials {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.375rem 0.5rem;
+}
+
+.userName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userEmail {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
 /* Lockup already links home; hiding the duplicate avoids crowding. When the Home link is
    display:none it is removed from the grid — keep two columns so nav stays end-aligned
    instead of auto-placing into the old center track (which overlapped ChatXIV). */

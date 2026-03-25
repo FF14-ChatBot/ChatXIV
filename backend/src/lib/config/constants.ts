@@ -19,12 +19,22 @@ export const ENV_KEYS = {
   ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
   ANTHROPIC_MODEL: 'ANTHROPIC_MODEL',
   DATA_DIR: 'DATA_DIR',
-  ADMIN_API_KEY: 'ADMIN_API_KEY',
+  OIDC_ISSUER: 'OIDC_ISSUER',
+  OIDC_CLIENT_ID: 'OIDC_CLIENT_ID',
+  OIDC_CLIENT_SECRET: 'OIDC_CLIENT_SECRET',
+  OIDC_REDIRECT_URI: 'OIDC_REDIRECT_URI',
+  /** SPA base URL for redirects after OAuth (e.g. http://localhost:5173, https://www.chatxiv.com). */
+  FRONTEND_ORIGIN: 'FRONTEND_ORIGIN',
+  SESSION_SECRET: 'SESSION_SECRET',
+  BOOTSTRAP_ADMIN_SUBS: 'BOOTSTRAP_ADMIN_SUBS',
 } as const;
+
+/** Cookie name for the signed session ID. */
+export const SESSION_COOKIE = 'chatxiv_sid' as const;
 
 /** Header and query param names that must be redacted in debug payloads (TR-19a). */
 export const REDACT = {
-  HEADER_NAMES: ['authorization', 'x-api-key', 'x-admin-key', 'api-key', 'cookie'] as const,
+  HEADER_NAMES: ['authorization', 'x-api-key', 'api-key', 'cookie'] as const,
   QUERY_PARAMS: ['key', 'token', 'api_key', 'apikey', 'auth'] as const,
 } as const;
 
