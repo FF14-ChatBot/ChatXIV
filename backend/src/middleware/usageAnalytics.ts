@@ -8,7 +8,14 @@ import {
 } from '../lib/observability/usageAnalytics/types.js';
 import { UsageStoreToken } from '../lib/di/container.js';
 
-/** Records usage by category on response finish. Must run after requestContextMiddleware so requestId is available. Handlers set res.locals.usageCategory when they know the category. */
+/**
+ * Records usage by category on response finish when a handler opts in.
+ * Must run after requestContextMiddleware so requestId is available.
+ *
+ * Chat / RAG routes (once implemented) set `res.locals.usageCategory` to a CDM `UsageCategory`.
+ * Flags, docs, health, etc. leave it unset — no row is written. `OTHER` / uncategorized is not
+ * persisted from middleware so traffic is not inflated before product routes exist.
+ */
 @injectable()
 export class UsageAnalyticsMiddleware {
   constructor(@inject(UsageStoreToken) private readonly usageStore: UsageStore) {}
@@ -17,11 +24,17 @@ export class UsageAnalyticsMiddleware {
   handler = (_req: Request, res: Response, next: NextFunction): void => {
     res.on('finish', () => {
       const raw = res.locals.usageCategory;
-      const category = isUsageCategory(raw) ? raw : UsageCategory.UNCATEGORIZED;
+      if (raw === undefined || !isUsageCategory(raw) || raw === UsageCategory.UNCATEGORIZED) {
+        return;
+      }
 
       const ctx = requestContext.get();
       const requestId = ctx?.requestId ?? 'unknown';
-      this.usageStore.record({ category, requestId, timestamp: Date.now() });
+      this.usageStore.record({
+        category: raw,
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
     });
 
     next();

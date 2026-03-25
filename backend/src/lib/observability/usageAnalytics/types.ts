@@ -7,7 +7,8 @@ export { UsageCategory, USAGE_CATEGORIES };
 export interface UsageRecord {
   category: UsageCategory;
   requestId: string;
-  timestamp: number;
+  /** ISO 8601 UTC (`Date.prototype.toISOString()`), stored as TEXT in SQLite. */
+  timestamp: string;
 }
 
 /** Usage store interface. Swap implementation at app boot for a different sink (e.g. SQLite). */

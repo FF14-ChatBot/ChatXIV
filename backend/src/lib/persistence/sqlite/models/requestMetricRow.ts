@@ -4,5 +4,5 @@ export type RequestMetricRow = {
   route: string;
   status_code: number;
   duration_ms: number;
-  recorded_at: number;
+  recorded_at: string;
 };
