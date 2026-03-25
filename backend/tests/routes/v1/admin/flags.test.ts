@@ -33,19 +33,34 @@ describe('admin flags routes', () => {
 
     it('returns entries with metadata', async () => {
       service.getAll.mockResolvedValue([
-        { name: 'feature-x', enabled: true, updatedAt: '2026-03-19T00:00:00.000Z' },
+        {
+          name: 'feature-x',
+          enabled: true,
+          createdAt: '2026-03-19T00:00:00.000Z',
+          updatedAt: '2026-03-19T00:00:00.000Z',
+        },
       ]);
       const res = await request(buildApp(service)).get('/flags');
       expect(res.status).toBe(200);
       expect(res.body).toEqual([
-        { name: 'feature-x', enabled: true, updatedAt: '2026-03-19T00:00:00.000Z' },
+        {
+          name: 'feature-x',
+          enabled: true,
+          createdAt: '2026-03-19T00:00:00.000Z',
+          updatedAt: '2026-03-19T00:00:00.000Z',
+        },
       ]);
     });
   });
 
   describe('PUT /flags/:name', () => {
     it('calls service.setFlag and returns the entry', async () => {
-      const entry = { name: 'new-flag', enabled: true, updatedAt: '2026-03-19T00:00:00.000Z' };
+      const entry = {
+        name: 'new-flag',
+        enabled: true,
+        createdAt: '2026-03-19T00:00:00.000Z',
+        updatedAt: '2026-03-19T00:00:00.000Z',
+      };
       service.setFlag.mockResolvedValue(entry);
 
       const res = await request(buildApp(service)).put('/flags/new-flag').send({ enabled: true });

@@ -30,13 +30,21 @@ export function runMigrations(db: SqliteDatabase): void {
     if (appliedSet.has(file)) continue;
 
     const sql = readFileSync(join(migrationsDir, file), 'utf8');
-    const run = db.transaction(() => {
+    db.exec('BEGIN;');
+    try {
       db.exec(sql);
       db.prepare('INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)').run(
         file,
         Date.now()
       );
-    });
-    run();
+      db.exec('COMMIT;');
+    } catch (err) {
+      try {
+        db.exec('ROLLBACK;');
+      } catch {
+        // Ignore rollback errors; we want to surface the original failure.
+      }
+      throw err;
+    }
   }
 }

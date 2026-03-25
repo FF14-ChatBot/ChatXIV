@@ -1,7 +1,8 @@
-/** Public/admin flag shape. Missing `updatedAt` means not in store (lookup returns `enabled: false`). */
+/** Public/admin flag shape. */
 export interface FeatureFlagEntry {
   readonly name: string;
   readonly enabled: boolean;
+  readonly createdAt?: string;
   readonly updatedAt?: string;
 }
 

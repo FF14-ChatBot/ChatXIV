@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import type { DatabaseSync } from 'node:sqlite';
 
-/** Open better-sqlite3 database instance (avoids `Database` default export / type name clash). */
-export type SqliteDatabase = InstanceType<typeof Database>;
+/** Open `node:sqlite` database handle. */
+export type SqliteDatabase = DatabaseSync;

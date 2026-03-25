@@ -31,22 +31,22 @@ export function getDataDir(): string {
   return process.env[ENV_KEYS.DATA_DIR] || DEFAULT_DATA_DIR;
 }
 
-const OBSERVABILITY_DB_FILENAME = 'observability.db';
+const APP_DB_FILENAME = 'app.db';
 
 /**
- * Resolved path for the observability SQLite database (metrics + usage).
+ * Resolved path for the application SQLite database (metrics, usage, flags, etc.).
  * - `NODE_ENV=test`: temp file per Vitest worker (`VITEST_WORKER_ID`) so parallel tests do not clash.
- * - Otherwise: `path.join(resolved DATA_DIR, observability.db)`.
+ * - Otherwise: `path.join(resolved DATA_DIR, app.db)`.
  */
-export function getObservabilityDatabasePath(): string {
+export function getAppDatabasePath(): string {
   if (getNodeEnv() === 'test') {
     const worker = process.env.VITEST_WORKER_ID ?? '0';
-    return path.join(os.tmpdir(), `chatxiv-observability-test-w${worker}.db`);
+    return path.join(os.tmpdir(), `chatxiv-test-w${worker}.db`);
   }
 
   const dir = getDataDir();
   const dataDir = path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);
-  return path.join(dataDir, OBSERVABILITY_DB_FILENAME);
+  return path.join(dataDir, APP_DB_FILENAME);
 }
 
 /**

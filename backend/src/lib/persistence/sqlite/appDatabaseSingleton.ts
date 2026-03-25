@@ -1,5 +1,5 @@
 import type { SqliteDatabase } from './types.js';
-import { getObservabilityDatabasePath } from '../../config/env.js';
+import { getAppDatabasePath } from '../../config/env.js';
 import { openSqliteDatabase } from './openDb.js';
 import { runMigrations } from './runMigrations.js';
 
@@ -11,7 +11,7 @@ let singleton: SqliteDatabase | null = null;
  */
 export function getOrOpenAppDatabase(): SqliteDatabase {
   if (singleton === null) {
-    const db = openSqliteDatabase(getObservabilityDatabasePath());
+    const db = openSqliteDatabase(getAppDatabasePath());
     runMigrations(db);
     singleton = db;
   }

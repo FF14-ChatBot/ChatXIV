@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createFeatureFlagService } from '@src/lib/featureFlags/featureFlagService.js';
-import { createInMemoryFeatureFlagStore } from '@src/lib/featureFlags/inMemoryFeatureFlagStore.js';
 import type { FeatureFlagService } from '@src/lib/featureFlags/types.js';
 import { AppError } from '@src/lib/errors/AppError.js';
+import { openSqliteDatabase } from '@src/lib/persistence/sqlite/openDb.js';
+import { runMigrations } from '@src/lib/persistence/sqlite/runMigrations.js';
+import { createSqliteFeatureFlagStore } from '@src/lib/featureFlags/sqliteFeatureFlagStore.js';
 
 describe('lib/featureFlags/featureFlagService', () => {
   let service: FeatureFlagService;
 
   beforeEach(() => {
-    service = createFeatureFlagService(createInMemoryFeatureFlagStore());
+    const db = openSqliteDatabase(':memory:');
+    runMigrations(db);
+    service = createFeatureFlagService(createSqliteFeatureFlagStore(db));
   });
 
   describe('getAll', () => {

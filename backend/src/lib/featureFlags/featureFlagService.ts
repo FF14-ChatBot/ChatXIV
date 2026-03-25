@@ -9,6 +9,7 @@ export function createFeatureFlagService(store: FeatureFlagStore): FeatureFlagSe
       return Object.entries(all).map(([name, record]) => ({
         name,
         enabled: record.enabled,
+        createdAt: record.createdAt,
         updatedAt: record.updatedAt,
       }));
     },
@@ -16,7 +17,12 @@ export function createFeatureFlagService(store: FeatureFlagStore): FeatureFlagSe
     async getEntry(name: string): Promise<FeatureFlagEntry> {
       const record = await store.get(name);
       if (record) {
-        return { name, enabled: record.enabled, updatedAt: record.updatedAt };
+        return {
+          name,
+          enabled: record.enabled,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+        };
       }
       return { name, enabled: false };
     },
@@ -24,7 +30,12 @@ export function createFeatureFlagService(store: FeatureFlagStore): FeatureFlagSe
     async setFlag(name: string, enabled: boolean): Promise<FeatureFlagEntry> {
       await store.set(name, enabled);
       const record = await store.get(name);
-      return { name, enabled: record!.enabled, updatedAt: record!.updatedAt };
+      return {
+        name,
+        enabled: record!.enabled,
+        createdAt: record!.createdAt,
+        updatedAt: record!.updatedAt,
+      };
     },
 
     async removeFlag(name: string): Promise<void> {

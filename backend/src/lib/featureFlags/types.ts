@@ -4,6 +4,7 @@ import type { FeatureFlagEntry } from '@chatxiv/cdm';
 
 export interface FeatureFlagRecord {
   readonly enabled: boolean;
+  readonly createdAt: string;
   readonly updatedAt: string;
 }
 

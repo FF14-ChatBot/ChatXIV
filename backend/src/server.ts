@@ -21,6 +21,7 @@ registerProcessErrorHandlers(logger);
 const port = getPort();
 const shutdownTimeoutMs = 10_000;
 
+// todo: move into cron job framework
 const retentionTimer = setInterval(() => {
   try {
     const db = getOrOpenAppDatabase();
