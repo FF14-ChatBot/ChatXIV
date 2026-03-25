@@ -30,5 +30,4 @@ export interface MetricsStore {
     byRoute: Record<string, RouteMetricSummary>;
     byStatus: Record<number, number>;
   };
-  clear(): void;
 }

@@ -28,7 +28,4 @@ export const usageAnalytics: UsageStore = {
   getCountByCategory(): Record<UsageCategory, number> {
     return getUsageAnalytics().getCountByCategory();
   },
-  clear(): void {
-    getUsageAnalytics().clear();
-  },
 };

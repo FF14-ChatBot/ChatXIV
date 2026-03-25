@@ -32,7 +32,4 @@ export const metrics: MetricsStore = {
   } {
     return getMetrics().getSummary();
   },
-  clear(): void {
-    getMetrics().clear();
-  },
 };

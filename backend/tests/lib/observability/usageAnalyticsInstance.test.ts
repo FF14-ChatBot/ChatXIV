@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UsageCategory } from '@src/lib/observability/usageAnalytics/types.js';
-import { createInMemoryUsageAnalytics } from '@src/lib/observability/usageAnalytics/inMemoryUsageAnalytics.js';
 import {
   setUsageAnalytics,
   getUsageAnalytics,
   usageAnalytics,
 } from '@src/lib/observability/usageAnalyticsInstance.js';
+import { createMockUsageStore } from '@test/mocks/usageStore.mock.js';
 
 describe('usageAnalyticsInstance', () => {
   beforeEach(() => {
-    setUsageAnalytics(createInMemoryUsageAnalytics());
+    setUsageAnalytics(createMockUsageStore());
   });
 
   it('getUsageAnalytics throws when setUsageAnalytics was not called', async () => {
@@ -20,7 +20,7 @@ describe('usageAnalyticsInstance', () => {
   });
 
   it('setUsageAnalytics and getUsageAnalytics return the same store', () => {
-    const store = createInMemoryUsageAnalytics();
+    const store = createMockUsageStore();
     setUsageAnalytics(store);
     expect(getUsageAnalytics()).toBe(store);
   });
@@ -33,7 +33,7 @@ describe('usageAnalyticsInstance', () => {
     });
     expect(getUsageAnalytics().getRecords()).toHaveLength(1);
     expect(usageAnalytics.getCountByCategory()[UsageCategory.BIS]).toBe(1);
-    usageAnalytics.clear();
+    setUsageAnalytics(createMockUsageStore());
     expect(usageAnalytics.getRecords()).toHaveLength(0);
   });
 });

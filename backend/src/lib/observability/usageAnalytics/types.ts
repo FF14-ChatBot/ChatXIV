@@ -15,7 +15,6 @@ export interface UsageStore {
   record(entry: UsageRecord): void;
   getRecords(): UsageRecord[];
   getCountByCategory(): Record<UsageCategory, number>;
-  clear(): void;
 }
 
 export function isUsageCategory(val: unknown): val is UsageCategory {

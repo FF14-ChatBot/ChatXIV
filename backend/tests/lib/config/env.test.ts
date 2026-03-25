@@ -9,6 +9,7 @@ import {
   getAdminApiKey,
   getLogLevel,
   getDebugMode,
+  getObservabilityDatabasePath,
 } from '@src/lib/config/env.js';
 
 describe('lib/config/env', () => {
@@ -98,6 +99,22 @@ describe('lib/config/env', () => {
     it('returns env value when set', () => {
       process.env.DATA_DIR = '/var/lib/chatxiv';
       expect(getDataDir()).toBe('/var/lib/chatxiv');
+    });
+  });
+
+  describe('getObservabilityDatabasePath', () => {
+    it('in test uses a per-worker temp file', () => {
+      process.env.NODE_ENV = 'test';
+      process.env.VITEST_WORKER_ID = '3';
+      const got = getObservabilityDatabasePath();
+      expect(got).toContain('chatxiv-observability-test-w3');
+      expect(got.endsWith('.db')).toBe(true);
+    });
+
+    it('uses DATA_DIR/observability.db when not in test', () => {
+      process.env.NODE_ENV = 'development';
+      process.env.DATA_DIR = './myobsdata';
+      expect(getObservabilityDatabasePath()).toMatch(/myobsdata[\\/]observability\.db$/);
     });
   });
 

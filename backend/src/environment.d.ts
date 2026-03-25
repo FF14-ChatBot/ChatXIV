@@ -14,6 +14,7 @@ declare global {
       ANTHROPIC_MODEL?: string;
       DATA_DIR?: string;
       ADMIN_API_KEY?: string;
+      VITEST_WORKER_ID?: string;
     }
   }
 }

@@ -19,14 +19,13 @@
  * - **New token** (logger, HTTP client, config): (1) export a token, e.g. `export const LoggerToken = Symbol('Logger');`
  *   (2) in `register()`, add `container.register<Type>(Token, { useFactory: () => ... })`
  *   (3) in the class, add `@inject(Token)` in the constructor.
- *   Swap implementations by changing only the `useFactory` in `register()`. Example:
- *   `useFactory: () => createInMemoryMetrics()` → `useFactory: () => createSqliteMetrics()`;
- *   all consumers of that token then get the new implementation without other changes.
+ *   Swap implementations by changing only the `useFactory` in `register()`.
+ *
+ * Tests reset the container via `container.reset()` (see `tests/helpers/resetBackendContainer.ts`);
+ * do not add test-only parameters to `register()`.
  */
 
 import { container as tsyringeContainer, type DependencyContainer } from 'tsyringe';
-import { createInMemoryMetrics } from '../observability/metrics/inMemoryMetrics.js';
-import { createInMemoryUsageAnalytics } from '../observability/usageAnalytics/inMemoryUsageAnalytics.js';
 import {
   type RequestConfig,
   getRequestConfig,
@@ -46,6 +45,9 @@ import type { FeatureFlagStore, FeatureFlagService } from '../featureFlags/types
 import { setMetrics } from '../observability/metricsInstance.js';
 import { setUsageAnalytics } from '../observability/usageAnalyticsInstance.js';
 import { setFeatureFlagService } from '../featureFlags/featureFlagInstance.js';
+import { getOrOpenAppDatabase } from '../persistence/sqlite/appDatabaseSingleton.js';
+import { createSqliteMetricsStore } from '../persistence/sqlite/sqliteMetricsStore.js';
+import { createSqliteUsageStore } from '../persistence/sqlite/sqliteUsageStore.js';
 
 export const MetricsStoreToken = Symbol('MetricsStore');
 export const UsageStoreToken = Symbol('UsageStore');
@@ -60,17 +62,18 @@ export const FeatureFlagServiceToken = Symbol('FeatureFlagService');
 /** The DI container. Call register() once at startup before resolving any dependencies. */
 export const container = tsyringeContainer as DependencyContainer;
 
-let registered = false;
-
 /** Call once at app startup (e.g. in server or app entry) to register all tokens and wire globals. */
 export function register(): void {
-  if (registered) return;
-  container.register<MetricsStore>(MetricsStoreToken, {
-    useFactory: () => createInMemoryMetrics(),
-  });
-  container.register<UsageStore>(UsageStoreToken, {
-    useFactory: () => createInMemoryUsageAnalytics(),
-  });
+  if (container.isRegistered(MetricsStoreToken)) {
+    return;
+  }
+
+  const db = getOrOpenAppDatabase();
+  const metricsStore = createSqliteMetricsStore(db);
+  const usageStore = createSqliteUsageStore(db);
+
+  container.registerInstance<MetricsStore>(MetricsStoreToken, metricsStore);
+  container.registerInstance<UsageStore>(UsageStoreToken, usageStore);
   container.register<RateLimitStore>(RateLimitStoreToken, {
     useFactory: () => createMemoryStore(),
   });
@@ -93,5 +96,4 @@ export function register(): void {
   setMetrics(container.resolve<MetricsStore>(MetricsStoreToken));
   setUsageAnalytics(container.resolve<UsageStore>(UsageStoreToken));
   setFeatureFlagService(flagService);
-  registered = true;
 }

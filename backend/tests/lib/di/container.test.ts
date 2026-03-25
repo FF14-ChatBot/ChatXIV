@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
+import { USAGE_CATEGORIES, type UsageCategory } from '@chatxiv/cdm';
 import {
   container,
   register,
@@ -23,19 +24,31 @@ import { UsageAnalyticsMiddleware } from '@src/middleware/usageAnalytics.js';
 import { RateLimitMiddleware } from '@src/middleware/rateLimit/rateLimitMiddleware.js';
 import { RequestTimeoutMiddleware } from '@src/middleware/requestTimeout.js';
 import { AdminAuthMiddleware } from '@src/middleware/adminAuth.js';
+import { resetBackendContainerForTests } from '@test/helpers/resetBackendContainer.js';
+
+function emptyUsageCounts(): Record<UsageCategory, number> {
+  return Object.fromEntries(USAGE_CATEGORIES.map((c) => [c, 0])) as Record<UsageCategory, number>;
+}
 
 describe('container', () => {
-  it('register() registers all tokens and they can be resolved', () => {
+  beforeEach(() => {
+    resetBackendContainerForTests();
     register();
+  });
 
+  it('register() registers all tokens and they can be resolved', () => {
     const metricsStore = container.resolve<MetricsStore>(MetricsStoreToken);
     expect(metricsStore).toBeDefined();
     expect(typeof metricsStore.record).toBe('function');
     expect(typeof metricsStore.getEntries).toBe('function');
+    expect(typeof metricsStore.getSummary).toBe('function');
 
     const usageStore = container.resolve<UsageStore>(UsageStoreToken);
     expect(usageStore).toBeDefined();
     expect(typeof usageStore.record).toBe('function');
+    expect(typeof usageStore.getRecords).toBe('function');
+    expect(typeof usageStore.getCountByCategory).toBe('function');
+    expect(usageStore.getCountByCategory()).toEqual(emptyUsageCounts());
 
     const rateLimitStore = container.resolve<RateLimitStore>(RateLimitStoreToken);
     expect(rateLimitStore).toBeDefined();
@@ -80,8 +93,6 @@ describe('container', () => {
   });
 
   it('resolve injectable middleware returns instance with handler', () => {
-    register();
-
     const metricsMw = container.resolve(RequestMetricsMiddleware);
     expect(metricsMw).toBeDefined();
     expect(typeof metricsMw.handler).toBe('function');

@@ -1,9 +1,10 @@
-/** In-memory metrics implementation. Bounded to avoid unbounded growth. */
+/**
+ * Pure aggregation for request metrics — shared by SQLite-backed and test stores.
+ * Keeps percentile logic identical wherever summaries are built from entries.
+ */
 
 import { Builder } from 'builder-pattern';
-import type { RequestMetricEntry, RouteMetricSummary, MetricsStore } from './types.js';
-
-const MAX_ENTRIES = 10_000;
+import type { RequestMetricEntry, RouteMetricSummary } from './types.js';
 
 type RouteMetricAccumulator = RouteMetricSummary & { durations: number[] };
 
@@ -75,30 +76,13 @@ function toRouteSummaries(
   return result;
 }
 
-/** In-memory metrics store. Inject at app boot via setMetrics(). */
-export function createInMemoryMetrics(): MetricsStore {
-  const entries: RequestMetricEntry[] = [];
-  return {
-    record(entry: RequestMetricEntry): void {
-      entries.push(entry);
-      if (entries.length > MAX_ENTRIES) {
-        entries.splice(0, entries.length - MAX_ENTRIES);
-      }
-    },
-    getEntries(): RequestMetricEntry[] {
-      return [...entries];
-    },
-    getSummary(): {
-      totalRequests: number;
-      byRoute: Record<string, RouteMetricSummary>;
-      byStatus: Record<number, number>;
-    } {
-      const { byRoute, byStatus, totalRequests } = aggregateByRouteAndStatus(entries);
-      computePercentiles(byRoute);
-      return { totalRequests, byRoute: toRouteSummaries(byRoute), byStatus };
-    },
-    clear(): void {
-      entries.length = 0;
-    },
-  };
+/** Build route/status summary totals from a list of request metric entries. */
+export function summarizeRequestMetricEntries(entriesList: RequestMetricEntry[]): {
+  totalRequests: number;
+  byRoute: Record<string, RouteMetricSummary>;
+  byStatus: Record<number, number>;
+} {
+  const { byRoute, byStatus, totalRequests } = aggregateByRouteAndStatus(entriesList);
+  computePercentiles(byRoute);
+  return { totalRequests, byRoute: toRouteSummaries(byRoute), byStatus };
 }

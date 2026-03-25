@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { UsageAnalyticsMiddleware } from '@src/middleware/usageAnalytics.js';
 import { UsageCategory } from '@src/lib/observability/usageAnalytics/types.js';
-import { createInMemoryUsageAnalytics } from '@src/lib/observability/usageAnalytics/inMemoryUsageAnalytics.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
+import { createMockUsageStore } from '@test/mocks/usageStore.mock.js';
 
 describe('middleware/usageAnalyticsMiddleware', () => {
   function createRes() {
@@ -22,7 +22,7 @@ describe('middleware/usageAnalyticsMiddleware', () => {
   }
 
   it('records uncategorized usage when handlers do not set a category', () => {
-    const usageStore = createInMemoryUsageAnalytics();
+    const usageStore = createMockUsageStore();
     const middleware = new UsageAnalyticsMiddleware(usageStore);
     const req = {} as Request;
     const res = createRes();
@@ -41,7 +41,7 @@ describe('middleware/usageAnalyticsMiddleware', () => {
   });
 
   it('records the handler-provided usage category', () => {
-    const usageStore = createInMemoryUsageAnalytics();
+    const usageStore = createMockUsageStore();
     const middleware = new UsageAnalyticsMiddleware(usageStore);
     const req = {} as Request;
     const res = createRes();
@@ -57,7 +57,7 @@ describe('middleware/usageAnalyticsMiddleware', () => {
   });
 
   it("uses requestId 'unknown' when requestContext is missing", () => {
-    const usageStore = createInMemoryUsageAnalytics();
+    const usageStore = createMockUsageStore();
     const middleware = new UsageAnalyticsMiddleware(usageStore);
     const req = {} as Request;
     const res = createRes();
