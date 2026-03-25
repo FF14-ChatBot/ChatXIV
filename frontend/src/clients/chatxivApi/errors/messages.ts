@@ -3,6 +3,7 @@ import { ERROR_CODES, type ErrorCode } from '@chatxiv/cdm';
 /** Safe messages for UI; don’t show raw API message to the user. */
 export const ERROR_CODE_TO_MESSAGE: Readonly<Record<ErrorCode, string>> = {
   [ERROR_CODES.UNAUTHORIZED]: "You don't have permission to do that.",
+  [ERROR_CODES.FORBIDDEN]: "You don't have access to this resource.",
   [ERROR_CODES.VALIDATION_ERROR]: "Your message couldn't be processed. Please try again.",
   [ERROR_CODES.RATE_LIMITED]: "You've reached the limit for now; please try again later.",
   [ERROR_CODES.REQUEST_TIMEOUT]: 'Request took too long; please try again.',
