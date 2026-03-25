@@ -36,7 +36,7 @@ export class FeatureFlagsDao {
     return this.selectAllStmt.all() as FeatureFlagRow[];
   }
 
-  upsert(name: string, enabled: 0 | 1, now: number = Date.now()): void {
+  upsert(name: string, enabled: 0 | 1, now: string = new Date().toISOString()): void {
     this.upsertStmt.run(name, enabled, now, now);
   }
 

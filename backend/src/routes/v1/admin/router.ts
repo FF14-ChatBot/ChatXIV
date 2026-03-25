@@ -1,6 +1,6 @@
 import { Router } from 'express';
+import type { RequestHandler } from 'express';
 import type { FeatureFlagService } from '../../../lib/featureFlags/types.js';
-import { AdminAuthMiddleware } from '../../../middleware/adminAuth.js';
 import {
   chainRequestHandlers,
   createAdminOpenApiYamlHandler,
@@ -13,12 +13,12 @@ import { createAdminFlagsRouter } from './flags.js';
  * Any router mounted here automatically requires admin authentication.
  */
 export function createAdminRouter(
-  authMiddleware: AdminAuthMiddleware,
+  adminGuard: RequestHandler,
   flagService: FeatureFlagService
 ): Router {
   const router = Router();
 
-  router.use(authMiddleware.handler);
+  router.use(adminGuard);
   router.get('/openapi.yaml', createAdminOpenApiYamlHandler());
   router.use('/docs', chainRequestHandlers(createAdminSwaggerUiHandlers()));
   router.use(createAdminFlagsRouter(flagService));

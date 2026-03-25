@@ -61,19 +61,6 @@ export function getAnthropicModel(): string | undefined {
   return process.env[ENV_KEYS.ANTHROPIC_MODEL] || undefined;
 }
 
-/** Strip UTF-8 BOM if present (some editors add it to `.env`). */
-function stripBom(value: string): string {
-  return value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
-}
-
-/** Lazy-validated: returns undefined when unset so the admin auth middleware can respond with 401. */
-export function getAdminApiKey(): string | undefined {
-  const raw = process.env[ENV_KEYS.ADMIN_API_KEY];
-  if (raw === undefined || raw === '') return undefined;
-  const trimmed = stripBom(raw).trim();
-  return trimmed === '' ? undefined : trimmed;
-}
-
 export type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 const VALID_LOG_LEVELS: ReadonlySet<string> = new Set<LogLevel>([
   'fatal',
@@ -95,4 +82,58 @@ export function getDebugMode(): boolean {
   const raw = process.env[ENV_KEYS.DEBUG_MODE];
   if (raw === undefined || raw === '') return false;
   return raw.toLowerCase() === 'true' || raw === '1';
+}
+
+// ── OIDC / Auth ─────────────────────────────────────────────────────
+
+export function getOidcIssuer(): string | undefined {
+  return process.env[ENV_KEYS.OIDC_ISSUER] || undefined;
+}
+
+export function getOidcClientId(): string | undefined {
+  return process.env[ENV_KEYS.OIDC_CLIENT_ID] || undefined;
+}
+
+export function getOidcClientSecret(): string | undefined {
+  return process.env[ENV_KEYS.OIDC_CLIENT_SECRET] || undefined;
+}
+
+export function getOidcRedirectUri(): string | undefined {
+  return process.env[ENV_KEYS.OIDC_REDIRECT_URI] || undefined;
+}
+
+/**
+ * Public SPA origin (scheme + host + port). Used after OAuth so the browser lands on the frontend, not the API host.
+ * Returns undefined if unset or invalid.
+ */
+export function getFrontendOrigin(): string | undefined {
+  const raw = process.env[ENV_KEYS.FRONTEND_ORIGIN];
+  if (raw === undefined || raw.trim() === '') return undefined;
+  try {
+    const u = new URL(raw.trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return undefined;
+    return u.origin;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Absolute URL to open after successful OAuth, or `/` on the API host if unset (not ideal for split SPA/API). */
+export function getOauthSuccessRedirectUrl(): string {
+  const origin = getFrontendOrigin();
+  if (origin) return `${origin}/`;
+  return '/';
+}
+
+export function getSessionSecret(): string | undefined {
+  return process.env[ENV_KEYS.SESSION_SECRET] || undefined;
+}
+
+export function getBootstrapAdminSubs(): string[] {
+  const raw = process.env[ENV_KEYS.BOOTSTRAP_ADMIN_SUBS];
+  if (!raw || raw.trim() === '') return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s !== '');
 }

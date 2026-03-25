@@ -6,7 +6,7 @@ info:
 
     **Public-only** spec for tools that must not see admin paths: `GET /v1/openapi.yaml`.
 
-    **This document** is returned from `GET /v1/admin/openapi.yaml` (requires `X-Admin-Key`).
+    **This document** is returned from `GET /v1/admin/openapi.yaml` (requires admin session).
     Update `backend/openapi/openapi.admin.yaml` when you change any `/v1` contract.
   version: 1.0.0
 
@@ -66,7 +66,7 @@ paths:
       description: Same content as this file — admin + public routes. Requires admin authentication.
       operationId: getOpenApiAdminYaml
       security:
-        - AdminApiKey: []
+        - cookieAuth: []
       responses:
         '200':
           description: Full OpenAPI YAML document
@@ -75,7 +75,7 @@ paths:
               schema:
                 type: string
         '401':
-          description: Missing or invalid admin key
+          description: Not authenticated
           content:
             application/json:
               schema:
@@ -127,7 +127,7 @@ paths:
       description: Same entries as the public list; order is not guaranteed to be sorted.
       operationId: adminListFeatureFlags
       security:
-        - AdminApiKey: []
+        - cookieAuth: []
       responses:
         '200':
           description: Flag entries
@@ -138,7 +138,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/FeatureFlagEntry'
         '401':
-          description: Missing or invalid admin key
+          description: Not authenticated
+        '403':
+          description: Not an admin
           content:
             application/json:
               schema:
@@ -150,7 +152,7 @@ paths:
       summary: Create or update a feature flag
       operationId: adminPutFeatureFlag
       security:
-        - AdminApiKey: []
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/FlagName'
       requestBody:
@@ -177,7 +179,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '401':
-          description: Missing or invalid admin key
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Not an admin
           content:
             application/json:
               schema:
@@ -188,7 +196,7 @@ paths:
       description: Returns 400 if the flag does not exist.
       operationId: adminDeleteFeatureFlag
       security:
-        - AdminApiKey: []
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/FlagName'
       responses:
@@ -201,7 +209,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '401':
-          description: Missing or invalid admin key
+          description: Not authenticated
           content:
             application/json:
               schema:
@@ -209,13 +217,13 @@ paths:
 
 components:
   securitySchemes:
-    AdminApiKey:
+    cookieAuth:
       type: apiKey
-      in: header
-      name: X-Admin-Key
+      in: cookie
+      name: chatxiv_sid
       description: |
-        Same value as `ADMIN_API_KEY` in `backend/.env`.
-        In Swagger **Servers**, pick the entry that matches where the API runs (e.g. **/** on a deployed host, or `localhost` / `127.0.0.1` only when the UI is opened from that same origin).
+        Signed session cookie set by `/v1/auth/login`. The user must have `is_admin = 1` in the users table.
+        Log in via the frontend, then access admin routes in the same browser session.
 
   parameters:
     FlagName:
@@ -251,6 +259,7 @@ components:
           type: string
           enum:
             - UNAUTHORIZED
+            - FORBIDDEN
             - VALIDATION_ERROR
             - RATE_LIMITED
             - REQUEST_TIMEOUT

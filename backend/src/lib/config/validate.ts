@@ -1,3 +1,5 @@
+import { getFrontendOrigin, getOidcIssuer } from './env.js';
+
 /**
  * Env var names that must be set for the server to start.
  * Leave empty when every critical setting has a code default.
@@ -22,4 +24,9 @@ export function validateRequiredEnvKeys(keys: readonly string[]): void {
  */
 export function validateStartupConfig(): void {
   validateRequiredEnvKeys(STARTUP_REQUIRED);
+  if (getOidcIssuer() && !getFrontendOrigin()) {
+    console.warn(
+      'FRONTEND_ORIGIN is not set: OAuth will redirect to this API host (/). Set FRONTEND_ORIGIN to your SPA URL (e.g. http://localhost:5173 or https://www.chatxiv.com).'
+    );
+  }
 }

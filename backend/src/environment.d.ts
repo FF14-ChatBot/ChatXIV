@@ -13,7 +13,13 @@ declare global {
       ANTHROPIC_API_KEY?: string;
       ANTHROPIC_MODEL?: string;
       DATA_DIR?: string;
-      ADMIN_API_KEY?: string;
+      OIDC_ISSUER?: string;
+      OIDC_CLIENT_ID?: string;
+      OIDC_CLIENT_SECRET?: string;
+      OIDC_REDIRECT_URI?: string;
+      FRONTEND_ORIGIN?: string;
+      SESSION_SECRET?: string;
+      BOOTSTRAP_ADMIN_SUBS?: string;
       VITEST_WORKER_ID?: string;
     }
   }

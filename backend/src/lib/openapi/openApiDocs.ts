@@ -10,7 +10,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { load as loadYaml } from 'js-yaml';
 import swaggerUi from 'swagger-ui-express';
-import type { AdminAuthMiddleware } from '../../middleware/adminAuth.js';
 
 const PUBLIC_SPEC = 'openapi.public.yaml';
 const ADMIN_SPEC = 'openapi.admin.yaml';
@@ -114,12 +113,12 @@ export function createAdminSwaggerUiHandlers(): RequestHandler[] {
  * Test helper: public docs plus a minimal `/v1/admin` router (auth + `/docs` only).
  * Production mounts admin Swagger via {@link createAdminRouter}.
  */
-export function registerOpenApiDocs(app: Express, adminAuth: AdminAuthMiddleware): void {
+export function registerOpenApiDocs(app: Express, adminGuard: RequestHandler): void {
   const publicRouter = Router();
   mountPublicOpenApiDocs(publicRouter);
   app.use('/v1', publicRouter);
   const adminDocsOnly = Router();
-  adminDocsOnly.use(adminAuth.handler);
+  adminDocsOnly.use(adminGuard);
   adminDocsOnly.use('/docs', chainRequestHandlers(createAdminSwaggerUiHandlers()));
   app.use('/v1/admin', adminDocsOnly);
 }

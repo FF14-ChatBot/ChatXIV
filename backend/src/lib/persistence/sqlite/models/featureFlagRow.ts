@@ -2,6 +2,8 @@
 export type FeatureFlagRow = {
   name: string;
   enabled: 0 | 1;
-  created_at: number;
-  updated_at: number;
+  /** ISO 8601 UTC string. */
+  created_at: string;
+  /** ISO 8601 UTC string. */
+  updated_at: string;
 };
