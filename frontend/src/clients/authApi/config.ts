@@ -1,10 +1,12 @@
 /**
- * Auth endpoints always use same-origin (empty base URL) so the session cookie
- * — scoped to the page's host — is included automatically.
+ * Base URL for auth endpoints.
  *
- * Dev: Vite proxies `/v1/auth/*` to localhost:3000.
- * Prod: reverse proxy (Cloudflare, nginx) routes `/v1/auth/*` to the backend.
+ * - When `VITE_CHATXIV_BACKEND_URL` is set (e.g. `https://api.chatxiv.com`),
+ *   auth calls go directly to that origin (cross-origin with `credentials: 'include'`).
+ * - When unset, falls back to same-origin (`''`) so Vite's dev proxy handles routing.
  */
 export function getAuthApiBaseUrl(): string {
+  const base = import.meta.env.VITE_CHATXIV_BACKEND_URL as string | undefined;
+  if (base !== undefined && base !== '') return base.replace(/\/$/, '');
   return '';
 }
