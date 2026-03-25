@@ -82,7 +82,7 @@ export function createAuthRouter(db: SqliteDatabase): Router {
           signed: true,
           httpOnly: true,
           secure: isProduction(),
-          sameSite: 'lax',
+          sameSite: isProduction() ? 'none' : 'lax',
           path: '/',
           maxAge: SESSION_MAX_AGE_MS,
         });
@@ -97,7 +97,11 @@ export function createAuthRouter(db: SqliteDatabase): Router {
     if (sid) {
       sessionDao.deleteById(sid);
     }
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, {
+      path: '/',
+      secure: isProduction(),
+      sameSite: isProduction() ? 'none' : 'lax',
+    });
     res.json({ success: true });
   });
 
