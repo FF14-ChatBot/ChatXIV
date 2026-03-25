@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import Database from 'better-sqlite3';
 import type { SqliteDatabase } from './types.js';
 
 /**
@@ -14,7 +14,7 @@ export function openSqliteDatabase(filePath: string): SqliteDatabase {
     mkdirSync(dir, { recursive: true });
   }
 
-  const db = new DatabaseSync(filePath);
+  const db = new Database(filePath);
   // SQLite tuning for server workloads (no-op for in-memory).
   db.exec('PRAGMA journal_mode = WAL;');
   return db;
