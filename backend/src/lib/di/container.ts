@@ -35,13 +35,13 @@ import { getCorsOrigins } from '../config/cors.js';
 import { getAdminApiKey } from '../config/env.js';
 import { createMemoryStore } from '../../middleware/rateLimit/memoryStore.js';
 import { createApiKeyAuthStrategy } from '../auth/apiKeyAuthStrategy.js';
-import { createInMemoryFeatureFlagStore } from '../featureFlags/inMemoryFeatureFlagStore.js';
 import { createFeatureFlagService } from '../featureFlags/featureFlagService.js';
 import type { MetricsStore } from '../observability/metrics/types.js';
 import type { UsageStore } from '../observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '../../middleware/rateLimit/types.js';
 import type { AuthStrategy } from '../auth/types.js';
 import type { FeatureFlagStore, FeatureFlagService } from '../featureFlags/types.js';
+import { createSqliteFeatureFlagStore } from '../featureFlags/sqliteFeatureFlagStore.js';
 import { setMetrics } from '../observability/metricsInstance.js';
 import { setUsageAnalytics } from '../observability/usageAnalyticsInstance.js';
 import { setFeatureFlagService } from '../featureFlags/featureFlagInstance.js';
@@ -89,7 +89,7 @@ export function register(): void {
   container.register<AuthStrategy>(AuthStrategyToken, {
     useFactory: () => createApiKeyAuthStrategy(() => getAdminApiKey() ?? ''),
   });
-  const flagStore = createInMemoryFeatureFlagStore();
+  const flagStore = createSqliteFeatureFlagStore(db);
   container.registerInstance<FeatureFlagStore>(FeatureFlagStoreToken, flagStore);
   const flagService = createFeatureFlagService(flagStore);
   container.registerInstance<FeatureFlagService>(FeatureFlagServiceToken, flagService);

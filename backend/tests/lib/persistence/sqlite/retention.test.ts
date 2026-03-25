@@ -1,7 +1,7 @@
-import Database from 'better-sqlite3';
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { SqliteDatabase } from '@src/lib/persistence/sqlite/types.js';
 import { runMigrations } from '@src/lib/persistence/sqlite/runMigrations.js';
+import { openSqliteDatabase } from '@src/lib/persistence/sqlite/openDb.js';
 import { RequestMetricsDao } from '@src/lib/persistence/sqlite/dao/RequestMetricsDao.js';
 import { UsageRecordsDao } from '@src/lib/persistence/sqlite/dao/UsageRecordsDao.js';
 import {
@@ -16,7 +16,7 @@ describe('sweepObservabilityRetention', () => {
   let usageDao: UsageRecordsDao;
 
   beforeEach(() => {
-    db = new Database(':memory:');
+    db = openSqliteDatabase(':memory:');
     runMigrations(db);
     metricsDao = new RequestMetricsDao(db);
     usageDao = new UsageRecordsDao(db);
