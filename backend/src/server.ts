@@ -5,10 +5,15 @@ import { registerProcessErrorHandlers } from './lib/errors/registerProcessErrorH
 import { validateStartupConfig } from './lib/config/validate.js';
 import { getPort } from './lib/config/env.js';
 import {
-  getOrOpenObservabilityDatabase,
-  closeObservabilityDatabase,
-} from './lib/persistence/sqlite/observabilityDatabaseSingleton.js';
-import { sweepObservabilityRetention } from './lib/persistence/sqlite/retention.js';
+  getOrOpenAppDatabase,
+  closeAppDatabase,
+} from './lib/persistence/sqlite/appDatabaseSingleton.js';
+import { RequestMetricsDao } from './lib/persistence/sqlite/dao/RequestMetricsDao.js';
+import { UsageRecordsDao } from './lib/persistence/sqlite/dao/UsageRecordsDao.js';
+import {
+  sweepObservabilityRetention,
+  OBSERVABILITY_RETENTION_INTERVAL_MS,
+} from './lib/persistence/sqlite/retention.js';
 
 validateStartupConfig();
 registerProcessErrorHandlers(logger);
@@ -16,15 +21,14 @@ registerProcessErrorHandlers(logger);
 const port = getPort();
 const shutdownTimeoutMs = 10_000;
 
-/** Periodic retention sweep — avoids trimming on every `record()` call. */
-const RETENTION_INTERVAL_MS = 15 * 60 * 1000;
 const retentionTimer = setInterval(() => {
   try {
-    sweepObservabilityRetention(getOrOpenObservabilityDatabase());
+    const db = getOrOpenAppDatabase();
+    sweepObservabilityRetention(new RequestMetricsDao(db), new UsageRecordsDao(db));
   } catch (error) {
     logger.warn({ error }, 'Observability retention sweep failed');
   }
-}, RETENTION_INTERVAL_MS);
+}, OBSERVABILITY_RETENTION_INTERVAL_MS);
 retentionTimer.unref();
 
 const server = app.listen(port, () => {
@@ -54,13 +58,13 @@ const gracefulShutdown = (signal: NodeJS.Signals): void => {
 
     if (error) {
       logger.error({ error, signal }, 'Failed to close server cleanly');
-      closeObservabilityDatabase();
+      closeAppDatabase();
       process.exit(1);
       return;
     }
 
     logger.info({ signal }, 'Server closed cleanly');
-    closeObservabilityDatabase();
+    closeAppDatabase();
     process.exit(0);
   });
 };

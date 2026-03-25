@@ -1,10 +1,10 @@
 import Database from 'better-sqlite3';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { UsageCategory } from '@chatxiv/cdm';
-import type { SqliteDatabase } from './types.js';
-import { runMigrations } from './runMigrations.js';
-import { createSqliteMetricsStore } from './sqliteMetricsStore.js';
-import { createSqliteUsageStore } from './sqliteUsageStore.js';
+import type { SqliteDatabase } from '@src/lib/persistence/sqlite/types.js';
+import { runMigrations } from '@src/lib/persistence/sqlite/runMigrations.js';
+import { createSqliteMetricsStore } from '@src/lib/persistence/sqlite/sqliteMetricsStore.js';
+import { createSqliteUsageStore } from '@src/lib/persistence/sqlite/sqliteUsageStore.js';
 
 describe('SQLite observability stores', () => {
   let db: SqliteDatabase;

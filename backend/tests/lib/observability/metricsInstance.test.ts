@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setMetrics, getMetrics, metrics } from '@src/lib/observability/metricsInstance.js';
-import { createArrayBackedMetricsStore } from '@test/arrayBackedObservabilityStores.js';
+import { createMockMetricsStore } from '@test/mocks/metricsStore.mock.js';
 
 describe('metricsInstance', () => {
   beforeEach(() => {
-    setMetrics(createArrayBackedMetricsStore());
+    setMetrics(createMockMetricsStore());
   });
 
   it('getMetrics throws when setMetrics was not called', async () => {
@@ -15,7 +15,7 @@ describe('metricsInstance', () => {
   });
 
   it('setMetrics and getMetrics return the same store', () => {
-    const store = createArrayBackedMetricsStore();
+    const store = createMockMetricsStore();
     setMetrics(store);
     expect(getMetrics()).toBe(store);
   });
@@ -30,7 +30,7 @@ describe('metricsInstance', () => {
     });
     expect(getMetrics().getEntries()).toHaveLength(1);
     expect(metrics.getSummary().totalRequests).toBe(1);
-    setMetrics(createArrayBackedMetricsStore());
+    setMetrics(createMockMetricsStore());
     expect(metrics.getEntries()).toHaveLength(0);
   });
 });

@@ -1,17 +1,12 @@
 import type { SqliteDatabase } from '../types.js';
+import type { RequestMetricRow } from '../models/requestMetricRow.js';
 import type { RequestMetricEntry } from '../../../observability/metrics/types.js';
-
-type MetricRow = {
-  method: string;
-  route: string;
-  status_code: number;
-  duration_ms: number;
-  recorded_at: number;
-};
 
 export class RequestMetricsDao {
   private readonly insertStmt;
   private readonly selectAllStmt;
+  private readonly countStmt;
+  private readonly deleteOldestExcessStmt;
 
   constructor(db: SqliteDatabase) {
     this.insertStmt = db.prepare(
@@ -21,6 +16,12 @@ export class RequestMetricsDao {
     this.selectAllStmt = db.prepare(
       `SELECT method, route, status_code, duration_ms, recorded_at
        FROM request_metrics ORDER BY id ASC`
+    );
+    this.countStmt = db.prepare('SELECT COUNT(*) AS c FROM request_metrics');
+    this.deleteOldestExcessStmt = db.prepare(
+      `DELETE FROM request_metrics WHERE id IN (
+        SELECT id FROM request_metrics ORDER BY recorded_at ASC LIMIT ?
+      )`
     );
   }
 
@@ -35,7 +36,7 @@ export class RequestMetricsDao {
   }
 
   selectAll(): RequestMetricEntry[] {
-    const rows = this.selectAllStmt.all() as MetricRow[];
+    const rows = this.selectAllStmt.all() as RequestMetricRow[];
     return rows.map((r) => ({
       method: r.method,
       route: r.route,
@@ -43,5 +44,14 @@ export class RequestMetricsDao {
       durationMs: r.duration_ms,
       timestamp: r.recorded_at,
     }));
+  }
+
+  /** Delete oldest rows when count exceeds `maxRows` (retention sweep). */
+  sweepToCap(maxRows: number): void {
+    const row = this.countStmt.get() as { c: number };
+    if (row.c > maxRows) {
+      const excess = row.c - maxRows;
+      this.deleteOldestExcessStmt.run(excess);
+    }
   }
 }

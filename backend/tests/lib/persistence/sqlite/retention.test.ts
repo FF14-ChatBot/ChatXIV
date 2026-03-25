@@ -1,19 +1,25 @@
 import Database from 'better-sqlite3';
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { SqliteDatabase } from './types.js';
-import { runMigrations } from './runMigrations.js';
+import type { SqliteDatabase } from '@src/lib/persistence/sqlite/types.js';
+import { runMigrations } from '@src/lib/persistence/sqlite/runMigrations.js';
+import { RequestMetricsDao } from '@src/lib/persistence/sqlite/dao/RequestMetricsDao.js';
+import { UsageRecordsDao } from '@src/lib/persistence/sqlite/dao/UsageRecordsDao.js';
 import {
   MAX_REQUEST_METRICS_ROWS,
   MAX_USAGE_RECORDS_ROWS,
   sweepObservabilityRetention,
-} from './retention.js';
+} from '@src/lib/persistence/sqlite/retention.js';
 
 describe('sweepObservabilityRetention', () => {
   let db: SqliteDatabase;
+  let metricsDao: RequestMetricsDao;
+  let usageDao: UsageRecordsDao;
 
   beforeEach(() => {
     db = new Database(':memory:');
     runMigrations(db);
+    metricsDao = new RequestMetricsDao(db);
+    usageDao = new UsageRecordsDao(db);
   });
 
   it('trims request_metrics to MAX_REQUEST_METRICS_ROWS by oldest recorded_at', () => {
@@ -25,7 +31,7 @@ describe('sweepObservabilityRetention', () => {
     for (let i = 0; i < n; i++) {
       insert.run(i);
     }
-    sweepObservabilityRetention(db);
+    sweepObservabilityRetention(metricsDao, usageDao);
     const row = db.prepare('SELECT COUNT(*) AS c FROM request_metrics').get() as { c: number };
     expect(row.c).toBe(MAX_REQUEST_METRICS_ROWS);
     const min = db.prepare('SELECT MIN(recorded_at) AS m FROM request_metrics').get() as {
@@ -42,7 +48,7 @@ describe('sweepObservabilityRetention', () => {
     for (let i = 0; i < n; i++) {
       insert.run(`r${i}`, i);
     }
-    sweepObservabilityRetention(db);
+    sweepObservabilityRetention(metricsDao, usageDao);
     const row = db.prepare('SELECT COUNT(*) AS c FROM usage_records').get() as { c: number };
     expect(row.c).toBe(MAX_USAGE_RECORDS_ROWS);
     const min = db.prepare('SELECT MIN(recorded_at) AS m FROM usage_records').get() as {

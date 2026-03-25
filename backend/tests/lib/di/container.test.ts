@@ -1,9 +1,8 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { USAGE_CATEGORIES, type UsageCategory } from '@chatxiv/cdm';
 import {
   container,
   register,
-  resetDependencyContainerForTests,
   MetricsStoreToken,
   UsageStoreToken,
   RateLimitStoreToken,
@@ -25,6 +24,7 @@ import { UsageAnalyticsMiddleware } from '@src/middleware/usageAnalytics.js';
 import { RateLimitMiddleware } from '@src/middleware/rateLimit/rateLimitMiddleware.js';
 import { RequestTimeoutMiddleware } from '@src/middleware/requestTimeout.js';
 import { AdminAuthMiddleware } from '@src/middleware/adminAuth.js';
+import { resetBackendContainerForTests } from '@test/helpers/resetBackendContainer.js';
 
 function emptyUsageCounts(): Record<UsageCategory, number> {
   return Object.fromEntries(USAGE_CATEGORIES.map((c) => [c, 0])) as Record<UsageCategory, number>;
@@ -32,29 +32,23 @@ function emptyUsageCounts(): Record<UsageCategory, number> {
 
 describe('container', () => {
   beforeEach(() => {
-    resetDependencyContainerForTests();
+    resetBackendContainerForTests();
+    register();
   });
 
   it('register() registers all tokens and they can be resolved', () => {
-    const metricsStore: MetricsStore = {
-      record: vi.fn(),
-      getEntries: vi.fn(() => []),
-      getSummary: vi.fn(() => ({
-        totalRequests: 0,
-        byRoute: {},
-        byStatus: {},
-      })),
-    };
-    const usageStore: UsageStore = {
-      record: vi.fn(),
-      getRecords: vi.fn(() => []),
-      getCountByCategory: vi.fn(() => emptyUsageCounts()),
-    };
+    const metricsStore = container.resolve<MetricsStore>(MetricsStoreToken);
+    expect(metricsStore).toBeDefined();
+    expect(typeof metricsStore.record).toBe('function');
+    expect(typeof metricsStore.getEntries).toBe('function');
+    expect(typeof metricsStore.getSummary).toBe('function');
 
-    register({ metricsStore, usageStore });
-
-    expect(container.resolve<MetricsStore>(MetricsStoreToken)).toBe(metricsStore);
-    expect(container.resolve<UsageStore>(UsageStoreToken)).toBe(usageStore);
+    const usageStore = container.resolve<UsageStore>(UsageStoreToken);
+    expect(usageStore).toBeDefined();
+    expect(typeof usageStore.record).toBe('function');
+    expect(typeof usageStore.getRecords).toBe('function');
+    expect(typeof usageStore.getCountByCategory).toBe('function');
+    expect(usageStore.getCountByCategory()).toEqual(emptyUsageCounts());
 
     const rateLimitStore = container.resolve<RateLimitStore>(RateLimitStoreToken);
     expect(rateLimitStore).toBeDefined();
@@ -99,22 +93,6 @@ describe('container', () => {
   });
 
   it('resolve injectable middleware returns instance with handler', () => {
-    const metricsStore: MetricsStore = {
-      record: vi.fn(),
-      getEntries: vi.fn(() => []),
-      getSummary: vi.fn(() => ({
-        totalRequests: 0,
-        byRoute: {},
-        byStatus: {},
-      })),
-    };
-    const usageStore: UsageStore = {
-      record: vi.fn(),
-      getRecords: vi.fn(() => []),
-      getCountByCategory: vi.fn(() => emptyUsageCounts()),
-    };
-    register({ metricsStore, usageStore });
-
     const metricsMw = container.resolve(RequestMetricsMiddleware);
     expect(metricsMw).toBeDefined();
     expect(typeof metricsMw.handler).toBe('function');

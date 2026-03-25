@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { UsageAnalyticsMiddleware } from '@src/middleware/usageAnalytics.js';
 import { UsageCategory } from '@src/lib/observability/usageAnalytics/types.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
-import { createArrayBackedUsageStore } from '@test/arrayBackedObservabilityStores.js';
+import { createMockUsageStore } from '@test/mocks/usageStore.mock.js';
 
 describe('middleware/usageAnalyticsMiddleware', () => {
   function createRes() {
@@ -22,7 +22,7 @@ describe('middleware/usageAnalyticsMiddleware', () => {
   }
 
   it('records uncategorized usage when handlers do not set a category', () => {
-    const usageStore = createArrayBackedUsageStore();
+    const usageStore = createMockUsageStore();
     const middleware = new UsageAnalyticsMiddleware(usageStore);
     const req = {} as Request;
     const res = createRes();
@@ -41,7 +41,7 @@ describe('middleware/usageAnalyticsMiddleware', () => {
   });
 
   it('records the handler-provided usage category', () => {
-    const usageStore = createArrayBackedUsageStore();
+    const usageStore = createMockUsageStore();
     const middleware = new UsageAnalyticsMiddleware(usageStore);
     const req = {} as Request;
     const res = createRes();
@@ -57,7 +57,7 @@ describe('middleware/usageAnalyticsMiddleware', () => {
   });
 
   it("uses requestId 'unknown' when requestContext is missing", () => {
-    const usageStore = createArrayBackedUsageStore();
+    const usageStore = createMockUsageStore();
     const middleware = new UsageAnalyticsMiddleware(usageStore);
     const req = {} as Request;
     const res = createRes();

@@ -4,11 +4,11 @@ import {
   setUsageAnalytics,
   usageAnalytics,
 } from '@src/lib/observability/usageAnalyticsInstance.js';
-import { createArrayBackedUsageStore } from '@test/arrayBackedObservabilityStores.js';
+import { createMockUsageStore } from '@test/mocks/usageStore.mock.js';
 
 describe('lib/observability/usageAnalytics', () => {
   beforeEach(() => {
-    setUsageAnalytics(createArrayBackedUsageStore());
+    setUsageAnalytics(createMockUsageStore());
   });
 
   it('records and returns records as copies', () => {

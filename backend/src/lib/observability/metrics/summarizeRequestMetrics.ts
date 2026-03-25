@@ -1,6 +1,6 @@
 /**
- * Pure aggregation for request metrics — shared by in-memory and SQLite stores.
- * Keeps percentile logic identical across implementations.
+ * Pure aggregation for request metrics — shared by SQLite-backed and test stores.
+ * Keeps percentile logic identical wherever summaries are built from entries.
  */
 
 import { Builder } from 'builder-pattern';
@@ -76,7 +76,7 @@ function toRouteSummaries(
   return result;
 }
 
-/** Build the same summary shape as the in-memory metrics store from a list of entries. */
+/** Build route/status summary totals from a list of request metric entries. */
 export function summarizeRequestMetricEntries(entriesList: RequestMetricEntry[]): {
   totalRequests: number;
   byRoute: Record<string, RouteMetricSummary>;

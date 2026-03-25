@@ -1,17 +1,14 @@
 import { USAGE_CATEGORIES } from '@chatxiv/cdm';
 import type { SqliteDatabase } from '../types.js';
+import type { UsageRecordRow } from '../models/usageRecordRow.js';
 import type { UsageCategory, UsageRecord } from '../../../observability/usageAnalytics/types.js';
-
-type UsageRow = {
-  category: string;
-  request_id: string;
-  recorded_at: number;
-};
 
 export class UsageRecordsDao {
   private readonly insertStmt;
   private readonly selectAllStmt;
   private readonly countByCategoryStmt;
+  private readonly countStmt;
+  private readonly deleteOldestExcessStmt;
 
   constructor(db: SqliteDatabase) {
     this.insertStmt = db.prepare(
@@ -24,6 +21,12 @@ export class UsageRecordsDao {
     this.countByCategoryStmt = db.prepare(
       `SELECT category, COUNT(*) AS c FROM usage_records GROUP BY category`
     );
+    this.countStmt = db.prepare('SELECT COUNT(*) AS c FROM usage_records');
+    this.deleteOldestExcessStmt = db.prepare(
+      `DELETE FROM usage_records WHERE id IN (
+        SELECT id FROM usage_records ORDER BY recorded_at ASC LIMIT ?
+      )`
+    );
   }
 
   insert(entry: UsageRecord): void {
@@ -35,7 +38,7 @@ export class UsageRecordsDao {
   }
 
   selectAll(): UsageRecord[] {
-    const rows = this.selectAllStmt.all() as UsageRow[];
+    const rows = this.selectAllStmt.all() as UsageRecordRow[];
     return rows.map((r) => ({
       category: r.category as UsageCategory,
       requestId: r.request_id,
@@ -54,5 +57,14 @@ export class UsageRecordsDao {
       counts[cat] = (counts[cat] ?? 0) + row.c;
     }
     return counts;
+  }
+
+  /** Delete oldest rows when count exceeds `maxRows` (retention sweep). */
+  sweepToCap(maxRows: number): void {
+    const row = this.countStmt.get() as { c: number };
+    if (row.c > maxRows) {
+      const excess = row.c - maxRows;
+      this.deleteOldestExcessStmt.run(excess);
+    }
   }
 }

@@ -21,8 +21,8 @@
  *   (3) in the class, add `@inject(Token)` in the constructor.
  *   Swap implementations by changing only the `useFactory` in `register()`.
  *
- * Observability (metrics + usage) always uses SQLite in production wiring; tests may pass
- * `register({ metricsStore, usageStore })` to inject mocks without opening a database.
+ * Tests reset the container via `container.reset()` (see `tests/helpers/resetBackendContainer.ts`);
+ * do not add test-only parameters to `register()`.
  */
 
 import { container as tsyringeContainer, type DependencyContainer } from 'tsyringe';
@@ -42,22 +42,10 @@ import type { UsageStore } from '../observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '../../middleware/rateLimit/types.js';
 import type { AuthStrategy } from '../auth/types.js';
 import type { FeatureFlagStore, FeatureFlagService } from '../featureFlags/types.js';
-import {
-  setMetrics,
-  resetMetricsStoreSingletonForTests,
-} from '../observability/metricsInstance.js';
-import {
-  setUsageAnalytics,
-  resetUsageAnalyticsSingletonForTests,
-} from '../observability/usageAnalyticsInstance.js';
-import {
-  setFeatureFlagService,
-  resetFeatureFlagServiceSingletonForTests,
-} from '../featureFlags/featureFlagInstance.js';
-import {
-  getOrOpenObservabilityDatabase,
-  closeObservabilityDatabase,
-} from '../persistence/sqlite/observabilityDatabaseSingleton.js';
+import { setMetrics } from '../observability/metricsInstance.js';
+import { setUsageAnalytics } from '../observability/usageAnalyticsInstance.js';
+import { setFeatureFlagService } from '../featureFlags/featureFlagInstance.js';
+import { getOrOpenAppDatabase } from '../persistence/sqlite/appDatabaseSingleton.js';
 import { createSqliteMetricsStore } from '../persistence/sqlite/sqliteMetricsStore.js';
 import { createSqliteUsageStore } from '../persistence/sqlite/sqliteUsageStore.js';
 
@@ -74,28 +62,15 @@ export const FeatureFlagServiceToken = Symbol('FeatureFlagService');
 /** The DI container. Call register() once at startup before resolving any dependencies. */
 export const container = tsyringeContainer as DependencyContainer;
 
-let registered = false;
-
-/** Optional SQLite bypass for Vitest (inject mocks without opening a DB). */
-export type RegisterTestOverrides = {
-  metricsStore: MetricsStore;
-  usageStore: UsageStore;
-};
-
 /** Call once at app startup (e.g. in server or app entry) to register all tokens and wire globals. */
-export function register(overrides?: RegisterTestOverrides): void {
-  if (registered) return;
-
-  let metricsStore: MetricsStore;
-  let usageStore: UsageStore;
-  if (overrides !== undefined) {
-    metricsStore = overrides.metricsStore;
-    usageStore = overrides.usageStore;
-  } else {
-    const db = getOrOpenObservabilityDatabase();
-    metricsStore = createSqliteMetricsStore(db);
-    usageStore = createSqliteUsageStore(db);
+export function register(): void {
+  if (container.isRegistered(MetricsStoreToken)) {
+    return;
   }
+
+  const db = getOrOpenAppDatabase();
+  const metricsStore = createSqliteMetricsStore(db);
+  const usageStore = createSqliteUsageStore(db);
 
   container.registerInstance<MetricsStore>(MetricsStoreToken, metricsStore);
   container.registerInstance<UsageStore>(UsageStoreToken, usageStore);
@@ -121,17 +96,4 @@ export function register(overrides?: RegisterTestOverrides): void {
   setMetrics(container.resolve<MetricsStore>(MetricsStoreToken));
   setUsageAnalytics(container.resolve<UsageStore>(UsageStoreToken));
   setFeatureFlagService(flagService);
-  registered = true;
-}
-
-/**
- * @internal Vitest — clears TSyringe state, closes observability DB, and resets globals so `register()` runs again.
- */
-export function resetDependencyContainerForTests(): void {
-  registered = false;
-  container.reset();
-  closeObservabilityDatabase();
-  resetMetricsStoreSingletonForTests();
-  resetUsageAnalyticsSingletonForTests();
-  resetFeatureFlagServiceSingletonForTests();
 }

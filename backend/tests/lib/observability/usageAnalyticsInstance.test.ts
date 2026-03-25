@@ -5,11 +5,11 @@ import {
   getUsageAnalytics,
   usageAnalytics,
 } from '@src/lib/observability/usageAnalyticsInstance.js';
-import { createArrayBackedUsageStore } from '@test/arrayBackedObservabilityStores.js';
+import { createMockUsageStore } from '@test/mocks/usageStore.mock.js';
 
 describe('usageAnalyticsInstance', () => {
   beforeEach(() => {
-    setUsageAnalytics(createArrayBackedUsageStore());
+    setUsageAnalytics(createMockUsageStore());
   });
 
   it('getUsageAnalytics throws when setUsageAnalytics was not called', async () => {
@@ -20,7 +20,7 @@ describe('usageAnalyticsInstance', () => {
   });
 
   it('setUsageAnalytics and getUsageAnalytics return the same store', () => {
-    const store = createArrayBackedUsageStore();
+    const store = createMockUsageStore();
     setUsageAnalytics(store);
     expect(getUsageAnalytics()).toBe(store);
   });
@@ -33,7 +33,7 @@ describe('usageAnalyticsInstance', () => {
     });
     expect(getUsageAnalytics().getRecords()).toHaveLength(1);
     expect(usageAnalytics.getCountByCategory()[UsageCategory.BIS]).toBe(1);
-    setUsageAnalytics(createArrayBackedUsageStore());
+    setUsageAnalytics(createMockUsageStore());
     expect(usageAnalytics.getRecords()).toHaveLength(0);
   });
 });

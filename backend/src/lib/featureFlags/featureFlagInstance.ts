@@ -7,11 +7,6 @@ export function setFeatureFlagService(service: FeatureFlagService): void {
   instance = service;
 }
 
-/** @internal Vitest — reset singleton when resetting the DI container. */
-export function resetFeatureFlagServiceSingletonForTests(): void {
-  instance = null;
-}
-
 /** Get the current feature flag service. Throws if setFeatureFlagService() has not been called. */
 export function getFeatureFlagService(): FeatureFlagService {
   if (instance === null) {

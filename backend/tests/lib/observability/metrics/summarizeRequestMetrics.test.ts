@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summarizeRequestMetricEntries } from './aggregateRequestMetrics.js';
+import { summarizeRequestMetricEntries } from '@src/lib/observability/metrics/summarizeRequestMetrics.js';
 
 describe('summarizeRequestMetricEntries', () => {
   it('aggregates by route and status', () => {

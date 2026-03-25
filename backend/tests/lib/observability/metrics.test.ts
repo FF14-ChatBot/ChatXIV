@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setMetrics, metrics } from '@src/lib/observability/metricsInstance.js';
-import { createArrayBackedMetricsStore } from '@test/arrayBackedObservabilityStores.js';
+import { createMockMetricsStore } from '@test/mocks/metricsStore.mock.js';
 
 describe('lib/observability/metrics', () => {
   beforeEach(() => {
-    setMetrics(createArrayBackedMetricsStore());
+    setMetrics(createMockMetricsStore());
   });
 
   it('records and returns entries as copies', () => {

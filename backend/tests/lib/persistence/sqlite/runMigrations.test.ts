@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { describe, it, expect } from 'vitest';
-import { runMigrations } from './runMigrations.js';
+import { runMigrations } from '@src/lib/persistence/sqlite/runMigrations.js';
 
 describe('runMigrations', () => {
   it('applies pending SQL files once and is idempotent', () => {
