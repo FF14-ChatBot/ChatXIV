@@ -5,7 +5,8 @@ export interface RequestMetricEntry {
   route: string;
   statusCode: number;
   durationMs: number;
-  timestamp: number;
+  /** ISO 8601 UTC string (`Date.prototype.toISOString()`), stored as TEXT in SQLite. */
+  timestamp: string;
 }
 
 /** Per-route summary returned from getSummary(). */

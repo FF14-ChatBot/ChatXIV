@@ -6,6 +6,10 @@ import type { SqliteDatabase } from './types.js';
 /**
  * Ensure `schema_migrations` exists, then apply any `migrations/*.sql` files not yet recorded.
  * Safe to call on every process start.
+ *
+ * **Ordering:** files are applied in lexicographic sort (`001_…`, `002_…`, `003_…`).
+ * `001_initial_observability.sql` and `002_feature_flags.sql` are committed baselines — do not
+ * change their SQL after they have shipped; add new DDL only in `003_*.sql` and later.
  */
 export function runMigrations(db: SqliteDatabase): void {
   db.exec(`

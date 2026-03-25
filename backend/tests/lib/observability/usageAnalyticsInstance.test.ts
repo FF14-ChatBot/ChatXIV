@@ -29,7 +29,7 @@ describe('usageAnalyticsInstance', () => {
     usageAnalytics.record({
       category: UsageCategory.BIS,
       requestId: 'r1',
-      timestamp: 1,
+      timestamp: '1970-01-01T00:00:00.000Z',
     });
     expect(getUsageAnalytics().getRecords()).toHaveLength(1);
     expect(usageAnalytics.getCountByCategory()[UsageCategory.BIS]).toBe(1);

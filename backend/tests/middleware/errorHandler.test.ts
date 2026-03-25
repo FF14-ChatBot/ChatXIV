@@ -19,6 +19,7 @@ describe('errorHandler', () => {
     req = {} as Request;
     res = {
       headersSent: false,
+      locals: {},
       status: statusMock,
       json: jsonMock,
     } as unknown as Response;

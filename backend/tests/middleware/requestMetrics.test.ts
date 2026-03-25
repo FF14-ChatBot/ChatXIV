@@ -8,6 +8,7 @@ describe('middleware/requestMetricsMiddleware', () => {
     const handlers: Record<string, Array<() => void>> = {};
     const res = {
       statusCode: 200,
+      locals: {},
       on: (event: string, fn: () => void) => {
         handlers[event] = handlers[event] ?? [];
         handlers[event].push(fn);
@@ -19,10 +20,10 @@ describe('middleware/requestMetricsMiddleware', () => {
     return res;
   }
 
-  it('uses req.path when req.route is not set', () => {
+  it('uses req.path when req.route is not set at finish', () => {
     const metricsStore = createMockMetricsStore();
     const middleware = new RequestMetricsMiddleware(metricsStore);
-    const req = { method: 'GET', path: '/x' } as unknown as Request;
+    const req = { method: 'GET', path: '/x', baseUrl: '' } as unknown as Request;
     const res = createRes();
     const next = vi.fn();
 
@@ -38,16 +39,48 @@ describe('middleware/requestMetricsMiddleware', () => {
     expect(entries[0].statusCode).toBe(201);
   });
 
-  it('uses req.route.path when present', () => {
+  it('uses baseUrl and req.route.path when set at finish', () => {
     const metricsStore = createMockMetricsStore();
     const middleware = new RequestMetricsMiddleware(metricsStore);
-    const req = { method: 'POST', path: '/ignored', route: { path: '/r' } } as unknown as Request;
+    const req = {
+      method: 'PUT',
+      path: '/ignored',
+      baseUrl: '/v1/admin',
+      route: { path: '/flags/:name' },
+    } as unknown as Request;
     const res = createRes();
     const next = vi.fn();
 
     middleware.handler(req, res, next);
     res._emit('finish');
 
-    expect(metricsStore.getEntries()[0].route).toBe('/r');
+    expect(metricsStore.getEntries()[0].route).toBe('/v1/admin/flags/:name');
+  });
+
+  it('does not record metrics for skipped doc mount routes', () => {
+    const metricsStore = createMockMetricsStore();
+    const middleware = new RequestMetricsMiddleware(metricsStore);
+    const req = {
+      method: 'GET',
+      path: '/swagger-ui.css',
+      baseUrl: '/v1/admin/docs',
+    } as unknown as Request;
+    const res = createRes();
+    middleware.handler(req, res, vi.fn());
+    res._emit('finish');
+
+    expect(metricsStore.getEntries()).toHaveLength(0);
+  });
+
+  it('records statusCode on error responses', () => {
+    const metricsStore = createMockMetricsStore();
+    const middleware = new RequestMetricsMiddleware(metricsStore);
+    const req = { method: 'GET', path: '/nope', baseUrl: '' } as unknown as Request;
+    const res = createRes();
+    middleware.handler(req, res, vi.fn());
+    res.statusCode = 404;
+    res._emit('finish');
+
+    expect(metricsStore.getEntries()[0].statusCode).toBe(404);
   });
 });

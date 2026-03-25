@@ -27,3 +27,9 @@ export const REDACT = {
   HEADER_NAMES: ['authorization', 'x-api-key', 'x-admin-key', 'api-key', 'cookie'] as const,
   QUERY_PARAMS: ['key', 'token', 'api_key', 'apikey', 'auth'] as const,
 } as const;
+
+/**
+ * Resolved metric routes matching these prefixes are not persisted (Swagger UI mounts, health).
+ * Same intent as rate-limit skips for docs, but we still record API traffic under `/v1/admin`.
+ */
+export const METRICS_SKIP_ROUTE_PREFIXES = ['/v1/docs', '/v1/admin/docs', '/health'] as const;

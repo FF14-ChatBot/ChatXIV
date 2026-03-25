@@ -13,25 +13,55 @@ describe('lib/observability/metrics', () => {
       route: '/health',
       statusCode: 200,
       durationMs: 10,
-      timestamp: 1,
+      timestamp: '1970-01-01T00:00:00.001Z',
     });
     const a = metrics.getEntries();
     const b = metrics.getEntries();
 
     expect(a).toEqual([
-      { method: 'GET', route: '/health', statusCode: 200, durationMs: 10, timestamp: 1 },
+      {
+        method: 'GET',
+        route: '/health',
+        statusCode: 200,
+        durationMs: 10,
+        timestamp: '1970-01-01T00:00:00.001Z',
+      },
     ]);
     expect(b).toEqual(a);
 
-    a.push({ method: 'X', route: 'Y', statusCode: 500, durationMs: 0, timestamp: 2 });
+    a.push({
+      method: 'X',
+      route: 'Y',
+      statusCode: 500,
+      durationMs: 0,
+      timestamp: '1970-01-01T00:00:00.002Z',
+    });
     expect(metrics.getEntries()).toHaveLength(1);
   });
 
   describe('getSummary()', () => {
     it('aggregates by route and status', () => {
-      metrics.record({ method: 'GET', route: '/a', statusCode: 200, durationMs: 5, timestamp: 1 });
-      metrics.record({ method: 'GET', route: '/a', statusCode: 200, durationMs: 7, timestamp: 2 });
-      metrics.record({ method: 'POST', route: '/b', statusCode: 500, durationMs: 3, timestamp: 3 });
+      metrics.record({
+        method: 'GET',
+        route: '/a',
+        statusCode: 200,
+        durationMs: 5,
+        timestamp: '1970-01-01T00:00:00.001Z',
+      });
+      metrics.record({
+        method: 'GET',
+        route: '/a',
+        statusCode: 200,
+        durationMs: 7,
+        timestamp: '1970-01-01T00:00:00.002Z',
+      });
+      metrics.record({
+        method: 'POST',
+        route: '/b',
+        statusCode: 500,
+        durationMs: 3,
+        timestamp: '1970-01-01T00:00:00.003Z',
+      });
 
       const summary = metrics.getSummary();
       expect(summary.totalRequests).toBe(3);
