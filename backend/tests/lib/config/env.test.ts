@@ -1,7 +1,4 @@
-import path from 'node:path';
-import os from 'node:os';
 import { describe, it, expect, afterEach } from 'vitest';
-import { ENV_KEYS } from '@src/lib/config/constants.js';
 import {
   getPort,
   getNodeEnv,
@@ -106,31 +103,16 @@ describe('lib/config/env', () => {
   });
 
   describe('getObservabilityDatabasePath', () => {
-    it('uses absolute OBSERVABILITY_DATABASE_PATH when set', () => {
-      const p = path.join(os.tmpdir(), 'obs-absolute-test.db');
-      process.env.NODE_ENV = 'development';
-      process.env[ENV_KEYS.OBSERVABILITY_DATABASE_PATH] = p;
-      expect(getObservabilityDatabasePath()).toBe(path.resolve(p));
-    });
-
-    it('resolves relative OBSERVABILITY_DATABASE_PATH from cwd', () => {
-      process.env.NODE_ENV = 'development';
-      process.env[ENV_KEYS.OBSERVABILITY_DATABASE_PATH] = 'rel/obs.db';
-      expect(getObservabilityDatabasePath()).toBe(path.resolve(process.cwd(), 'rel/obs.db'));
-    });
-
-    it('in test uses a per-worker temp file when override is unset', () => {
+    it('in test uses a per-worker temp file', () => {
       process.env.NODE_ENV = 'test';
-      delete process.env[ENV_KEYS.OBSERVABILITY_DATABASE_PATH];
       process.env.VITEST_WORKER_ID = '3';
       const got = getObservabilityDatabasePath();
       expect(got).toContain('chatxiv-observability-test-w3');
       expect(got.endsWith('.db')).toBe(true);
     });
 
-    it('uses DATA_DIR/observability.db when not in test and override unset', () => {
+    it('uses DATA_DIR/observability.db when not in test', () => {
       process.env.NODE_ENV = 'development';
-      delete process.env[ENV_KEYS.OBSERVABILITY_DATABASE_PATH];
       process.env.DATA_DIR = './myobsdata';
       expect(getObservabilityDatabasePath()).toMatch(/myobsdata[\\/]observability\.db$/);
     });

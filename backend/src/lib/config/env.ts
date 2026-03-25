@@ -35,16 +35,10 @@ const OBSERVABILITY_DB_FILENAME = 'observability.db';
 
 /**
  * Resolved path for the observability SQLite database (metrics + usage).
- * - `OBSERVABILITY_DATABASE_PATH`: explicit file (relative resolved from `process.cwd()`).
  * - `NODE_ENV=test`: temp file per Vitest worker (`VITEST_WORKER_ID`) so parallel tests do not clash.
- * - Otherwise: `path.resolve(process.cwd(), DATA_DIR, observability.db)`.
+ * - Otherwise: `path.join(resolved DATA_DIR, observability.db)`.
  */
 export function getObservabilityDatabasePath(): string {
-  const override = process.env[ENV_KEYS.OBSERVABILITY_DATABASE_PATH]?.trim();
-  if (override) {
-    return path.isAbsolute(override) ? override : path.resolve(process.cwd(), override);
-  }
-
   if (getNodeEnv() === 'test') {
     const worker = process.env.VITEST_WORKER_ID ?? '0';
     return path.join(os.tmpdir(), `chatxiv-observability-test-w${worker}.db`);
