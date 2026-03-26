@@ -21,13 +21,16 @@
 
 .user {
   composes: bubble;
-  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  /* Solid mix so light mode isn’t primary-tinted white on a white canvas */
+  background: color-mix(in srgb, var(--primary) 18%, var(--muted) 82%);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border) 70%);
   margin-left: auto;
 }
 
 .assistant {
   composes: bubble;
-  background: color-mix(in srgb, var(--card) 60%, transparent);
-  backdrop-filter: blur(8px);
+  /* --card matches --background in default light; use --muted + border for contrast */
+  background: var(--muted);
+  border: 1px solid var(--border);
   margin-right: auto;
 }

@@ -9,7 +9,7 @@ export type ChatConversationContextValue = {
   readonly setInputValue: (value: string) => void;
   readonly sendMessage: (text: string) => void;
   /**
-   * True when leaving or starting a new chat would discard visible state (thread or composer).
+   * True when the user has typed or sent a message (assistant-only opener does not count).
    * When server-backed saved chats exist, extend this to include “unsaved edits since last save”.
    */
   readonly isEphemeralDirty: boolean;
@@ -18,11 +18,13 @@ export type ChatConversationContextValue = {
 const ChatConversationContext = createContext<ChatConversationContextValue | null>(null);
 
 export function ChatConversationProvider({ children }: { readonly children: ReactNode }) {
-  const { sessionGeneration } = useChatSession();
-  const { messages, inputValue, setInputValue, sendMessage } =
-    useChatConversation(sessionGeneration);
+  const { sessionGeneration, landing } = useChatSession();
+  const { messages, inputValue, setInputValue, sendMessage } = useChatConversation(
+    sessionGeneration,
+    { sessionLanding: landing }
+  );
 
-  const isEphemeralDirty = messages.length > 0 || inputValue.trim().length > 0;
+  const isEphemeralDirty = messages.some((m) => m.role === 'user') || inputValue.trim().length > 0;
 
   const value = useMemo(
     (): ChatConversationContextValue => ({
