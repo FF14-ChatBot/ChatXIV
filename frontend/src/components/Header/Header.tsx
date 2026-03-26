@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LogIn, LogOut, MessageSquarePlus, MoreVertical } from 'lucide-react';
 import { MammetLucideMark } from '../MammetLucideMark/MammetLucideMark';
@@ -15,7 +15,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '../ui/DropdownMenu';
-import { useChatSession } from '../../features/chat/ChatSessionContext';
+import { useChatDiscardGuard } from '../../features/chat/ChatDiscardGuard';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { useTheme } from '../../hooks/useTheme';
 import dropdownMenuStyles from '../ui/DropdownMenu/DropdownMenu.module.css';
@@ -40,7 +40,7 @@ function getInitials(displayName?: string, email?: string): string {
 export function Header() {
   const { pathname } = useLocation();
   const { themePreset, setThemePreset } = useTheme();
-  const { startNewChat } = useChatSession();
+  const { requestStartNewChat, onHomeNavigationClick } = useChatDiscardGuard();
   const { user, login, logout } = useAuth();
   const [compactNav, setCompactNav] = useState(false);
 
@@ -55,14 +55,15 @@ export function Header() {
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  const goHome = useCallback(() => {
-    startNewChat();
-  }, [startNewChat]);
-
   return (
     <header className={styles.header} role="banner">
       <div className={styles.inner}>
-        <Link to="/" className={styles.lockup} onClick={goHome} aria-label="ChatXIV home">
+        <Link
+          to="/"
+          className={styles.lockup}
+          onClick={onHomeNavigationClick}
+          aria-label="ChatXIV home"
+        >
           <div className={styles.lockupMark} aria-hidden="true">
             <MammetLucideMark className={styles.lockupIcon} />
           </div>
@@ -72,7 +73,7 @@ export function Header() {
         <Link
           to="/"
           className={styles.homeLink}
-          onClick={goHome}
+          onClick={onHomeNavigationClick}
           aria-label="Home"
           aria-current={pathname === '/' ? 'page' : undefined}
         >
@@ -85,7 +86,7 @@ export function Header() {
           <OutlineButton
             type="button"
             size="sm"
-            onClick={startNewChat}
+            onClick={requestStartNewChat}
             aria-label={compactNav ? 'New chat' : undefined}
           >
             <MessageSquarePlus className={styles.newChatIcon} aria-hidden />

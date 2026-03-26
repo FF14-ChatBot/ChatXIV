@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { ChatConversationProvider } from '@/features/chat/ChatConversationContext';
 import { ChatSessionProvider, useChatSession } from '@/features/chat/ChatSessionContext';
 import { ChatPage } from '@/features/chat/ChatPage';
 
@@ -16,8 +17,10 @@ describe('ChatPage session reset', () => {
   it('returns to welcome when startNewChat runs after a prompt', () => {
     render(
       <ChatSessionProvider>
-        <ChatPage />
-        <NewChatTrigger />
+        <ChatConversationProvider>
+          <ChatPage />
+          <NewChatTrigger />
+        </ChatConversationProvider>
       </ChatSessionProvider>
     );
     fireEvent.click(screen.getByRole('button', { name: /where am i in the msq/i }));
