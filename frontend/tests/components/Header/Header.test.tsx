@@ -1,6 +1,12 @@
+import { useLayoutEffect } from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  ChatConversationProvider,
+  useChatConversationContext,
+} from '@/features/chat/ChatConversationContext';
+import { ChatDiscardGuard } from '@/features/chat/ChatDiscardGuard';
 import { ChatSessionProvider, useChatSession } from '@/features/chat/ChatSessionContext';
 import { Header } from '@/components/Header/Header';
 import { ThemeProvider } from '@/hooks/useTheme';
@@ -24,13 +30,26 @@ function SessionGenerationProbe() {
   return <span data-testid="session-generation">{sessionGeneration}</span>;
 }
 
+/** Adds a user message so the ephemeral thread is dirty (mirrors an in-progress chat). */
+function SeedUserMessage({ text }: { readonly text: string }) {
+  const { sendMessage } = useChatConversationContext();
+  useLayoutEffect(() => {
+    sendMessage(text);
+  }, [sendMessage, text]);
+  return null;
+}
+
 function renderHeader() {
   return render(
     <MemoryRouter>
       <ChatSessionProvider>
-        <ThemeProvider>
-          <Header />
-        </ThemeProvider>
+        <ChatConversationProvider>
+          <ChatDiscardGuard>
+            <ThemeProvider>
+              <Header />
+            </ThemeProvider>
+          </ChatDiscardGuard>
+        </ChatConversationProvider>
       </ChatSessionProvider>
     </MemoryRouter>
   );
@@ -55,10 +74,14 @@ describe('Header', () => {
     render(
       <MemoryRouter>
         <ChatSessionProvider>
-          <ThemeProvider>
-            <SessionGenerationProbe />
-            <Header />
-          </ThemeProvider>
+          <ChatConversationProvider>
+            <ChatDiscardGuard>
+              <ThemeProvider>
+                <SessionGenerationProbe />
+                <Header />
+              </ThemeProvider>
+            </ChatDiscardGuard>
+          </ChatConversationProvider>
         </ChatSessionProvider>
       </MemoryRouter>
     );
@@ -67,6 +90,58 @@ describe('Header', () => {
     expect(screen.getByTestId('session-generation')).toHaveTextContent('1');
     fireEvent.click(screen.getByRole('link', { name: /^home$/i }));
     expect(screen.getByTestId('session-generation')).toHaveTextContent('2');
+  });
+
+  it('shows a confirm dialog before home when the thread has messages', async () => {
+    render(
+      <MemoryRouter>
+        <ChatSessionProvider>
+          <ChatConversationProvider>
+            <ChatDiscardGuard>
+              <ThemeProvider>
+                <SessionGenerationProbe />
+                <SeedUserMessage text="do not lose" />
+                <Header />
+              </ThemeProvider>
+            </ChatDiscardGuard>
+          </ChatConversationProvider>
+        </ChatSessionProvider>
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('session-generation')).toHaveTextContent('0');
+    fireEvent.click(screen.getByRole('link', { name: /^home$/i }));
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+    expect(screen.getByTestId('session-generation')).toHaveTextContent('0');
+    fireEvent.click(screen.getByRole('button', { name: /^stay$/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId('session-generation')).toHaveTextContent('0');
+  });
+
+  it('starts a new chat from the dialog when the thread has messages', async () => {
+    render(
+      <MemoryRouter>
+        <ChatSessionProvider>
+          <ChatConversationProvider>
+            <ChatDiscardGuard>
+              <ThemeProvider>
+                <SessionGenerationProbe />
+                <SeedUserMessage text="discard me" />
+                <Header />
+              </ThemeProvider>
+            </ChatDiscardGuard>
+          </ChatConversationProvider>
+        </ChatSessionProvider>
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole('link', { name: /chatxiv home/i }));
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /start new chat/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId('session-generation')).toHaveTextContent('1');
   });
 
   it('toggles Island Sanctuary preset from the Themes submenu', async () => {

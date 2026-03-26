@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
-import { useChatSession } from './ChatSessionContext';
-import { useChatConversation } from '../../hooks/useChatConversation';
+import { useChatConversationContext } from './ChatConversationContext';
 import { WelcomePanel } from './WelcomePanel';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
@@ -8,9 +7,7 @@ import { ChatAdSlot } from './ChatAdSlot';
 import styles from './ChatPage.module.css';
 
 export function ChatPage() {
-  const { sessionGeneration } = useChatSession();
-  const { messages, inputValue, setInputValue, sendMessage } =
-    useChatConversation(sessionGeneration);
+  const { messages, inputValue, setInputValue, sendMessage } = useChatConversationContext();
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue);

@@ -26,6 +26,7 @@ export function useChatConversation(
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+  const prevSessionGenerationRef = useRef<number | null>(null);
 
   const cancelPendingReply = useCallback(() => {
     abortRef.current?.abort();
@@ -33,6 +34,14 @@ export function useChatConversation(
   }, []);
 
   useEffect(() => {
+    if (prevSessionGenerationRef.current === null) {
+      prevSessionGenerationRef.current = sessionGeneration;
+      return;
+    }
+    if (prevSessionGenerationRef.current === sessionGeneration) {
+      return;
+    }
+    prevSessionGenerationRef.current = sessionGeneration;
     cancelPendingReply();
     setMessages([]);
     setInputValue('');

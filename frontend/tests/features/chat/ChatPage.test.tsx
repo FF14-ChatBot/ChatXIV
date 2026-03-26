@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { ChatConversationProvider } from '@/features/chat/ChatConversationContext';
 import { ChatSessionProvider } from '@/features/chat/ChatSessionContext';
 import { ChatPage } from '@/features/chat/ChatPage';
 
 function renderChatPage() {
   return render(
     <ChatSessionProvider>
-      <ChatPage />
+      <ChatConversationProvider>
+        <ChatPage />
+      </ChatConversationProvider>
     </ChatSessionProvider>
   );
 }
