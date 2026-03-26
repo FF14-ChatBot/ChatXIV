@@ -1,22 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Message } from '../types/chat';
+import { CHAT_THREAD_GREETING } from '../features/chat/chatThreadGreeting';
+import type { ChatSessionLanding } from '../types/chatSession';
 import { createDemoChatAssistantPort, type ChatAssistantPort } from '../lib/chat/chatAssistantPort';
 import { logger } from '../lib/logger/instance';
 
 export type UseChatConversationOptions = {
   /** Injected assistant (tests); defaults to a demo delayed reply. */
   assistantPort?: ChatAssistantPort;
+  /** Landing for the current session after each generation bump (from {@link useChatSession}). */
+  sessionLanding?: ChatSessionLanding;
 };
 
 /**
  * Message list + composer state, reset on `sessionGeneration`, and send pipeline via
  * {@link ChatAssistantPort}.
  */
+function makeThreadGreetingMessage(): Message {
+  return {
+    id: crypto.randomUUID(),
+    text: CHAT_THREAD_GREETING,
+    role: 'assistant',
+  };
+}
+
 export function useChatConversation(
   sessionGeneration: number,
   options: UseChatConversationOptions = {}
 ) {
-  const { assistantPort: assistantPortOption } = options;
+  const { assistantPort: assistantPortOption, sessionLanding = 'welcome' } = options;
   const fallbackPortRef = useRef<ChatAssistantPort | null>(null);
   if (fallbackPortRef.current === null) {
     fallbackPortRef.current = createDemoChatAssistantPort();
@@ -43,9 +55,9 @@ export function useChatConversation(
     }
     prevSessionGenerationRef.current = sessionGeneration;
     cancelPendingReply();
-    setMessages([]);
     setInputValue('');
-  }, [sessionGeneration, cancelPendingReply]);
+    setMessages(sessionLanding === 'thread' ? [makeThreadGreetingMessage()] : []);
+  }, [sessionGeneration, sessionLanding, cancelPendingReply]);
 
   useEffect(() => () => cancelPendingReply(), [cancelPendingReply]);
 

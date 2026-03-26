@@ -92,6 +92,26 @@ describe('Header', () => {
     expect(screen.getByTestId('session-generation')).toHaveTextContent('2');
   });
 
+  it('starts a new chat when the New Chat button is clicked (no link navigation)', () => {
+    render(
+      <MemoryRouter>
+        <ChatSessionProvider>
+          <ChatConversationProvider>
+            <ChatDiscardGuard>
+              <ThemeProvider>
+                <SessionGenerationProbe />
+                <Header />
+              </ThemeProvider>
+            </ChatDiscardGuard>
+          </ChatConversationProvider>
+        </ChatSessionProvider>
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('session-generation')).toHaveTextContent('0');
+    fireEvent.click(screen.getByRole('button', { name: /new chat/i }));
+    expect(screen.getByTestId('session-generation')).toHaveTextContent('1');
+  });
+
   it('shows a confirm dialog before home when the thread has messages', async () => {
     render(
       <MemoryRouter>

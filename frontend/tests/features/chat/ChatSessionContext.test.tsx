@@ -28,4 +28,17 @@ describe('ChatSessionContext', () => {
     });
     expect(result.current.sessionGeneration).toBe(1);
   });
+
+  it('defaults landing to welcome and accepts thread landing', () => {
+    const { result } = renderHook(() => useChatSession(), { wrapper });
+    expect(result.current.landing).toBe('welcome');
+    act(() => {
+      result.current.startNewChat({ landing: 'thread' });
+    });
+    expect(result.current.landing).toBe('thread');
+    act(() => {
+      result.current.startNewChat();
+    });
+    expect(result.current.landing).toBe('welcome');
+  });
 });

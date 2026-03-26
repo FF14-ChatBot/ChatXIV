@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatConversation } from '@/hooks/useChatConversation';
+import { CHAT_THREAD_GREETING } from '@/features/chat/chatThreadGreeting';
 import type { ChatAssistantPort } from '@/lib/chat/chatAssistantPort';
 import { DEMO_ASSISTANT_REPLY } from '@/lib/chat/chatAssistantPort';
+import type { ChatSessionLanding } from '@/types/chatSession';
 import { logger } from '@/lib/logger/instance';
 
 describe('useChatConversation', () => {
@@ -43,6 +45,22 @@ describe('useChatConversation', () => {
 
     await waitFor(() => expect(result.current.messages).toHaveLength(0), { timeout: 100 });
     await new Promise((r) => setTimeout(r, 1100));
+    expect(result.current.messages).toHaveLength(0);
+  });
+
+  it('seeds a thread greeting when generation changes with sessionLanding thread', () => {
+    const { result, rerender } = renderHook(
+      ({ gen, landing }: { gen: number; landing: ChatSessionLanding }) =>
+        useChatConversation(gen, { sessionLanding: landing }),
+      { initialProps: { gen: 0, landing: 'welcome' as const } }
+    );
+
+    rerender({ gen: 1, landing: 'thread' });
+    expect(result.current.messages).toHaveLength(1);
+    expect(result.current.messages[0]?.role).toBe('assistant');
+    expect(result.current.messages[0]?.text).toBe(CHAT_THREAD_GREETING);
+
+    rerender({ gen: 2, landing: 'welcome' });
     expect(result.current.messages).toHaveLength(0);
   });
 

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type MouseEvent,
   type ReactNode,
@@ -19,13 +20,14 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/AlertDialog';
 import { DestructiveButton, OutlineButton } from '../../components/ui/Button';
+import type { ChatSessionLanding } from '../../types/chatSession';
 import { useChatSession } from './ChatSessionContext';
 import { useChatConversationContext } from './ChatConversationContext';
 
 export type ChatDiscardGuardContextValue = {
   /** Starts a new chat, or opens a confirm dialog when the ephemeral thread is dirty. */
   readonly requestStartNewChat: () => void;
-  /** For same-route home links: run default navigation when clean; otherwise block and confirm. */
+  /** Home / logo: reset to welcome and follow `to="/"` when the thread is clean. */
   readonly onHomeNavigationClick: (event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
@@ -35,35 +37,52 @@ export function ChatDiscardGuard({ children }: { readonly children: ReactNode })
   const { startNewChat } = useChatSession();
   const { isEphemeralDirty } = useChatConversationContext();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingLandingOnDiscardRef = useRef<ChatSessionLanding | null>(null);
 
-  const runStartNewChat = useCallback(() => {
-    startNewChat();
-  }, [startNewChat]);
+  const runStartNewChat = useCallback(
+    (landing: ChatSessionLanding) => {
+      startNewChat({ landing });
+    },
+    [startNewChat]
+  );
 
   const requestStartNewChat = useCallback(() => {
     if (!isEphemeralDirty) {
-      runStartNewChat();
+      runStartNewChat('thread');
       return;
     }
+    pendingLandingOnDiscardRef.current = 'thread';
     setConfirmOpen(true);
   }, [isEphemeralDirty, runStartNewChat]);
 
   const onHomeNavigationClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
       if (!isEphemeralDirty) {
-        runStartNewChat();
+        runStartNewChat('welcome');
         return;
       }
       event.preventDefault();
+      pendingLandingOnDiscardRef.current = 'welcome';
       setConfirmOpen(true);
     },
     [isEphemeralDirty, runStartNewChat]
   );
 
   const handleConfirmDiscard = useCallback(() => {
+    const landing = pendingLandingOnDiscardRef.current ?? 'welcome';
+    pendingLandingOnDiscardRef.current = null;
     setConfirmOpen(false);
-    runStartNewChat();
+    runStartNewChat(landing);
   }, [runStartNewChat]);
+
+  const handleConfirmOpenChange = useCallback((open: boolean) => {
+    setConfirmOpen(open);
+    if (!open) {
+      queueMicrotask(() => {
+        pendingLandingOnDiscardRef.current = null;
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!isEphemeralDirty && confirmOpen) {
@@ -93,7 +112,7 @@ export function ChatDiscardGuard({ children }: { readonly children: ReactNode })
   return (
     <ChatDiscardGuardContext.Provider value={value}>
       {children}
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog open={confirmOpen} onOpenChange={handleConfirmOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Discard this chat?</AlertDialogTitle>
@@ -104,7 +123,14 @@ export function ChatDiscardGuard({ children }: { readonly children: ReactNode })
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel asChild>
-              <OutlineButton type="button">Stay</OutlineButton>
+              <OutlineButton
+                type="button"
+                onClick={() => {
+                  pendingLandingOnDiscardRef.current = null;
+                }}
+              >
+                Stay
+              </OutlineButton>
             </AlertDialogCancel>
             <AlertDialogAction asChild>
               <DestructiveButton type="button" onClick={handleConfirmDiscard}>
