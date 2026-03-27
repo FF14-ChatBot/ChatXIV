@@ -10,6 +10,7 @@ declare global {
       REQUEST_TIMEOUT_MS?: string;
       RATE_LIMIT_CAPACITY?: string;
       RATE_LIMIT_REFILL_PER_MIN?: string;
+      TURNSTILE_SECRET_KEY?: string;
       ANTHROPIC_API_KEY?: string;
       ANTHROPIC_MODEL?: string;
       DATA_DIR?: string;

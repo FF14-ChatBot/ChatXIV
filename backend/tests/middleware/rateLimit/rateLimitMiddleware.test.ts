@@ -57,11 +57,11 @@ describe('rateLimitMiddleware (factory)', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
-  it('skips rate limit for /v1/docs and subpaths', () => {
+  it('applies rate limit for /v1/docs and subpaths', () => {
     (req as unknown as { path: string }).path = '/v1/docs/';
     const mw = rateLimitMiddleware(store, config);
     mw(req, res, next);
-    expect(store.consume).not.toHaveBeenCalled();
+    expect(store.consume).toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith();
   });
 
@@ -73,11 +73,19 @@ describe('rateLimitMiddleware (factory)', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
-  it('skips rate limit for /v1/openapi.yaml', () => {
+  it('applies rate limit for /v1/openapi.yaml', () => {
     (req as unknown as { path: string }).path = '/v1/openapi.yaml';
     const mw = rateLimitMiddleware(store, config);
     mw(req, res, next);
-    expect(store.consume).not.toHaveBeenCalled();
+    expect(store.consume).toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('applies rate limit for /v1/auth paths', () => {
+    (req as unknown as { path: string }).path = '/v1/auth/login';
+    const mw = rateLimitMiddleware(store, config);
+    mw(req, res, next);
+    expect(store.consume).toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith();
   });
 

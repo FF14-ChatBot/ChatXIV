@@ -137,3 +137,10 @@ export function getBootstrapAdminSubs(): string[] {
     .map((s) => s.trim())
     .filter((s) => s !== '');
 }
+
+/** Turnstile secret for siteverify; unset disables server checks (callers should treat as invalid). */
+export function getTurnstileSecretKey(): string | undefined {
+  const v = process.env[ENV_KEYS.TURNSTILE_SECRET_KEY];
+  if (!v || v.trim() === '') return undefined;
+  return v.trim();
+}

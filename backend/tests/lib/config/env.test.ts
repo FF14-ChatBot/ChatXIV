@@ -17,7 +17,9 @@ import {
   getOauthSuccessRedirectUrl,
   getSessionSecret,
   getBootstrapAdminSubs,
+  getTurnstileSecretKey,
 } from '@src/lib/config/env.js';
+import { ENV_KEYS } from '@src/lib/config/constants.js';
 
 describe('lib/config/env', () => {
   const saved = { ...process.env };
@@ -334,6 +336,18 @@ describe('lib/config/env', () => {
     it('filters out empty segments', () => {
       process.env.BOOTSTRAP_ADMIN_SUBS = 'sub1,,sub2,';
       expect(getBootstrapAdminSubs()).toEqual(['sub1', 'sub2']);
+    });
+  });
+
+  describe('getTurnstileSecretKey', () => {
+    it('returns undefined when unset', () => {
+      delete process.env[ENV_KEYS.TURNSTILE_SECRET_KEY];
+      expect(getTurnstileSecretKey()).toBeUndefined();
+    });
+
+    it('returns trimmed value when set', () => {
+      process.env[ENV_KEYS.TURNSTILE_SECRET_KEY] = '  sk-secret  ';
+      expect(getTurnstileSecretKey()).toBe('sk-secret');
     });
   });
 });

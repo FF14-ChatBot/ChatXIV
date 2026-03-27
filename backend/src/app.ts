@@ -21,6 +21,7 @@ import { UsageAnalyticsMiddleware } from './middleware/usageAnalytics.js';
 import { securityHeadersMiddleware } from './middleware/securityHeaders.js';
 import { RequestTimeoutMiddleware } from './middleware/requestTimeout.js';
 import { RateLimitMiddleware } from './middleware/rateLimit/rateLimitMiddleware.js';
+import { createBrowserMutationOriginGuard } from './middleware/browserMutationOriginGuard.js';
 import { createOptionalUserMiddleware, requireAdminMiddleware } from './middleware/userAuth.js';
 import { createPublicRouter } from './routes/v1/public/router.js';
 import { createAdminRouter } from './routes/v1/admin/router.js';
@@ -56,6 +57,7 @@ app.use(
       'Idempotency-Key',
       'X-Session-Id',
       'X-Request-Id',
+      'CF-Turnstile-Response',
     ],
     credentials: true,
     maxAge: 86400,
@@ -67,6 +69,7 @@ app.use(express.json({ limit: `${requestConfig.maxBodySizeKb}kb` }));
 app.use(cookieParser(getSessionSecret()));
 app.use(requestContextMiddleware);
 app.use(createOptionalUserMiddleware(db));
+app.use(createBrowserMutationOriginGuard(corsOrigins));
 app.use(container.resolve(RequestTimeoutMiddleware).handler);
 app.use(container.resolve(RequestMetricsMiddleware).handler);
 app.use(container.resolve(UsageAnalyticsMiddleware).handler);
