@@ -2,6 +2,31 @@
 
 Express + TypeScript API. Run `npm run dev` from this package (or `npm run dev:backend` from the repo root). Default base URL: `http://localhost:3000`.
 
+## Docker
+
+**Prerequisites:** Install and start **Docker Desktop** (Windows/macOS) or **Docker Engine** (Linux). On Windows, use the **WSL 2–based Linux engine** so Linux images can run. See **[Docker Desktop and Linux engine](../docs/README.md#docker-desktop-and-linux-engine-optional)** in the developer setup guide.
+
+The Dockerfile **caches `npm ci`** when only backend **source** (or the entrypoint script) changes: dependency install is keyed off workspace `package.json` files, not the full `backend/` tree. The build still runs a second **production-only `npm ci`** after TypeScript compiles so the image stays smaller—expect that step to take some time on a cold cache.
+
+You do **not** need to run `npm install` or `npm run build` on the host first; **`docker build` runs the full compile inside the image.**
+
+From the **repository root**, npm shortcuts (image tag **`chatxiv-backend:local`**):
+
+```bash
+npm run docker:build:backend
+# Requires backend/.env (create from backend/.env.example). Persists SQLite in Docker volume chatxiv-data.
+npm run docker:run:backend
+```
+
+Equivalent raw Docker:
+
+```bash
+docker build -f backend/Dockerfile -t chatxiv-backend:local .
+docker run --rm -p 3000:3000 -e DATA_DIR=/data -v chatxiv-data:/data --env-file backend/.env chatxiv-backend:local
+```
+
+Pass secrets and config with **`backend/.env`** via `--env-file` (never bake real values into the image). Defaults: `PORT=3000`, `NODE_ENV=production` inside the container. The image **entrypoint** fixes ownership on **`DATA_DIR`** (e.g. `/data` from a named volume) so the non-root `node` user can create `app.db`. To change ports or other run options, use the raw `docker run` line above and edit the flags.
+
 ## API documentation (OpenAPI + Swagger UI)
 
 | What                    | URL                                                                                                       |
