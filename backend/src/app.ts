@@ -33,6 +33,9 @@ import { createUserDao } from './lib/persistence/sqlite/userDao.js';
 
 export const app = express();
 
+/** One reverse-proxy hop (e.g. Traefik) so `req.ip` and `X-Forwarded-*` reflect the client. */
+app.set('trust proxy', 1);
+
 // ── Resolve services ──────────────────────────────────────────────────
 
 const requestConfig = container.resolve<RequestConfig>(RequestConfigToken);
