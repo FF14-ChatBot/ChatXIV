@@ -30,6 +30,8 @@
     "test:frontend": "npm run test --prefix frontend",
     "test:coverage": "npm run coverage --prefix backend && npm run coverage --prefix frontend",
     "audit": "npm run audit --prefix backend && npm run audit --prefix frontend",
+    "docker:build:backend": "docker build -f backend/Dockerfile -t chatxiv-backend:local .",
+    "docker:run:backend": "docker run --rm -p 3000:3000 -e DATA_DIR=/data -v chatxiv-data:/data --env-file backend/.env chatxiv-backend:local",
     "precommit:check": "node scripts/precommit-checks.mjs",
     "prepare": "node scripts/husky-prepare.mjs",
     "webhook:listen": "node --env-file=.env scripts/github-webhook-listener.mjs",

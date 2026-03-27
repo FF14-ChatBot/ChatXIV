@@ -6,6 +6,7 @@ Succinct guide for running, linting, testing, and building the repo.
 
 - **Node 24+** and **npm**
 - Optional: **git-crypt** if you need access to encrypted design docs in `docs/design-documents/` (see [git-crypt setup](git-crypt-setup.md))
+- Optional: **Docker** if you build or run the [backend container](../backend/README.md#docker). On **Windows**, use **Docker Desktop** with the **WSL 2–based Linux engine** (see [Docker Desktop and Linux engine](#docker-desktop-and-linux-engine-optional)).
 
 ## First-time setup
 
@@ -23,6 +24,36 @@ Succinct guide for running, linting, testing, and building the repo.
 - **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: public Swagger UI at `http://localhost:3000/v1/docs/`, admin Swagger UI at `http://localhost:3000/v1/admin/docs/` (requires `X-Admin-Key`); public OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`, full YAML at `http://localhost:3000/v1/admin/openapi.yaml` (with admin key). See [backend/README.md](../backend/README.md) for curl, Postman, and headers.
 - **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`. No **`node --watch`**: **`src/`** updates hot-reload via Vite; restart the dev server yourself after **`vite.config.ts`** or **`scripts/dev.mjs`** changes. The bootstrap **retries binding 5173** briefly if the port is still releasing. If **5173** stays busy, stop the other process.
 - **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (after root `npm install`)
+
+## Docker Desktop and Linux engine (optional)
+
+Use this when you want to run **`docker build -f backend/Dockerfile`** locally (same image CI builds). The backend image is **Linux/amd64** (Alpine); on Windows and macOS, Docker runs it through a **Linux VM** (Docker Desktop).
+
+### Windows
+
+1. **Install [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/)** using the official installer. Allow it to enable **WSL 2** and install/update components when prompted — the default **Linux containers** backend is **WSL 2**, not “Windows containers.”
+2. Ensure **WSL 2** is available: follow Microsoft’s [WSL install guide](https://learn.microsoft.com/windows/wsl/install) if Docker prompts you. After major OS updates, run **`wsl --update`** in an elevated terminal if Docker’s Linux engine misbehaves.
+3. **Start Docker Desktop** and wait until it reports **running** (whale icon in the system tray). First launch can take a minute while the Linux engine starts.
+4. Optional: **Settings → Resources → WSL integration** — turn on integration for your default WSL distro if you use the CLI from inside WSL.
+5. **Verify** in PowerShell or cmd:
+   - `docker version` — you should see both **Client** and **Server** sections.
+   - `docker run --rm hello-world` — confirms the Linux engine can pull and run images.
+
+### macOS
+
+Install **[Docker Desktop for Mac](https://docs.docker.com/desktop/setup/install/mac-install/)**, start it, then run `docker version` and `docker run --rm hello-world`.
+
+### Linux
+
+Install **[Docker Engine](https://docs.docker.com/engine/install/)** and the [Compose plugin](https://docs.docker.com/compose/install/linux/) per your distribution. Add your user to the `docker` group if you use rootless paths, then verify with `docker version`.
+
+### Troubleshooting (Windows)
+
+| Symptom | What to try |
+|--------|-------------|
+| `docker_engine` pipe / “daemon not running” | Start **Docker Desktop**; wait until fully up; open a **new** terminal. |
+| `500 Internal Server Error` / Linux engine | Restart Docker Desktop; run **`wsl --shutdown`** then start Docker again; **`wsl --update`**. |
+| `docker` not found | Reboot after install, or confirm Docker Desktop added itself to **PATH**. |
 
 ## Lint and format
 
@@ -48,11 +79,12 @@ Succinct guide for running, linting, testing, and building the repo.
 - Root (per side): `npm run build:backend` or `npm run build:frontend`
 - Per package: `cd backend && npm run build`; `cd frontend && npm run build`
 - **Clean outputs:** `npm run clean` removes `dist`, `dist-node`, and `coverage` under backend, frontend, and CDM (does **not** delete `node_modules`). Use when you suspect stale compiled files before rebuilding. To fully reset dependencies, delete **`node_modules`** at the repo root (and any workspace copies) and run **`npm ci`**.
+- **Backend container:** from the repo root, `npm run docker:build:backend` then `npm run docker:run:backend` (needs `backend/.env`; see [backend/README.md](../backend/README.md#docker)). Or use the `docker build` / `docker run` commands shown there. [Docker Desktop / WSL 2](#docker-desktop-and-linux-engine-optional) if you have not installed Docker yet.
 
 ## CI
 
 - **GitHub Actions** in `.github/workflows/`: backend and frontend have separate workflows.
-- **Triggers:** Path-based — backend CI on changes under `backend/` (and its workflow file); frontend CI on changes under `frontend/` (and its workflow file). Lint, test, coverage, build, and audit run per package.
+- **Triggers:** Path-based — backend CI on changes under `backend/`, `packages/cdm/`, root `.dockerignore`, and its workflow file; frontend CI on changes under `frontend/` (and its workflow file). Backend CI also runs a **`docker build -f backend/Dockerfile`** smoke build. Lint, test, coverage, build, and audit run per package (frontend path unchanged).
 - **Install:** Workflows run `npm ci` at the **repository root** using the root `package-lock.json` so npm workspaces (and root devDependencies such as Husky) install consistently; job steps still use `backend/` or `frontend/` as their working directory for lint, test, and build.
 - **Lockfiles:** Keep the root `package-lock.json` in sync when you change dependencies. `backend/` and `frontend/` also keep their own lockfiles for local per-package installs.
 

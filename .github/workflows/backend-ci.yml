@@ -5,11 +5,13 @@ on:
     paths:
       - "backend/**"
       - "packages/cdm/**"
+      - ".dockerignore"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
       - "packages/cdm/**"
+      - ".dockerignore"
       - ".github/workflows/backend-ci.yml"
 
 jobs:
@@ -60,3 +62,7 @@ jobs:
 
       - name: Security audit
         run: npm run audit
+
+      - name: Docker build
+        working-directory: .
+        run: docker build -f backend/Dockerfile .
