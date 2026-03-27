@@ -16,15 +16,25 @@ function buildApp(service: Mocked<FeatureFlagService>) {
 describe('createPublicRouter', () => {
   let service: Mocked<FeatureFlagService>;
 
+  const savedEnv = { ...process.env };
+
   beforeEach(() => {
     service = createMockFeatureFlagService();
+    process.env = { ...savedEnv };
   });
 
-  it('serves public OpenAPI YAML', async () => {
+  it('serves public OpenAPI YAML when not production', async () => {
+    process.env.NODE_ENV = 'test';
     const res = await request(buildApp(service)).get('/v1/openapi.yaml');
     expect(res.status).toBe(200);
     expect(res.type).toMatch(/yaml/);
     expect(res.text).toContain('ChatXIV API (public)');
+  });
+
+  it('does not mount public OpenAPI in production', async () => {
+    process.env.NODE_ENV = 'production';
+    const res = await request(buildApp(service)).get('/v1/openapi.yaml');
+    expect(res.status).toBe(404);
   });
 
   it('mounts flags under /v1', async () => {

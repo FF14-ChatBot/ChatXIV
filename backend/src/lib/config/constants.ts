@@ -16,6 +16,8 @@ export const ENV_KEYS = {
   REQUEST_TIMEOUT_MS: 'REQUEST_TIMEOUT_MS',
   RATE_LIMIT_CAPACITY: 'RATE_LIMIT_CAPACITY',
   RATE_LIMIT_REFILL_PER_MIN: 'RATE_LIMIT_REFILL_PER_MIN',
+  /** Cloudflare Turnstile secret (server-side verify). See https://developers.cloudflare.com/turnstile/ */
+  TURNSTILE_SECRET_KEY: 'TURNSTILE_SECRET_KEY',
   ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
   ANTHROPIC_MODEL: 'ANTHROPIC_MODEL',
   DATA_DIR: 'DATA_DIR',
@@ -31,6 +33,12 @@ export const ENV_KEYS = {
 
 /** Cookie name for the signed session ID. */
 export const SESSION_COOKIE = 'chatxiv_sid' as const;
+
+/**
+ * Hard cap on one user-authored chat message (UTF-16 code units). Tune in code + redeploy.
+ * Separate from JSON `MAX_BODY_SIZE_KB` for LLM cost / abuse per turn.
+ */
+export const CHAT_MAX_USER_MESSAGE_CHARS = 12_000;
 
 /** Header and query param names that must be redacted in debug payloads (TR-19a). */
 export const REDACT = {

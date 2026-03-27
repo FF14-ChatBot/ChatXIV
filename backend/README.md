@@ -13,7 +13,9 @@ Express + TypeScript API. Run `npm run dev` from this package (or `npm run dev:b
 
 Repo sources: [`openapi/openapi.public.yaml`](openapi/openapi.public.yaml) and [`openapi/openapi.admin.yaml`](openapi/openapi.admin.yaml). Update the file that matches the surface you changed (public vs admin), in the same PR as the code.
 
-After `npm run build`, both YAML files are copied to `dist/openapi/` so production `npm start` can still serve them.
+**Production:** `NODE_ENV=production` does **not** mount public `/v1/docs` or `GET /v1/openapi.yaml` (reduces public API catalog). **Development / test:** public Swagger and YAML stay available. Admin docs (`/v1/admin/docs`) are unchanged.
+
+After `npm run build`, both YAML files are copied to `dist/openapi/` so non-production `npm start` and admin specs still serve from disk.
 
 ### Admin Swagger in the browser
 
@@ -27,7 +29,11 @@ After `npm run build`, both YAML files are copied to `dist/openapi/` so producti
 | `X-Admin-Key: <secret>`                           | **Required** for `/v1/admin/*`. Use the same value as `ADMIN_API_KEY` in `backend/.env`. |
 | `X-Request-Id`, `X-Session-Id`, `Idempotency-Key` | Optional; allowed by CORS for future/chat flows.                                         |
 
-Public flag routes (`GET /v1/flags`, `GET /v1/flags/:name`) do not require auth and are **not** rate-limited (along with `/health`, `/v1/docs`, `/v1/openapi.yaml`, and `/v1/admin/*`).
+Public flag routes (`GET /v1/flags`, `GET /v1/flags/:name`) do not require auth and are **not** rate-limited. **`/health`** and **`/v1/admin/*`** are skipped too (probes + authenticated admin surface). Everything else uses a **per-client** token bucket: prefer `X-Session-Id` when the client sends it, otherwise the client IP — not one global limit shared by all users. Skip list and future per-route bucket overrides live in [`src/middleware/rateLimit/skipConfig.ts`](src/middleware/rateLimit/skipConfig.ts).
+
+**Chat:** max user message length is the code constant `CHAT_MAX_USER_MESSAGE_CHARS` in [`src/lib/config/constants.ts`](src/lib/config/constants.ts) (not env). **`verifyTurnstileToken`** in [`src/lib/cloudflare/turnstile.ts`](src/lib/cloudflare/turnstile.ts) — set `TURNSTILE_SECRET_KEY` for production checks; tests skip calling Cloudflare when the secret is unset.
+
+**Browser CSRF-ish guard:** mutating methods (`POST`/`PUT`/`PATCH`/`DELETE`) require a matching `Origin` or `Referer` when those headers are present (same allowlist as CORS); missing both allows non-browser clients. Configure `CORS_ORIGIN` so real SPA origins are included.
 
 ### Swagger UI: server dropdown and admin **Try it out**
 
@@ -89,6 +95,10 @@ JSON error bodies follow the shared shape `ApiErrorResponse` in `@chatxiv/cdm` (
 
 - **401** on admin routes: missing or wrong `X-Admin-Key`.
 - **400** with `VALIDATION_ERROR`: bad flag name pattern or invalid JSON body (`enabled` must be a boolean).
+
+## BFF + private API (target architecture optional)
+
+The browser can call **`https://www.chatxiv.com/api/...`** (or a Cloudflare **Worker** / **Pages Function** on that host) so requests are **same-origin** with the SPA. That Worker forwards to the real API over **Cloudflare Tunnel** or a **non-public origin**; clients never need your VPS IP. Only Cloudflare’s edge talks to the tunnel / internal URL. See [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) and [Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
 
 ## Developer commands
 
