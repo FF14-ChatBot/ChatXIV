@@ -6,7 +6,7 @@ import {
   ChatConversationProvider,
   useChatConversationContext,
 } from '@/features/chat/ChatConversationContext';
-import { ChatDiscardGuard } from '@/features/chat/ChatDiscardGuard';
+import { ChatDiscardGuard, ChatDiscardGuardStub } from '@/features/chat/ChatDiscardGuard';
 import { ChatSessionProvider, useChatSession } from '@/features/chat/ChatSessionContext';
 import { Header } from '@/components/Header/Header';
 import { ThemeProvider } from '@/hooks/useTheme';
@@ -68,6 +68,19 @@ describe('Header', () => {
     expect(screen.getByRole('link', { name: /chatxiv home/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^home$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /switch to light mode/i })).toBeInTheDocument();
+  });
+
+  it('hides New Chat on AppShell routes', () => {
+    render(
+      <MemoryRouter initialEntries={['/unavailable']}>
+        <ChatDiscardGuardStub>
+          <ThemeProvider>
+            <Header />
+          </ThemeProvider>
+        </ChatDiscardGuardStub>
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole('button', { name: /new chat/i })).not.toBeInTheDocument();
   });
 
   it('starts a new chat when the lockup or Home link is clicked', () => {

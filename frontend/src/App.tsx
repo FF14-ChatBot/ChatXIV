@@ -1,8 +1,11 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AnalyticsPageView } from './lib/analytics/AnalyticsPageView';
+import { AppShell } from './components/AppShell/AppShell';
 import { MainLayout } from './components/MainLayout/MainLayout';
-import { ChatPage } from './features/chat/ChatPage';
 import { NotAvailablePage } from './components/NotAvailablePage/NotAvailablePage';
+import { ProductNavigationProvider } from './context/ProductNavigationContext';
+import { LoginPage } from './features/auth/LoginPage';
+import { ChatPage } from './features/chat/ChatPage';
 
 export type AppProps = {
   readonly isProductLive: boolean;
@@ -11,26 +14,44 @@ export type AppProps = {
 export default function App({ isProductLive }: AppProps) {
   const blockMain = !isProductLive;
   const showHomeLink = isProductLive;
+  const homeHref = blockMain ? '/unavailable' : '/';
 
   return (
     <>
       <AnalyticsPageView />
-      <Routes>
-        <Route path="/unavailable" element={<NotAvailablePage showHomeLink={showHomeLink} />} />
-        <Route
-          path="/"
-          element={
-            blockMain ? (
-              <Navigate to="/unavailable" replace />
-            ) : (
-              <MainLayout>
-                <ChatPage />
-              </MainLayout>
-            )
-          }
-        />
-        <Route path="*" element={<Navigate to="/unavailable" replace />} />
-      </Routes>
+      <ProductNavigationProvider homeHref={homeHref}>
+        <Routes>
+          <Route
+            path="/unavailable"
+            element={
+              <AppShell>
+                <NotAvailablePage showHomeLink={showHomeLink} />
+              </AppShell>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <AppShell>
+                <LoginPage />
+              </AppShell>
+            }
+          />
+          <Route
+            path="/"
+            element={
+              blockMain ? (
+                <Navigate to="/unavailable" replace />
+              ) : (
+                <MainLayout>
+                  <ChatPage />
+                </MainLayout>
+              )
+            }
+          />
+          <Route path="*" element={<Navigate to="/unavailable" replace />} />
+        </Routes>
+      </ProductNavigationProvider>
     </>
   );
 }
