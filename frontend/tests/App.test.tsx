@@ -37,18 +37,26 @@ describe('App', () => {
     renderApp({ initialEntries: ['/'], isProductLive: false });
     expect(screen.getByRole('heading', { name: /uh-oh\. page not found/i })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /message/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
   it('still serves /unavailable when product is not live', () => {
     renderApp({ initialEntries: ['/unavailable'], isProductLive: false });
     expect(screen.getByRole('heading', { name: /uh-oh\. page not found/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /return to chatxiv/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^sign in$/i })).toBeInTheDocument();
+  });
+
+  it('serves /login when product is not live', () => {
+    renderApp({ initialEntries: ['/login'], isProductLive: false });
+    expect(screen.getByRole('heading', { name: /^sign in$/i })).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
   it('renders not available page at /unavailable when product is live', () => {
     renderApp({ initialEntries: ['/unavailable'] });
     expect(screen.getByRole('heading', { name: /uh-oh\. page not found/i })).toBeInTheDocument();
-    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /return to chatxiv/i })).toBeInTheDocument();
   });
 });

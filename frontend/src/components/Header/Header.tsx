@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/DropdownMenu';
 import { useChatDiscardGuard } from '../../features/chat/ChatDiscardGuard';
+import { useProductNavigation } from '../../context/ProductNavigationContext';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { useTheme } from '../../hooks/useTheme';
 import dropdownMenuStyles from '../ui/DropdownMenu/DropdownMenu.module.css';
@@ -39,9 +40,11 @@ function getInitials(displayName?: string, email?: string): string {
 
 export function Header() {
   const { pathname } = useLocation();
+  const { homeHref } = useProductNavigation();
   const { themePreset, setThemePreset } = useTheme();
   const { requestStartNewChat, onHomeNavigationClick } = useChatDiscardGuard();
   const { user, login, logout } = useAuth();
+  const hideChatActions = pathname === '/unavailable' || pathname === '/login';
   const [compactNav, setCompactNav] = useState(false);
 
   useEffect(() => {
@@ -59,7 +62,7 @@ export function Header() {
     <header className={styles.header} role="banner">
       <div className={styles.inner}>
         <Link
-          to="/"
+          to={homeHref}
           className={styles.lockup}
           onClick={onHomeNavigationClick}
           aria-label="ChatXIV home"
@@ -71,11 +74,11 @@ export function Header() {
         </Link>
 
         <Link
-          to="/"
+          to={homeHref}
           className={styles.homeLink}
           onClick={onHomeNavigationClick}
           aria-label="Home"
-          aria-current={pathname === '/' ? 'page' : undefined}
+          aria-current={pathname === homeHref ? 'page' : undefined}
         >
           Home
         </Link>
@@ -83,17 +86,19 @@ export function Header() {
         <nav className={styles.nav} aria-label="App actions">
           <ThemeToggle />
 
-          <OutlineButton
-            type="button"
-            size="sm"
-            onClick={requestStartNewChat}
-            aria-label={compactNav ? 'New chat' : undefined}
-          >
-            <MessageSquarePlus className={styles.newChatIcon} aria-hidden />
-            <span className={styles.newChatLabel} aria-hidden={compactNav}>
-              New Chat
-            </span>
-          </OutlineButton>
+          {!hideChatActions ? (
+            <OutlineButton
+              type="button"
+              size="sm"
+              onClick={requestStartNewChat}
+              aria-label={compactNav ? 'New chat' : undefined}
+            >
+              <MessageSquarePlus className={styles.newChatIcon} aria-hidden />
+              <span className={styles.newChatLabel} aria-hidden={compactNav}>
+                New Chat
+              </span>
+            </OutlineButton>
+          ) : null}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

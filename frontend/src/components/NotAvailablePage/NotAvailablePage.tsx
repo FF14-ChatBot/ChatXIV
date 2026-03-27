@@ -1,8 +1,12 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../features/auth/AuthProvider';
 import constructionMammet from './construction-mammet.png';
 import styles from './NotAvailablePage.module.css';
 
 export function NotAvailablePage({ showHomeLink }: { readonly showHomeLink: boolean }) {
+  const { user, loading } = useAuth();
+  const showSignInCta = !showHomeLink && !loading && user === null;
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
@@ -19,6 +23,12 @@ export function NotAvailablePage({ showHomeLink }: { readonly showHomeLink: bool
           <p className={styles.actions}>
             <Link to="/" className={styles.homeLink}>
               Return to ChatXIV
+            </Link>
+          </p>
+        ) : showSignInCta ? (
+          <p className={styles.actions}>
+            <Link to="/login" className={styles.homeLink}>
+              Sign in
             </Link>
           </p>
         ) : null}

@@ -33,6 +33,20 @@ export type ChatDiscardGuardContextValue = {
 
 const ChatDiscardGuardContext = createContext<ChatDiscardGuardContextValue | null>(null);
 
+const CHAT_DISCARD_GUARD_STUB: ChatDiscardGuardContextValue = {
+  requestStartNewChat: () => {},
+  onHomeNavigationClick: () => {},
+};
+
+/** Use outside the chat layout so `Header` can render without session/conversation providers. */
+export function ChatDiscardGuardStub({ children }: { readonly children: ReactNode }) {
+  return (
+    <ChatDiscardGuardContext.Provider value={CHAT_DISCARD_GUARD_STUB}>
+      {children}
+    </ChatDiscardGuardContext.Provider>
+  );
+}
+
 export function ChatDiscardGuard({ children }: { readonly children: ReactNode }) {
   const { startNewChat } = useChatSession();
   const { isEphemeralDirty } = useChatConversationContext();
