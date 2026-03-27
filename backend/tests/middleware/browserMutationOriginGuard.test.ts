@@ -32,9 +32,41 @@ describe('createBrowserMutationOriginGuard', () => {
   it('rejects POST with foreign Origin', () => {
     const next = run(guard, {
       method: 'POST',
-      get: (h: string) => (h === 'Origin' ? 'https://evil.example' : undefined),
+      protocol: 'https',
+      get: (h: string) => {
+        if (h === 'Origin') return 'https://evil.example';
+        if (h === 'host') return 'beta.chatxiv.com';
+        return undefined;
+      },
     });
     expect(next.mock.calls[0][0]).toMatchObject({ status: 403, code: 'FORBIDDEN' });
+  });
+
+  it('allows POST when Origin matches this request (Swagger on API host) even if not in CORS list', () => {
+    const next = run(guard, {
+      method: 'POST',
+      protocol: 'https',
+      get: (h: string) => {
+        if (h === 'Origin') return 'https://dev-api.chatxiv.com';
+        if (h === 'host') return 'dev-api.chatxiv.com';
+        return undefined;
+      },
+    });
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('allows POST when Origin matches first X-Forwarded-Host (reverse proxy)', () => {
+    const next = run(guard, {
+      method: 'POST',
+      protocol: 'https',
+      get: (h: string) => {
+        if (h === 'Origin') return 'https://public.example.com';
+        if (h === 'host') return 'backend:3000';
+        if (h === 'x-forwarded-host') return 'public.example.com';
+        return undefined;
+      },
+    });
+    expect(next).toHaveBeenCalledWith();
   });
 
   it('allows POST with no Origin/Referer (non-browser clients)', () => {
