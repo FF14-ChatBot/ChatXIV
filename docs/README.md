@@ -21,7 +21,7 @@ Succinct guide for running, linting, testing, and building the repo.
 
 ## How to run
 
-- **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: public Swagger UI at `http://localhost:3000/v1/docs/`, admin Swagger UI at `http://localhost:3000/v1/admin/docs/` (requires `X-Admin-Key`); public OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`, full YAML at `http://localhost:3000/v1/admin/openapi.yaml` (with admin key). See [backend/README.md](../backend/README.md) for curl, Postman, and headers.
+- **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: public Swagger UI at `http://localhost:3000/v1/docs/`, admin Swagger UI at `http://localhost:3000/v1/admin/docs/` (requires an **admin** OAuth session cookie); public OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`, full YAML at `http://localhost:3000/v1/admin/openapi.yaml` (same session auth). See [backend/README.md](../backend/README.md) for curl, Postman, CORS / Swagger **Try it out**, and headers.
 - **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`. No **`node --watch`**: **`src/`** updates hot-reload via Vite; restart the dev server yourself after **`vite.config.ts`** or **`scripts/dev.mjs`** changes. The bootstrap **retries binding 5173** briefly if the port is still releasing. If **5173** stays busy, stop the other process.
 - **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (after root `npm install`)
 
@@ -79,7 +79,7 @@ Install **[Docker Engine](https://docs.docker.com/engine/install/)** and the [Co
 - Root (per side): `npm run build:backend` or `npm run build:frontend`
 - Per package: `cd backend && npm run build`; `cd frontend && npm run build`
 - **Clean outputs:** `npm run clean` removes `dist`, `dist-node`, and `coverage` under backend, frontend, and CDM (does **not** delete `node_modules`). Use when you suspect stale compiled files before rebuilding. To fully reset dependencies, delete **`node_modules`** at the repo root (and any workspace copies) and run **`npm ci`**.
-- **Backend container:** from the repo root, `npm run docker:build:backend` then `npm run docker:run:backend` (needs `backend/.env`; see [backend/README.md](../backend/README.md#docker)). Or use the `docker build` / `docker run` commands shown there. [Docker Desktop / WSL 2](#docker-desktop-and-linux-engine-optional) if you have not installed Docker yet.
+- **Backend container:** from the repo root, `npm run docker:build:backend` then `npm run docker:run:backend` (needs `backend/.env`; see [backend/README.md](../backend/README.md#docker)). Or use the `docker build` / `docker run` commands shown there. [Docker Desktop / WSL 2](#docker-desktop-and-linux-engine-optional) if you have not installed Docker yet. SQLite lives on the **`chatxiv-data`** volume at **`/data/app.db`** inside the container; to list OIDC `sub` values, run SQL via a throwaway Alpine container (or `docker cp`) as described in [Inspecting SQLite and bootstrapping admin (OIDC)](../backend/README.md#inspecting-sqlite-and-bootstrapping-admin-oidc).
 
 ## CI
 

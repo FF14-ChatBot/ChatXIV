@@ -16,6 +16,8 @@ describe('cors', () => {
       expect(result).toContain('https://www.chatxiv.com');
       expect(result).toContain('http://localhost:5173');
       expect(result).toContain('http://127.0.0.1:5173');
+      expect(result).toContain('http://localhost:3000');
+      expect(result).toContain('http://127.0.0.1:3000');
       expect(result).toContain('https://dev-www.chatxiv.com');
     });
 
