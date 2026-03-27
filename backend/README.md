@@ -60,7 +60,7 @@ Then restart the API if you stopped it. Ask the user to **log out and log in aga
 
 On **Windows PowerShell**, if the `docker run ... sqlite3` one-liner is awkward, use **`docker cp`** + DB Browser, or run the Alpine command from **WSL** / **Git Bash**.
 
-**Env-based bootstrap (no SQL):** set **`BOOTSTRAP_ADMIN_SUBS`** in `backend/.env` to a comma-separated list of **`sub`** values (from the DB or your IdP). On **each process startup**, the backend promotes matching rows (`UPDATE ... WHERE sub = ?`). A user must exist first, so typical flow is: log in once → set `BOOTSTRAP_ADMIN_SUBS` → restart the container → optional: remove the variable after promotion. See comments in [`.env.example`](.env.example).
+**Env-based bootstrap (no SQL):** set **`BOOTSTRAP_ADMIN_SUBS`** in `backend/.env` to a comma-separated list of **`sub`** values (from the DB or your IdP). On **each process startup**, the backend promotes matching rows (`UPDATE ... WHERE sub = ?`). A user must exist first, so typical flow is: log in once → set `BOOTSTRAP_ADMIN_SUBS` → restart the container → optional: remove the variable after promotion. All env keys: [`.env.example`](.env.example).
 
 ## API documentation (OpenAPI + Swagger UI)
 
