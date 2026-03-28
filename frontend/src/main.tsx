@@ -24,6 +24,7 @@ import { AuthProvider } from './features/auth/AuthProvider';
 import App from './App';
 import { getAdsenseClient } from './lib/adsense/adsenseRegistry.js';
 import { loadAdsenseScript } from './lib/adsense/loadAdsenseScript';
+import { getDeployEnvironment } from './lib/config/deployEnvironment';
 import './index.css';
 
 setChatxivApiClient(createChatxivApiClient());
@@ -58,7 +59,7 @@ async function boot(): Promise<void> {
         collectorUrl: faroUrl,
         appName: 'ChatXIV',
         appVersion: (import.meta.env.VITE_APP_VERSION as string | undefined) ?? '0.0.0',
-        environment: import.meta.env.MODE,
+        environment: getDeployEnvironment(),
       })
     : createNoopObservability();
   setObservability(observability);
