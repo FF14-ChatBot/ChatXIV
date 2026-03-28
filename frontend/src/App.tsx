@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
+import { FaroRoutes } from '@grafana/faro-react';
 import { AnalyticsPageView } from './lib/analytics/AnalyticsPageView';
 import { AppShell } from './components/AppShell/AppShell';
 import { MainLayout } from './components/MainLayout/MainLayout';
@@ -20,7 +21,7 @@ export default function App({ isProductLive }: AppProps) {
     <>
       <AnalyticsPageView />
       <ProductNavigationProvider homeHref={homeHref}>
-        <Routes>
+        <FaroRoutes>
           <Route
             path="/unavailable"
             element={
@@ -50,7 +51,7 @@ export default function App({ isProductLive }: AppProps) {
             }
           />
           <Route path="*" element={<Navigate to="/unavailable" replace />} />
-        </Routes>
+        </FaroRoutes>
       </ProductNavigationProvider>
     </>
   );

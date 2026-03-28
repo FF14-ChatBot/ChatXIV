@@ -1,10 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { FaroErrorBoundary } from '@grafana/faro-react';
 import { IS_PRODUCT_LIVE } from '@chatxiv/cdm';
 import { setAnalytics } from './lib/analytics/instance';
 import { createPostHogAnalytics } from './lib/analytics/posthogAnalytics';
 import { createNoopAnalytics } from './lib/analytics/noopAnalytics';
+import { setObservability } from './lib/observability/instance';
+import { createFaroObservability } from './lib/observability/faroObservability';
+import { createNoopObservability } from './lib/observability/noopObservability';
 import { setLogger, logger } from './lib/logger/instance';
 import { createConsoleLogger } from './lib/logger/consoleLogger';
 import { setChatxivApiClient } from './clients/chatxivApi/instance';
@@ -48,6 +52,17 @@ async function boot(): Promise<void> {
     loadAdsenseScript(adsenseClient);
   }
 
+  const faroUrl = import.meta.env.VITE_GRAFANA_FARO_URL as string | undefined;
+  const observability = faroUrl
+    ? createFaroObservability({
+        collectorUrl: faroUrl,
+        appName: 'ChatXIV',
+        appVersion: (import.meta.env.VITE_APP_VERSION as string | undefined) ?? '0.0.0',
+        environment: import.meta.env.MODE,
+      })
+    : createNoopObservability();
+  setObservability(observability);
+
   const posthogToken = import.meta.env.VITE_PUBLIC_POSTHOG_TOKEN as string | undefined;
   const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST as string | undefined;
 
@@ -65,17 +80,19 @@ async function boot(): Promise<void> {
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <ErrorBoundary>
-        <GlobalErrorHandler>
-          <BrowserRouter>
-            <ThemeProvider>
-              <AuthProvider>
-                <App isProductLive={isProductLive} />
-              </AuthProvider>
-            </ThemeProvider>
-          </BrowserRouter>
-        </GlobalErrorHandler>
-      </ErrorBoundary>
+      <FaroErrorBoundary>
+        <ErrorBoundary>
+          <GlobalErrorHandler>
+            <BrowserRouter>
+              <ThemeProvider>
+                <AuthProvider>
+                  <App isProductLive={isProductLive} />
+                </AuthProvider>
+              </ThemeProvider>
+            </BrowserRouter>
+          </GlobalErrorHandler>
+        </ErrorBoundary>
+      </FaroErrorBoundary>
     </StrictMode>
   );
 }
