@@ -1,7 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
   getPort,
   getNodeEnv,
+  RUNTIME_STAGE,
+  shouldDotenvOverrideShellEnv,
   isProduction,
   getDataDir,
   getAnthropicApiKey,
@@ -29,25 +31,77 @@ describe('lib/config/env', () => {
     process.env = { ...saved };
   });
 
-  describe('getNodeEnv', () => {
-    it('returns "development" by default', () => {
+  describe('shouldDotenvOverrideShellEnv', () => {
+    it('returns true when NODE_ENV is unset (dotenv not loaded yet)', () => {
       delete process.env.NODE_ENV;
-      expect(getNodeEnv()).toBe('development');
+      expect(shouldDotenvOverrideShellEnv()).toBe(true);
     });
 
-    it('returns "production" when set', () => {
+    it('returns false for production and beta', () => {
       process.env.NODE_ENV = 'production';
-      expect(getNodeEnv()).toBe('production');
+      expect(shouldDotenvOverrideShellEnv()).toBe(false);
+      process.env.NODE_ENV = 'beta';
+      expect(shouldDotenvOverrideShellEnv()).toBe(false);
     });
 
-    it('returns "test" when set', () => {
+    it('returns true for development, test, and legacy dev', () => {
+      process.env.NODE_ENV = 'development';
+      expect(shouldDotenvOverrideShellEnv()).toBe(true);
       process.env.NODE_ENV = 'test';
-      expect(getNodeEnv()).toBe('test');
+      expect(shouldDotenvOverrideShellEnv()).toBe(true);
+      process.env.NODE_ENV = 'dev' as never;
+      expect(shouldDotenvOverrideShellEnv()).toBe(true);
+    });
+  });
+
+  describe('getNodeEnv', () => {
+    it('returns development by default', () => {
+      delete process.env.NODE_ENV;
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
     });
 
-    it('falls back to "development" for unknown values', () => {
+    it('returns production when NODE_ENV=production', () => {
+      process.env.NODE_ENV = 'production';
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.PRODUCTION);
+    });
+
+    it('returns beta when NODE_ENV=beta', () => {
+      process.env.NODE_ENV = 'beta';
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.BETA);
+    });
+
+    it('returns development when NODE_ENV=development', () => {
+      process.env.NODE_ENV = 'development';
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
+    });
+
+    it('normalizes test and legacy dev to development', () => {
+      process.env.NODE_ENV = 'test';
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
+      process.env.NODE_ENV = 'dev' as never;
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
+    });
+
+    it('does not emit invalid NODE_ENV warning for legacy dev when not under Vitest', () => {
+      const savedVitest = process.env.VITEST;
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        delete process.env.VITEST;
+        process.env.NODE_ENV = 'dev' as never;
+        expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
+        expect(warnSpy.mock.calls.some((c) => String(c[0]).includes('Invalid NODE_ENV'))).toBe(
+          false
+        );
+      } finally {
+        if (savedVitest === undefined) delete process.env.VITEST;
+        else process.env.VITEST = savedVitest;
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('falls back to development for unknown NODE_ENV', () => {
       process.env.NODE_ENV = 'staging' as never;
-      expect(getNodeEnv()).toBe('development');
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
     });
   });
 
@@ -57,13 +111,13 @@ describe('lib/config/env', () => {
       expect(isProduction()).toBe(true);
     });
 
-    it('returns false when NODE_ENV is "development"', () => {
+    it('returns false when NODE_ENV is unset (logical development)', () => {
       delete process.env.NODE_ENV;
       expect(isProduction()).toBe(false);
     });
 
-    it('returns false when NODE_ENV is "test"', () => {
-      process.env.NODE_ENV = 'test';
+    it('returns false when NODE_ENV is development', () => {
+      process.env.NODE_ENV = 'development';
       expect(isProduction()).toBe(false);
     });
   });
@@ -101,30 +155,26 @@ describe('lib/config/env', () => {
   });
 
   describe('getDataDir', () => {
-    it('returns "./data" by default', () => {
+    it('returns code constant (not env-driven)', () => {
       delete process.env.DATA_DIR;
       expect(getDataDir()).toBe('./data');
-    });
-
-    it('returns env value when set', () => {
       process.env.DATA_DIR = '/var/lib/chatxiv';
-      expect(getDataDir()).toBe('/var/lib/chatxiv');
+      expect(getDataDir()).toBe('./data');
     });
   });
 
   describe('getAppDatabasePath', () => {
-    it('in test uses a per-worker temp file', () => {
-      process.env.NODE_ENV = 'test';
+    it('uses a per-worker temp file when VITEST_WORKER_ID is set', () => {
       process.env.VITEST_WORKER_ID = '3';
       const got = getAppDatabasePath();
       expect(got).toContain('chatxiv-test-w3');
       expect(got.endsWith('.db')).toBe(true);
     });
 
-    it('uses DATA_DIR/app.db when not in test', () => {
+    it('uses APP_DATA_DIRECTORY/app.db when not under Vitest worker', () => {
+      delete process.env.VITEST_WORKER_ID;
       process.env.NODE_ENV = 'development';
-      process.env.DATA_DIR = './myobsdata';
-      expect(getAppDatabasePath()).toMatch(/myobsdata[\\/]app\.db$/);
+      expect(getAppDatabasePath()).toMatch(/data[\\/]app\.db$/);
     });
   });
 

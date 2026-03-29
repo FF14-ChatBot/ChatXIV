@@ -43,20 +43,20 @@ Equivalent raw Docker:
 
 ```bash
 docker build -f backend/Dockerfile -t chatxiv-backend:local .
-docker run --rm -p 3000:3000 -e DATA_DIR=/data -v chatxiv-data:/data --env-file backend/.env chatxiv-backend:local
+docker run --rm -p 3000:3000 -v chatxiv-data:/app/backend/data --env-file backend/.env chatxiv-backend:local
 ```
 
-Pass secrets and config with **`backend/.env`** via `--env-file` (never bake real values into the image). Defaults: `PORT=3000`, `NODE_ENV=production` inside the container. The image **entrypoint** fixes ownership on **`DATA_DIR`** (e.g. `/data` from a named volume) so the non-root `node` user can create `app.db`. To change ports or other run options, use the raw `docker run` line above and edit the flags.
+Pass secrets and config with **`backend/.env`** via `--env-file` (never bake real values into the image). Defaults: `PORT=3000`, `NODE_ENV=production` inside the container. The image **entrypoint** fixes ownership on **`./data`** (under **`WORKDIR` `/app/backend`**) so the non-root `node` user can create `app.db`. To change ports or other run options, use the raw `docker run` line above and edit the flags.
 
 ### Inspecting SQLite and bootstrapping admin (OIDC)
 
-The app stores data in **`{DATA_DIR}/app.db`**. In the default container run, **`DATA_DIR=/data`**, so the file is **`/data/app.db`**. The root npm script **`docker:run:backend`** attaches a named volume **`chatxiv-data`** at `/data`, so the database survives container restarts.
+The app stores data in **`./data/app.db`** relative to the process working directory (see **`APP_DATA_DIRECTORY`** in `backend/src/lib/config/constants.ts`). In the container, **`WORKDIR`** is **`/app/backend`**, so the file is **`/app/backend/data/app.db`**. The root npm script **`docker:run:backend`** attaches a named volume **`chatxiv-data`** at **`/app/backend/data`**, so the database survives container restarts.
 
 **Simplest — copy `app.db` to your machine and open it in a desktop SQLite app** (e.g. [DB Browser for SQLite](https://sqlitebrowser.org/)): run queries with no shell quoting issues and a clear grid view of `users.sub`, `users.is_admin`, etc.
 
 ```bash
 # While the backend container is running, replace CONTAINER with its ID or name (`docker ps`).
-docker cp CONTAINER:/data/app.db ./chatxiv-app.db
+docker cp CONTAINER:/app/backend/data/app.db ./chatxiv-app.db
 ```
 
 After editing the file locally, copy it back only if you know what you are doing (stop the backend first to avoid corruption). Prefer updating **`BOOTSTRAP_ADMIN_SUBS`** and restarting, or running SQL against the volume as below, instead of round-tripping the file.
@@ -65,16 +65,16 @@ After editing the file locally, copy it back only if you know what you are doing
 
 ```bash
 # List OIDC subjects and admin flag (read-only; usually fine while the API is running)
-docker run --rm -v chatxiv-data:/data alpine:3.20 sh -c \
-  "apk add --no-cache sqlite >/dev/null && sqlite3 /data/app.db \"SELECT sub, iss, email, is_admin FROM users;\""
+docker run --rm -v chatxiv-data:/app/backend/data alpine:3.20 sh -c \
+  "apk add --no-cache sqlite >/dev/null && sqlite3 /app/backend/data/app.db \"SELECT sub, iss, email, is_admin FROM users;\""
 ```
 
 To **promote a user to admin** by `sub` (after at least one successful login so a row exists):
 
 ```bash
 # Safer: stop the backend container first so nothing else writes during the update
-docker run --rm -v chatxiv-data:/data alpine:3.20 sh -c \
-  "apk add --no-cache sqlite >/dev/null && sqlite3 /data/app.db \"UPDATE users SET is_admin = 1 WHERE sub = 'YOUR_SUB_HERE';\""
+docker run --rm -v chatxiv-data:/app/backend/data alpine:3.20 sh -c \
+  "apk add --no-cache sqlite >/dev/null && sqlite3 /app/backend/data/app.db \"UPDATE users SET is_admin = 1 WHERE sub = 'YOUR_SUB_HERE';\""
 ```
 
 Then restart the API if you stopped it. Ask the user to **log out and log in again** (or clear the session cookie) so the browser picks up `isAdmin` from `GET /v1/auth/me`.

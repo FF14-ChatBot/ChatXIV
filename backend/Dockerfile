@@ -1,8 +1,8 @@
 # Build from repository root (needs @chatxiv/cdm + root lockfile):
 #   docker build -f backend/Dockerfile -t chatxiv-backend .
 #
-# Run (example): map a persistent directory for SQLite:
-#   docker run --rm -p 3000:3000 -e DATA_DIR=/data -v chatxiv-data:/data chatxiv-backend
+# Run (example): map a persistent directory for SQLite (app uses ./data under WORKDIR):
+#   docker run --rm -p 3000:3000 -v chatxiv-data:/app/backend/data chatxiv-backend
 #
 # Layering: install deps using only package.json files first so `npm ci` stays cached when you
 # change backend source or docker-entrypoint (runner copies entrypoint from context, not here).
@@ -49,9 +49,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
-
-# Default SQLite/metrics path inside the container (override with DATA_DIR).
-ENV DATA_DIR=/data
 
 RUN apk add --no-cache wget su-exec
 
