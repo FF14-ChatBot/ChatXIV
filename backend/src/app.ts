@@ -86,7 +86,7 @@ app.get('/health', (_req, res) => {
 
 // ── Public routes (/v1) ──────────────────────────────────────────────
 
-app.use('/v1', createPublicRouter(flagService));
+app.use('/v1', createPublicRouter(flagService, db));
 
 // ── Auth routes (/v1/auth) ───────────────────────────────────────────
 

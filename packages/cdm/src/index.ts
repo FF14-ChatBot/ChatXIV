@@ -5,3 +5,4 @@ export * from './auth.js';
 export * from './flags.js';
 export * from './metrics.js';
 export * from './usage.js';
+export * from './feedback.js';
