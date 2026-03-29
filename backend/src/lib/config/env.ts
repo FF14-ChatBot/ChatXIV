@@ -144,3 +144,28 @@ export function getTurnstileSecretKey(): string | undefined {
   if (!v || v.trim() === '') return undefined;
   return v.trim();
 }
+
+export type LokiPushConfig = {
+  readonly host: string;
+  readonly userId: string;
+  readonly password: string;
+};
+
+export function getLokiPushConfig(): LokiPushConfig | undefined {
+  const rawHost = process.env[ENV_KEYS.LOKI_HOST]?.trim();
+  const userId = process.env[ENV_KEYS.LOKI_USER_ID]?.trim();
+  const password = process.env[ENV_KEYS.LOKI_PASSWORD]?.trim();
+  if (!rawHost || !userId || !password) return undefined;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(rawHost.includes('://') ? rawHost : `https://${rawHost}`);
+  } catch {
+    return undefined;
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return undefined;
+  if (!parsed.hostname) return undefined;
+
+  const host = `${parsed.protocol}//${parsed.host}`;
+  return { host, userId, password };
+}

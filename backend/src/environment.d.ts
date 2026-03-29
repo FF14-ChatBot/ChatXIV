@@ -21,6 +21,9 @@ declare global {
       FRONTEND_ORIGIN?: string;
       SESSION_SECRET?: string;
       BOOTSTRAP_ADMIN_SUBS?: string;
+      LOKI_HOST?: string;
+      LOKI_USER_ID?: string;
+      LOKI_PASSWORD?: string;
       VITEST_WORKER_ID?: string;
     }
   }

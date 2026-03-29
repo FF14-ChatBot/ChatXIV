@@ -18,6 +18,7 @@ import {
   getSessionSecret,
   getBootstrapAdminSubs,
   getTurnstileSecretKey,
+  getLokiPushConfig,
 } from '@src/lib/config/env.js';
 import { ENV_KEYS } from '@src/lib/config/constants.js';
 
@@ -348,6 +349,52 @@ describe('lib/config/env', () => {
     it('returns trimmed value when set', () => {
       process.env[ENV_KEYS.TURNSTILE_SECRET_KEY] = '  sk-secret  ';
       expect(getTurnstileSecretKey()).toBe('sk-secret');
+    });
+  });
+
+  describe('getLokiPushConfig', () => {
+    it('returns undefined when any key is missing', () => {
+      delete process.env[ENV_KEYS.LOKI_HOST];
+      delete process.env[ENV_KEYS.LOKI_USER_ID];
+      delete process.env[ENV_KEYS.LOKI_PASSWORD];
+      expect(getLokiPushConfig()).toBeUndefined();
+
+      process.env[ENV_KEYS.LOKI_HOST] = 'https://logs.example.com';
+      delete process.env[ENV_KEYS.LOKI_USER_ID];
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
+      expect(getLokiPushConfig()).toBeUndefined();
+    });
+
+    it('returns config when all keys are set and host is valid https URL', () => {
+      process.env[ENV_KEYS.LOKI_HOST] = 'https://logs-prod-042.grafana.net';
+      process.env[ENV_KEYS.LOKI_USER_ID] = '12345';
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'token';
+      expect(getLokiPushConfig()).toEqual({
+        host: 'https://logs-prod-042.grafana.net',
+        userId: '12345',
+        password: 'token',
+      });
+    });
+
+    it('normalizes host without scheme to https', () => {
+      process.env[ENV_KEYS.LOKI_HOST] = 'logs-prod-042.grafana.net';
+      process.env[ENV_KEYS.LOKI_USER_ID] = 'u';
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
+      expect(getLokiPushConfig()?.host).toBe('https://logs-prod-042.grafana.net');
+    });
+
+    it('strips path from host URL', () => {
+      process.env[ENV_KEYS.LOKI_HOST] = 'https://logs.example.com/loki/api/v1/push';
+      process.env[ENV_KEYS.LOKI_USER_ID] = 'u';
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
+      expect(getLokiPushConfig()?.host).toBe('https://logs.example.com');
+    });
+
+    it('returns undefined for invalid LOKI_HOST', () => {
+      process.env[ENV_KEYS.LOKI_HOST] = ':::';
+      process.env[ENV_KEYS.LOKI_USER_ID] = 'u';
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
+      expect(getLokiPushConfig()).toBeUndefined();
     });
   });
 });
