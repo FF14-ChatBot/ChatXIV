@@ -29,7 +29,8 @@ alwaysApply: false
 - **`process.env` must only appear in `lib/config/` files.** All other code reads env values through typed getters in `lib/config/env.ts` (e.g. `getPort()`, `getLogLevel()`, `getDebugMode()`).
 - Reference env var names via `ENV_KEYS` in `lib/config/constants.ts`; never use bare string literals like `'NODE_ENV'`
 - Adding a new var: (1) `ENV_KEYS`, (2) `environment.d.ts`, (3) `.env.example`, (4) typed getter in `env.ts`, (5) tests in `tests/lib/config/env.test.ts`
-- Startup-critical: `STARTUP_REQUIRED` in `validate.ts`; feature secrets: return `undefined`, caller handles 503
+- Startup-critical: `STARTUP_REQUIRED` in `validate.ts` (fatal missing keys only). Optional default / missing-env `[config]` warnings: emit next to the parser (`env.ts`, `cors.ts`, etc.), not in `validate.ts`. Tunables that are **not** env-driven live as named exports in `constants.ts` (e.g. `APP_DATA_DIRECTORY`, `MAX_JSON_BODY_SIZE_KB`, rate-limit numbers).
+- Feature secrets: return `undefined`, caller handles 503
 
 ## Constants and Magic Strings
 - HTTP headers: use `HEADERS.REQUEST_ID` etc. from `lib/config/constants.ts`; never use raw header string literals

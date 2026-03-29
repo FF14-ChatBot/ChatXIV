@@ -1,4 +1,4 @@
-import { getNodeEnv, getTurnstileSecretKey } from '../config/env.js';
+import { getTurnstileSecretKey } from '../config/env.js';
 
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
@@ -13,7 +13,7 @@ export type TurnstileVerifyResult =
 
 /**
  * Validates a Turnstile widget token from the client (`cf-turnstile-response` or JSON field).
- * When `TURNSTILE_SECRET_KEY` is unset: **test** env returns `{ ok: true }`; **dev/prod** return failure so routes must not treat as passed.
+ * When `TURNSTILE_SECRET_KEY` is unset, verification fails (`missing_secret`) in every environment.
  */
 export async function verifyTurnstileToken(
   token: string | undefined,
@@ -21,9 +21,6 @@ export async function verifyTurnstileToken(
 ): Promise<TurnstileVerifyResult> {
   const secret = getTurnstileSecretKey();
   if (!secret) {
-    if (getNodeEnv() === 'test') {
-      return { ok: true };
-    }
     return { ok: false, errorCodes: ['missing-secret'], reason: 'missing_secret' };
   }
 

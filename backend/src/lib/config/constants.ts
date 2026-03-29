@@ -5,6 +5,24 @@ export const HEADERS = {
   SESSION_ID: 'x-session-id',
 } as const;
 
+/**
+ * Application paths and request limits — **code-only** (not `process.env`).
+ * Change here and redeploy; do not add env vars for these.
+ */
+export const APP_DATA_DIRECTORY = './data' as const;
+
+/** Express `json()` body size limit in KB. */
+export const MAX_JSON_BODY_SIZE_KB = 50 as const;
+
+/** Inbound HTTP request timeout (ms). */
+export const REQUEST_TIMEOUT_MS = 30_000 as const;
+
+/** Token-bucket rate limit: burst capacity (then refill applies). */
+export const RATE_LIMIT_BUCKET_CAPACITY = 20 as const;
+
+/** Tokens added per minute after use (sustained rate). */
+export const RATE_LIMIT_REFILL_PER_MINUTE = 4 as const;
+
 /** Environment variable names; use these instead of string literals for refactor safety. */
 export const ENV_KEYS = {
   NODE_ENV: 'NODE_ENV',
@@ -12,15 +30,10 @@ export const ENV_KEYS = {
   CORS_ORIGIN: 'CORS_ORIGIN',
   LOG_LEVEL: 'LOG_LEVEL',
   DEBUG_MODE: 'DEBUG_MODE',
-  MAX_BODY_SIZE_KB: 'MAX_BODY_SIZE_KB',
-  REQUEST_TIMEOUT_MS: 'REQUEST_TIMEOUT_MS',
-  RATE_LIMIT_CAPACITY: 'RATE_LIMIT_CAPACITY',
-  RATE_LIMIT_REFILL_PER_MIN: 'RATE_LIMIT_REFILL_PER_MIN',
   /** Cloudflare Turnstile secret (server-side verify). See https://developers.cloudflare.com/turnstile/ */
   TURNSTILE_SECRET_KEY: 'TURNSTILE_SECRET_KEY',
   ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
   ANTHROPIC_MODEL: 'ANTHROPIC_MODEL',
-  DATA_DIR: 'DATA_DIR',
   OIDC_ISSUER: 'OIDC_ISSUER',
   OIDC_CLIENT_ID: 'OIDC_CLIENT_ID',
   OIDC_CLIENT_SECRET: 'OIDC_CLIENT_SECRET',
@@ -39,7 +52,7 @@ export const SESSION_COOKIE = 'chatxiv_sid' as const;
 
 /**
  * Hard cap on one user-authored chat message (UTF-16 code units). Tune in code + redeploy.
- * Separate from JSON `MAX_BODY_SIZE_KB` for LLM cost / abuse per turn.
+ * Separate from JSON body limit (`MAX_JSON_BODY_SIZE_KB`) for LLM cost / abuse per turn.
  */
 export const CHAT_MAX_USER_MESSAGE_CHARS = 12_000;
 

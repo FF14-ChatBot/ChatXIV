@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { ENV_KEYS } from '@src/lib/config/constants.js';
 import { validateStartupConfig, validateRequiredEnvKeys } from '@src/lib/config/validate.js';
 
 describe('lib/config/validate', () => {
@@ -15,43 +14,13 @@ describe('lib/config/validate', () => {
     warnSpy.mockClear();
   });
 
-  it('does not exit when no startup-required vars are configured', () => {
+  it('does not exit or warn when no startup-required vars are configured', () => {
     delete process.env.OIDC_ISSUER;
     delete process.env.FRONTEND_ORIGIN;
     validateStartupConfig();
     expect(exitSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();
     expect(warnSpy).not.toHaveBeenCalled();
-  });
-
-  it('warns when OIDC is configured but FRONTEND_ORIGIN is not set', () => {
-    process.env.OIDC_ISSUER = 'https://accounts.google.com';
-    delete process.env.FRONTEND_ORIGIN;
-    validateStartupConfig();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('FRONTEND_ORIGIN'));
-  });
-
-  it('warns when Loki env is partially set', () => {
-    delete process.env[ENV_KEYS.LOKI_USER_ID];
-    delete process.env[ENV_KEYS.LOKI_PASSWORD];
-    process.env[ENV_KEYS.LOKI_HOST] = 'https://logs.example.com';
-    validateStartupConfig();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Partial Loki configuration'));
-  });
-
-  it('does not warn for Loki when all three or none are set', () => {
-    delete process.env[ENV_KEYS.LOKI_HOST];
-    delete process.env[ENV_KEYS.LOKI_USER_ID];
-    delete process.env[ENV_KEYS.LOKI_PASSWORD];
-    validateStartupConfig();
-    expect(warnSpy).not.toHaveBeenCalled();
-
-    warnSpy.mockClear();
-    process.env[ENV_KEYS.LOKI_HOST] = 'https://logs.example.com';
-    process.env[ENV_KEYS.LOKI_USER_ID] = 'u';
-    process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
-    validateStartupConfig();
-    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Partial Loki'));
   });
 
   it('exits with code 1 and logs when a required key is missing', () => {

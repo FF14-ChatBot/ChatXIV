@@ -25,11 +25,12 @@ import App from './App';
 import { getAdsenseClient } from './lib/adsense/adsenseRegistry.js';
 import { loadAdsenseScript } from './lib/adsense/loadAdsenseScript';
 import { getDeployEnvironment } from './lib/config/deployEnvironment';
+import { warnMissingViteEnvVars } from './lib/config/warnMissingViteEnv';
 import './index.css';
 
+setLogger(createConsoleLogger());
 setChatxivApiClient(createChatxivApiClient());
 setAuthApiClient(createAuthApiClient());
-setLogger(createConsoleLogger());
 
 async function resolveIsProductLiveAtBoot(): Promise<boolean> {
   try {
@@ -46,6 +47,8 @@ async function resolveIsProductLiveAtBoot(): Promise<boolean> {
 }
 
 async function boot(): Promise<void> {
+  warnMissingViteEnvVars();
+
   const isProductLive = await resolveIsProductLiveAtBoot();
 
   const adsenseClient = getAdsenseClient();

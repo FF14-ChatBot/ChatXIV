@@ -32,7 +32,7 @@ describe('createPublicRouter', () => {
   });
 
   it('serves public OpenAPI YAML when not production', async () => {
-    process.env.NODE_ENV = 'test';
+    process.env.NODE_ENV = 'development';
     const res = await request(buildApp(flagService, feedbackService)).get('/v1/openapi.yaml');
     expect(res.status).toBe(200);
     expect(res.type).toMatch(/yaml/);

@@ -17,19 +17,12 @@ describe('verifyTurnstileToken', () => {
     process.env = { ...saved };
   });
 
-  it('returns ok: false when secret missing (non-test)', async () => {
-    delete process.env.NODE_ENV;
+  it('returns ok: false when secret is missing', async () => {
+    process.env.NODE_ENV = 'development';
     delete process.env[ENV_KEYS.TURNSTILE_SECRET_KEY];
     const r = await verifyTurnstileToken('tok', undefined);
     expect(r).toEqual({ ok: false, errorCodes: ['missing-secret'], reason: 'missing_secret' });
     expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('returns ok: true when secret missing in test env', async () => {
-    process.env.NODE_ENV = 'test';
-    delete process.env[ENV_KEYS.TURNSTILE_SECRET_KEY];
-    const r = await verifyTurnstileToken(undefined, undefined);
-    expect(r).toEqual({ ok: true });
   });
 
   it('calls siteverify and returns ok on success', async () => {
