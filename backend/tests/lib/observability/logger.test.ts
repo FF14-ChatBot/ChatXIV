@@ -13,13 +13,20 @@ let childBindings: Record<string, unknown> | undefined;
 let childInfo: ReturnType<typeof vi.fn>;
 let baseInfo: ReturnType<typeof vi.fn>;
 let pinoOptions: { formatters?: { level: (label: string) => { level: string } } } | undefined;
+let pinoDestination: unknown;
 
 vi.mock('pino', () => {
+  const transport = vi.fn(() => ({}));
+  const pinoFn = (
+    opts: { formatters?: { level: (label: string) => { level: string } } },
+    dest?: unknown
+  ) => {
+    pinoOptions = opts;
+    pinoDestination = dest;
+    return base;
+  };
   return {
-    default: (opts: { formatters?: { level: (label: string) => { level: string } } }) => {
-      pinoOptions = opts;
-      return base;
-    },
+    default: Object.assign(pinoFn, { transport }),
   };
 });
 
@@ -29,6 +36,10 @@ describe('lib/observability/logger', () => {
     childInfo = vi.fn();
     baseInfo = vi.fn();
     pinoOptions = undefined;
+    pinoDestination = undefined;
+    delete process.env.LOKI_HOST;
+    delete process.env.LOKI_USER_ID;
+    delete process.env.LOKI_PASSWORD;
 
     childLogger = {
       child: vi.fn(() => childLogger),
@@ -57,6 +68,7 @@ describe('lib/observability/logger', () => {
     await import('@src/lib/observability/logger.js');
     expect(pinoOptions).toBeTruthy();
     expect(pinoOptions?.formatters?.level('warn')).toEqual({ level: 'warn' });
+    expect(pinoDestination).toBeUndefined();
   });
 
   it('logs without child bindings when no request context', async () => {

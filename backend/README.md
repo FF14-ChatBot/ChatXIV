@@ -2,6 +2,27 @@
 
 Express + TypeScript API. Run `npm run dev` from this package (or `npm run dev:backend` from the repo root). Default base URL: `http://localhost:3000`.
 
+### Optional: Grafana Cloud Loki (log shipping)
+
+When **`LOKI_HOST`**, **`LOKI_USER_ID`** (Grafana Cloud numeric id as a string), and **`LOKI_PASSWORD`** are all set (see [`.env.example`](.env.example)), the process still logs JSON to **stdout** and also **pushes** the same lines to Grafana Cloud Loki via HTTP (`pino-loki`). Omit any variable (or all three) to disable shipping.
+
+**Where to get `LOKI_HOST`, `LOKI_USER_ID`, and `LOKI_PASSWORD`**
+
+Your Loki URL and credentials live in the **Grafana Cloud** portal (e.g. [grafana.com/profile/org](https://grafana.com/profile/org)).
+
+1. Sign in at [grafana.com](https://grafana.com) and open **My Account**.
+2. Under your stack, open **Details** or **Send logs**.
+3. In the **Loki** section, copy:
+   - **URL** → set as **`LOKI_HOST`** (e.g. `https://logs-prod-XXX.grafana.net`).
+   - **User** (numeric id, e.g. `123456`) → set as **`LOKI_USER_ID`**.
+   - **Password** → a **Cloud Access Policy** token whose policy includes the **`logs:write`** scope for this stack (see [Using an access policy token](https://grafana.com/docs/grafana-cloud/security-and-account-management/authentication-and-permissions/access-policies/using-an-access-policy-token/)). Tokens minted only for other products (e.g. OTLP-only or Grafana UI) often lack Loki write and will fail.
+
+You can also open your hosted Grafana instance (**Connections** → **Add new connection** → search **Loki**): the setup flow shows the **write** endpoint and auth details.
+
+**Note:** The Loki hostname (`logs-prod-…grafana.net`) is **not** the same as your Grafana instance URL (e.g. `yourstack.grafana.net`). Use the Loki URL from the portal for **`LOKI_HOST`**.
+
+**If push fails with `authentication error: invalid scope requested`:** `LOKI_PASSWORD` is not a Loki-capable token. In Grafana Cloud, create or edit a **Cloud Access Policy** for this stack, add the **`logs:write`** scope, create a new token from that policy, and set it as **`LOKI_PASSWORD`**. See [Cloud Access Policies](https://grafana.com/docs/grafana-cloud/security-and-account-management/authentication-and-permissions/access-policies/).
+
 ## Docker
 
 **Prerequisites:** Install and start **Docker Desktop** (Windows/macOS) or **Docker Engine** (Linux). On Windows, use the **WSL 2–based Linux engine** so Linux images can run. See **[Docker Desktop and Linux engine](../docs/README.md#docker-desktop-and-linux-engine-optional)** in the developer setup guide.
