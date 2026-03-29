@@ -299,7 +299,7 @@ components:
 
     FeedbackBody:
       type: object
-      required: [messageId, rating]
+      required: [messageId, rating, reasonCode]
       properties:
         messageId:
           type: string

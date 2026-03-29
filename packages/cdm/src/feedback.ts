@@ -15,7 +15,7 @@ export const FEEDBACK_FREE_TEXT_MAX_LENGTH = 500;
 export interface FeedbackBody {
   readonly messageId: string;
   readonly rating: FeedbackRating;
-  readonly reasonCode?: FeedbackReasonCode;
+  readonly reasonCode: FeedbackReasonCode;
   readonly freeText?: string;
   readonly category?: string;
 }

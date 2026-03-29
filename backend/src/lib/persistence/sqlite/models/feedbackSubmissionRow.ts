@@ -4,7 +4,7 @@ export interface FeedbackSubmissionRow {
   idempotency_key: string;
   message_id: string;
   rating: string;
-  reason_code: string | null;
+  reason_code: string;
   free_text: string | null;
   category: string | null;
   created_at: string;

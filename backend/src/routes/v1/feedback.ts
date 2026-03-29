@@ -8,12 +8,10 @@ import {
 import type { FeedbackBody } from '@chatxiv/cdm';
 import { validate } from '../../middleware/validate.js';
 import { wrapAsync } from '../../middleware/asyncHandler.js';
-import { FeedbackSubmissionsDao } from '../../lib/persistence/sqlite/dao/FeedbackSubmissionsDao.js';
-import type { SqliteDatabase } from '../../lib/persistence/sqlite/types.js';
+import type { FeedbackService } from '../../lib/feedback/types.js';
 
-export function createFeedbackRouter(db: SqliteDatabase): Router {
+export function createFeedbackRouter(service: FeedbackService): Router {
   const router = Router();
-  const dao = new FeedbackSubmissionsDao(db);
 
   router.post(
     '/feedback',
@@ -28,7 +26,6 @@ export function createFeedbackRouter(db: SqliteDatabase): Router {
         .isIn([...FEEDBACK_RATINGS])
         .withMessage(`rating must be one of: ${FEEDBACK_RATINGS.join(', ')}`),
       body('reasonCode')
-        .optional()
         .isString()
         .isIn([...FEEDBACK_REASON_CODES])
         .withMessage(`reasonCode must be one of: ${FEEDBACK_REASON_CODES.join(', ')}`),
@@ -41,18 +38,9 @@ export function createFeedbackRouter(db: SqliteDatabase): Router {
     ]),
     wrapAsync(async (req, res) => {
       const idempotencyKey = req.headers['idempotency-key'] as string;
-      const { messageId, rating, reasonCode, freeText, category } = req.body as FeedbackBody;
-
-      dao.insertOrSkip({
-        idempotency_key: idempotencyKey,
-        message_id: messageId,
-        rating,
-        reason_code: reasonCode ?? null,
-        free_text: freeText ?? null,
-        category: category ?? null,
-      });
-
-      res.status(200).json({ ok: true });
+      const feedbackBody = req.body as FeedbackBody;
+      const result = service.submit(idempotencyKey, feedbackBody);
+      res.status(200).json(result);
     })
   );
 
