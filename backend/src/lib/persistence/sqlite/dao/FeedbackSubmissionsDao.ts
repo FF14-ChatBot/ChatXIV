@@ -7,9 +7,7 @@ export class FeedbackSubmissionsDao {
   private readonly countByCategoryStmt;
 
   constructor(db: SqliteDatabase) {
-    this.findByKeyStmt = db.prepare(
-      `SELECT 1 FROM feedback_submissions WHERE idempotency_key = ?`
-    );
+    this.findByKeyStmt = db.prepare(`SELECT 1 FROM feedback_submissions WHERE idempotency_key = ?`);
     this.insertStmt = db.prepare(
       `INSERT INTO feedback_submissions
          (idempotency_key, message_id, rating, reason_code, free_text, category, created_at)
@@ -26,7 +24,7 @@ export class FeedbackSubmissionsDao {
    */
   insertOrSkip(
     row: Omit<FeedbackSubmissionRow, 'id' | 'created_at'>,
-    now: string = new Date().toISOString(),
+    now: string = new Date().toISOString()
   ): 'inserted' | 'duplicate' {
     if (this.findByKeyStmt.get(row.idempotency_key)) {
       return 'duplicate';
@@ -38,7 +36,7 @@ export class FeedbackSubmissionsDao {
       row.reason_code ?? null,
       row.free_text ?? null,
       row.category ?? null,
-      now,
+      now
     );
     return 'inserted';
   }

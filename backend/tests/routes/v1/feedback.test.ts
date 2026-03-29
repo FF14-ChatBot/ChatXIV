@@ -52,7 +52,9 @@ describe('POST /feedback', () => {
     const app = buildApp(db);
     await request(app).post('/feedback').set('Idempotency-Key', 'key-dup').send(validBody);
     await request(app).post('/feedback').set('Idempotency-Key', 'key-dup').send(validBody);
-    const count = (db.prepare('SELECT COUNT(*) AS c FROM feedback_submissions').get() as { c: number }).c;
+    const count = (
+      db.prepare('SELECT COUNT(*) AS c FROM feedback_submissions').get() as { c: number }
+    ).c;
     expect(count).toBe(1);
   });
 
@@ -102,16 +104,13 @@ describe('POST /feedback', () => {
   });
 
   it('accepts valid optional fields', async () => {
-    const res = await request(buildApp(db))
-      .post('/feedback')
-      .set('Idempotency-Key', 'key-7')
-      .send({
-        messageId: 'msg-1',
-        rating: 'down',
-        reasonCode: 'outdated',
-        freeText: 'Needs update',
-        category: 'RAIDING',
-      });
+    const res = await request(buildApp(db)).post('/feedback').set('Idempotency-Key', 'key-7').send({
+      messageId: 'msg-1',
+      rating: 'down',
+      reasonCode: 'outdated',
+      freeText: 'Needs update',
+      category: 'RAIDING',
+    });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ok: true });
   });

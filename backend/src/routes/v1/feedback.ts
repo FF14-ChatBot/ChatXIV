@@ -53,7 +53,7 @@ export function createFeedbackRouter(db: SqliteDatabase): Router {
       });
 
       res.status(200).json({ ok: true });
-    }),
+    })
   );
 
   return router;
