@@ -45,6 +45,9 @@ import { setFeatureFlagService } from '../featureFlags/featureFlagInstance.js';
 import { getOrOpenAppDatabase } from '../persistence/sqlite/appDatabaseSingleton.js';
 import { createSqliteMetricsStore } from '../persistence/sqlite/sqliteMetricsStore.js';
 import { createSqliteUsageStore } from '../persistence/sqlite/sqliteUsageStore.js';
+import { FeedbackSubmissionsDao } from '../persistence/sqlite/dao/FeedbackSubmissionsDao.js';
+import { createFeedbackService } from '../feedback/feedbackService.js';
+import type { FeedbackService } from '../feedback/types.js';
 
 export const MetricsStoreToken = Symbol('MetricsStore');
 export const UsageStoreToken = Symbol('UsageStore');
@@ -54,6 +57,7 @@ export const RequestConfigToken = Symbol('RequestConfig');
 export const CorsOriginsToken = Symbol('CorsOrigins');
 export const FeatureFlagStoreToken = Symbol('FeatureFlagStore');
 export const FeatureFlagServiceToken = Symbol('FeatureFlagService');
+export const FeedbackServiceToken = Symbol('FeedbackService');
 
 /** The DI container. Call register() once at startup before resolving any dependencies. */
 export const container = tsyringeContainer as DependencyContainer;
@@ -86,6 +90,10 @@ export function register(): void {
   container.registerInstance<FeatureFlagStore>(FeatureFlagStoreToken, flagStore);
   const flagService = createFeatureFlagService(flagStore);
   container.registerInstance<FeatureFlagService>(FeatureFlagServiceToken, flagService);
+  const feedbackDao = new FeedbackSubmissionsDao(db);
+  const feedbackService = createFeedbackService(feedbackDao);
+  container.registerInstance<FeedbackService>(FeedbackServiceToken, feedbackService);
+
   setMetrics(container.resolve<MetricsStore>(MetricsStoreToken));
   setUsageAnalytics(container.resolve<UsageStore>(UsageStoreToken));
   setFeatureFlagService(flagService);

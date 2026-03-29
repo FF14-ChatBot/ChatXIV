@@ -45,4 +45,28 @@ describe('GlobalErrorHandler', () => {
 
     spy.mockRestore();
   });
+
+  it('ignores ERR_BLOCKED_BY_CLIENT window errors', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <GlobalErrorHandler>
+        <span>Child</span>
+      </GlobalErrorHandler>
+    );
+
+    const evt = new ErrorEvent('error', {
+      message: 'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT',
+      bubbles: true,
+    });
+
+    act(() => {
+      window.dispatchEvent(evt);
+    });
+
+    expect(screen.getByText('Child')).toBeInTheDocument();
+    expect(screen.queryByText(/Something went wrong/)).not.toBeInTheDocument();
+
+    spy.mockRestore();
+  });
 });

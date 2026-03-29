@@ -10,8 +10,17 @@ export function GlobalErrorHandler({ children }: Props): ReactNode {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    function isBlockedByClientMessage(message: string): boolean {
+      return message.includes('ERR_BLOCKED_BY_CLIENT');
+    }
+
     function onUnhandledRejection(e: PromiseRejectionEvent): void {
       e.preventDefault();
+      const reasonMessage =
+        e.reason instanceof Error ? e.reason.message : typeof e.reason === 'string' ? e.reason : '';
+      if (isBlockedByClientMessage(reasonMessage)) {
+        return;
+      }
       const err = e.reason instanceof Error ? e.reason : new Error(String(e.reason));
       console.error('Unhandled rejection:', err);
       setError(err);
@@ -19,6 +28,9 @@ export function GlobalErrorHandler({ children }: Props): ReactNode {
 
     function onError(e: ErrorEvent): void {
       if (isResourceLoadErrorEvent(e)) {
+        return;
+      }
+      if (isBlockedByClientMessage(e.message)) {
         return;
       }
       const err = e.error instanceof Error ? e.error : new Error(e.message);
