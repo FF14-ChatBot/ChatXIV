@@ -1,3 +1,5 @@
+import type { UsageCategory } from './usage.js';
+
 export const FEEDBACK_RATINGS = ['up', 'down'] as const;
 export type FeedbackRating = (typeof FEEDBACK_RATINGS)[number];
 
@@ -17,7 +19,7 @@ export interface FeedbackBody {
   readonly rating: FeedbackRating;
   readonly reasonCode: FeedbackReasonCode;
   readonly freeText?: string;
-  readonly category?: string;
+  readonly category?: UsageCategory;
 }
 
 /** Success response for `POST /v1/feedback` (returned for both new and duplicate submissions). */
