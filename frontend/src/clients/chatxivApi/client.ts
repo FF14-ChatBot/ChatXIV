@@ -39,12 +39,15 @@ async function runRequest<T = unknown>(
   path: string,
   options: ChatxivApiRequestOptions = {}
 ): Promise<T> {
-  const { body, config = {}, signal } = options;
+  const { body, config = {}, signal, headers: requestHeaders } = options;
   const baseUrl = config.baseUrl ?? getChatxivApiBaseUrl();
 
   const httpConfig = {
     baseUrl,
-    getHeaders: (m: string, p: string, b: unknown) => buildChatxivApiHeaders(m, p, b, config),
+    getHeaders: (m: string, p: string, b: unknown) => {
+      const base = buildChatxivApiHeaders(m, p, b, config);
+      return requestHeaders ? { ...base, ...requestHeaders } : base;
+    },
   };
 
   let response: Response;

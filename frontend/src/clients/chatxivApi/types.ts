@@ -8,6 +8,7 @@ export interface ChatxivApiRequestOptions {
   body?: unknown;
   config?: ChatxivApiConfig;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
 }
 
 /** ChatXIV API client interface. Swap implementation at app boot for tests or alternate backends. */

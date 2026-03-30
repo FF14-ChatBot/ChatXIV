@@ -309,7 +309,7 @@ components:
           enum: [up, down]
         reasonCode:
           type: string
-          enum: [wrong_answer, outdated, missing_info, other]
+          enum: [wrong_answer, outdated, missing_info, unrelated, other]
           description: Required context when rating is "down".
         freeText:
           type: string
