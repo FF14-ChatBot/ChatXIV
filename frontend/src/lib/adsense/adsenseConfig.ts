@@ -7,6 +7,15 @@ export const AdsensePlacement = {
 export type AdsensePlacement = (typeof AdsensePlacement)[keyof typeof AdsensePlacement];
 
 /**
+ * `data-ad-format` for responsive display units. Horizontal keeps banner-shaped slots;
+ * `auto` can pick tall vertical sizes and inconsistent placeholder heights.
+ */
+export const AdsenseDisplayFormat = {
+  Horizontal: 'horizontal',
+} as const;
+export type AdsenseDisplayFormat = (typeof AdsenseDisplayFormat)[keyof typeof AdsenseDisplayFormat];
+
+/**
  * Google AdSense publisher id (`ca-pub-…`). Public (script URL + optional crawler meta).
  * One account per product is typical; change here if you ever switch publisher.
  */

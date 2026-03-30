@@ -38,4 +38,22 @@ describe('ChatPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /send message/i }));
     expect(screen.getByRole('heading', { name: /mammetbot/i })).toBeInTheDocument();
   });
+
+  it('scrolls the message region to the bottom after sending', async () => {
+    renderChatPage();
+    const input = screen.getByRole('textbox', { name: /message/i });
+    fireEvent.change(input, { target: { value: 'Hello bot' } });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    const scroll = await screen.findByTestId('chat-scroll-region');
+    Object.defineProperty(scroll, 'scrollHeight', { configurable: true, value: 900 });
+    Object.defineProperty(scroll, 'clientHeight', { configurable: true, value: 200 });
+
+    fireEvent.change(input, { target: { value: 'Second line' } });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await waitFor(() => {
+      expect(scroll.scrollTop).toBe(900);
+    });
+  });
 });

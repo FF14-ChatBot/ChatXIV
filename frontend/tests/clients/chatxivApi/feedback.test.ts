@@ -68,6 +68,32 @@ describe('submitFeedback', () => {
     expect(call.headers['Idempotency-Key']).toBe('custom-key');
   });
 
+  it('accepts body only and defaults options to an empty object', async () => {
+    const jsonMock = vi.fn().mockResolvedValue({ ok: true });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: jsonMock,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await submitFeedback({
+      messageId: 'm',
+      rating: 'up',
+      reasonCode: 'other',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/v1\/feedback$/),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Idempotency-Key': 'idempotency-uuid',
+        }),
+      })
+    );
+  });
+
   it('falls back when crypto.randomUUID is unavailable', async () => {
     vi.stubGlobal('crypto', {});
     const jsonMock = vi.fn().mockResolvedValue({ ok: true });

@@ -31,6 +31,20 @@ describe('useChatConversation', () => {
     );
   });
 
+  it('does not reset messages when sessionGeneration is unchanged across rerenders', () => {
+    const { result, rerender } = renderHook(({ gen }) => useChatConversation(gen), {
+      initialProps: { gen: 0 },
+    });
+
+    act(() => {
+      result.current.sendMessage('same-gen');
+    });
+    expect(result.current.messages).toHaveLength(1);
+
+    rerender({ gen: 0 });
+    expect(result.current.messages).toHaveLength(1);
+  });
+
   it('resets state when sessionGeneration changes', async () => {
     const { result, rerender } = renderHook(({ gen }) => useChatConversation(gen), {
       initialProps: { gen: 0 },

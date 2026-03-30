@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useMessageFeedback } from '@/hooks/useMessageFeedback';
+import { logger } from '@/lib/logger/instance';
 
 vi.mock('@/clients/chatxivApi/feedback', () => ({
   submitFeedback: vi.fn(() => Promise.resolve({ ok: true as const })),
@@ -52,6 +53,27 @@ describe('useMessageFeedback', () => {
       result.current.dismissError();
     });
     expect(result.current.state).toBe('idle');
+  });
+
+  it('logs non-Error rejections with String(reason)', async () => {
+    const { submitFeedback } = await import('@/clients/chatxivApi/feedback');
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    vi.mocked(submitFeedback).mockRejectedValueOnce('upstream');
+
+    const { result } = renderHook(() => useMessageFeedback('msg-d'));
+
+    await act(async () => {
+      await result.current.submit({ rating: 'up', reasonCode: 'other' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.state).toBe('error');
+    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Feedback submission failed',
+      expect.objectContaining({ messageId: 'msg-d', error: 'upstream' })
+    );
+    errorSpy.mockRestore();
   });
 
   it('passes API config through to submitFeedback', async () => {

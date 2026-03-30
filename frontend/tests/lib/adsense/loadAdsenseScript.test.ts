@@ -35,4 +35,22 @@ describe('loadAdsenseScript', () => {
     loadAdsenseScript('   ');
     expect(document.head.querySelectorAll('script[data-chatxiv-adsense-loader]')).toHaveLength(0);
   });
+
+  it('no-ops when document is undefined (non-browser)', () => {
+    const doc = globalThis.document;
+    Object.defineProperty(globalThis, 'document', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      expect(() => loadAdsenseScript('ca-pub-test')).not.toThrow();
+    } finally {
+      Object.defineProperty(globalThis, 'document', {
+        value: doc,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
 });

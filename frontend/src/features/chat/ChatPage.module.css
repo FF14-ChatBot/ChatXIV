@@ -3,71 +3,90 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  height: 100%;
+  min-width: 0;
+  align-self: stretch;
+  width: 100%;
+  overflow: hidden;
 }
 
-.messageArea {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 1rem;
-}
-
-/* Empty state: center hero + carousel + ad as one column above the composer (ad sits
-   directly under the carousel, not separated by flex-grow dead space). */
-.emptyColumn {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+.threadColumn {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mainScroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainScrollWelcome {
   justify-content: center;
   align-items: stretch;
   padding: 1rem;
   padding-block: clamp(1rem, 5vmin, 2.5rem);
 }
 
-/* Center + overflow:auto clips the wrong slice at scrollTop 0 when content is taller than
-   the pane (fixed viewport shell). Top-align on narrow viewports so MammetBot hero is visible. */
 @media (max-width: 767px) {
-  .emptyColumn {
+  .mainScrollWelcome {
     justify-content: flex-start;
     padding-block: clamp(0.65rem, 3vmin, 1.35rem);
   }
-
-  .emptyStack {
-    gap: clamp(0.65rem, 3vmin, 1.35rem);
-  }
 }
 
-.emptyStack {
+.mainScrollThread {
+  justify-content: flex-start;
+}
+
+.messageScrollPad {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1rem;
+}
+
+.welcomeStack {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  /* Breathing room: carousel → ad → composer */
   gap: clamp(1.5rem, 5vmin, 2.75rem);
   width: 100%;
   flex-shrink: 0;
 }
 
-/* Under messages or under carousel: centered column, blends with main canvas (not chrome). */
+@media (max-width: 767px) {
+  .welcomeStack {
+    gap: clamp(0.65rem, 3vmin, 1.35rem);
+  }
+}
+
 .adSlot {
   flex-shrink: 0;
   width: 100%;
   max-width: 42rem;
+  min-width: 0;
   margin-inline: auto;
   min-height: 5rem;
-  margin-block: 0.55rem 0.45rem;
   padding-block: 0.65rem;
   padding-inline: 1rem;
   border-radius: var(--radius-lg);
   border: 1px dashed color-mix(in srgb, var(--panel-emphasis-border) 52%, transparent);
-  /* Use --card (always a solid) so this works when --background is a gradient (dark). */
   background: color-mix(in srgb, var(--foreground) 4.5%, var(--card));
   backdrop-filter: blur(6px);
 }
 
-.emptyStack .adSlot {
+.adSlotThread {
+  margin-block: 0.35rem 0.5rem;
+}
+
+.adSlotWelcome {
   margin-block: 0;
   margin-bottom: clamp(1rem, 3vmin, 1.75rem);
 }

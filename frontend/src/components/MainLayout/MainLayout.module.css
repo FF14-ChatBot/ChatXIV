@@ -1,8 +1,8 @@
-/* Pin height to the dynamic viewport so the main column stays flex-constrained and
-   the composer does not sit below the fold when welcome content is tall (mobile). */
+/* Middle row min 0: keeps chat scroll inside <main> instead of growing the page. */
 .layout {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
   min-height: 100dvh;
   height: 100vh;
@@ -11,15 +11,14 @@
 }
 
 .main {
-  flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .footer {
-  flex-shrink: 0;
   border-top: 1px solid var(--chrome-border);
   background: var(--chrome-bg);
   backdrop-filter: var(--chrome-backdrop);
