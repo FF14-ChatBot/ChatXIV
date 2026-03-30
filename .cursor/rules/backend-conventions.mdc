@@ -36,6 +36,13 @@ alwaysApply: false
 - HTTP headers: use `HEADERS.REQUEST_ID` etc. from `lib/config/constants.ts`; never use raw header string literals
 - Error codes: use `ERROR_CODES` from `@chatxiv/cdm`; never invent inline code strings
 
+## List APIs and pagination
+- **New `GET` endpoints that return a collection** (public or admin) must be **paginated** from the start: no unbounded arrays as the sole response body.
+- Use **`PaginatedResult<T>`** and limits from **`@chatxiv/cdm`** (`LIST_DEFAULT_PAGE`, `LIST_DEFAULT_PAGE_SIZE`, `LIST_MAX_PAGE_SIZE`).
+- Reuse **`listPageQueryValidators`** and **`getListQuery`** from `lib/pagination/listQuery.js` with `validate()` on the route; pass `(page, pageSize)` into the service.
+- Document **`page` / `pageSize`** query params and the paginated JSON shape in **OpenAPI** (public and/or admin YAML as appropriate).
+- Rationale and retrieval-specific notes: `docs/tasks/backend/Retrieval-Layer-Design.md` §7.
+
 ## Naming
 - Files: camelCase — Classes: PascalCase — Constants: UPPER_SNAKE_CASE
 - Types and interfaces: PascalCase; do not prefix with `I` (enforced by ESLint `naming-convention`)

@@ -15,23 +15,36 @@ describe('lib/featureFlags/featureFlagService', () => {
     service = createFeatureFlagService(createSqliteFeatureFlagStore(db));
   });
 
-  describe('getAll', () => {
-    it('returns empty array when no flags exist', async () => {
-      expect(await service.getAll()).toEqual([]);
+  describe('list', () => {
+    it('returns empty first page when no flags exist', async () => {
+      expect(await service.list(1, 50)).toEqual({
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: 50,
+      });
     });
 
-    it('returns entries with metadata', async () => {
-      await service.setFlag('a', true);
+    it('returns entries with metadata sorted by name', async () => {
       await service.setFlag('b', false);
-      const entries = await service.getAll();
-      expect(entries).toHaveLength(2);
-      expect(entries).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ name: 'a', enabled: true }),
-          expect.objectContaining({ name: 'b', enabled: false }),
-        ])
-      );
-      expect(entries[0].updatedAt).toBeTruthy();
+      await service.setFlag('a', true);
+      const page = await service.list(1, 50);
+      expect(page.items).toHaveLength(2);
+      expect(page.total).toBe(2);
+      expect(page.items[0]?.name).toBe('a');
+      expect(page.items[1]?.name).toBe('b');
+      expect(page.items[0]?.updatedAt).toBeTruthy();
+    });
+
+    it('pages by offset', async () => {
+      await service.setFlag('c', true);
+      await service.setFlag('a', false);
+      await service.setFlag('b', true);
+      const p1 = await service.list(1, 2);
+      expect(p1.items.map((e) => e.name)).toEqual(['a', 'b']);
+      expect(p1.total).toBe(3);
+      const p2 = await service.list(2, 2);
+      expect(p2.items.map((e) => e.name)).toEqual(['c']);
     });
   });
 

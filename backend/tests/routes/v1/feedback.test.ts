@@ -130,4 +130,13 @@ describe('POST /feedback', () => {
       .send({ ...validBody, freeText: 'x'.repeat(500) });
     expect(res.status).toBe(200);
   });
+
+  it('returns 400 when category is not a known usage category', async () => {
+    const res = await request(buildApp(service))
+      .post('/feedback')
+      .set('Idempotency-Key', 'key-bad-cat')
+      .send({ ...validBody, category: 'not-a-real-category' });
+    expect(res.status).toBe(400);
+    expect(service.submit).not.toHaveBeenCalled();
+  });
 });

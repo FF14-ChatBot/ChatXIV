@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
 import type { FeatureFlagService } from '../../../lib/featureFlags/types.js';
+import type { FeedbackService } from '../../../lib/feedback/types.js';
 import {
   chainRequestHandlers,
   createAdminOpenApiYamlHandler,
   createAdminSwaggerUiHandlers,
 } from '../../../lib/openapi/openApiDocs.js';
 import { createAdminFlagsRouter } from './flags.js';
+import { createAdminFeedbackRouter } from './feedback.js';
 
 /**
  * Builds the admin router with auth middleware applied to all sub-routes.
@@ -14,7 +16,8 @@ import { createAdminFlagsRouter } from './flags.js';
  */
 export function createAdminRouter(
   adminGuard: RequestHandler,
-  flagService: FeatureFlagService
+  flagService: FeatureFlagService,
+  feedbackService: FeedbackService
 ): Router {
   const router = Router();
 
@@ -22,6 +25,7 @@ export function createAdminRouter(
   router.get('/openapi.yaml', createAdminOpenApiYamlHandler());
   router.use('/docs', chainRequestHandlers(createAdminSwaggerUiHandlers()));
   router.use(createAdminFlagsRouter(flagService));
+  router.use(createAdminFeedbackRouter(feedbackService));
 
   return router;
 }
