@@ -49,5 +49,20 @@ export interface FeedbackResponse {
   readonly ok: true;
 }
 
+export interface FeedbackSubmission {
+  readonly id: number;
+  readonly idempotencyKey: string;
+  readonly messageId: string;
+  readonly rating: FeedbackRating;
+  readonly reasonCode: FeedbackReasonCode;
+  readonly freeText: string | null;
+  /** Same semantics as `FeedbackBody.category`; null when omitted at submit time. */
+  readonly category: UsageCategory | null;
+  readonly createdAt: string;
+}
+
 /** Base path for the feedback endpoint (OpenAPI). */
 export const FEEDBACK_PATH = '/v1/feedback' as const;
+
+/** Admin path for paginated feedback submissions listing (OpenAPI). */
+export const FEEDBACK_ADMIN_LIST_PATH = '/v1/admin/feedbacks' as const;

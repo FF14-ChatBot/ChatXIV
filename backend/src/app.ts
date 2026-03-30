@@ -97,7 +97,7 @@ app.use('/v1/auth', createAuthRouter(db));
 
 // ── Admin routes (/v1/admin) — auth enforced by admin router ─────────
 
-app.use('/v1/admin', createAdminRouter(requireAdminMiddleware, flagService));
+app.use('/v1/admin', createAdminRouter(requireAdminMiddleware, flagService, feedbackService));
 
 // ── Error handler (must be last) ─────────────────────────────────────
 

@@ -67,7 +67,7 @@ describe('createFeedbackService', () => {
       expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 10 });
     });
 
-    it('returns paginated results', () => {
+    it('returns paginated results in wire shape (camelCase)', () => {
       for (let i = 1; i <= 5; i++) {
         service.submit(`key-${i}`, validBody);
       }
@@ -76,6 +76,15 @@ describe('createFeedbackService', () => {
       expect(page1.total).toBe(5);
       expect(page1.page).toBe(1);
       expect(page1.pageSize).toBe(2);
+      expect(page1.items[0]).toMatchObject({
+        idempotencyKey: expect.any(String),
+        messageId: 'msg-1',
+        rating: 'up',
+        reasonCode: 'other',
+        freeText: null,
+        category: null,
+        createdAt: expect.any(String),
+      });
 
       const page3 = service.list(3, 2);
       expect(page3.items).toHaveLength(1);

@@ -4,6 +4,7 @@ import {
   FEEDBACK_RATINGS,
   FEEDBACK_REASON_CODES,
   FEEDBACK_FREE_TEXT_MAX_LENGTH,
+  USAGE_CATEGORIES,
 } from '@chatxiv/cdm';
 import type { FeedbackBody } from '@chatxiv/cdm';
 import { validate } from '../../middleware/validate.js';
@@ -34,7 +35,11 @@ export function createFeedbackRouter(service: FeedbackService): Router {
         .isString()
         .isLength({ max: FEEDBACK_FREE_TEXT_MAX_LENGTH })
         .withMessage(`freeText must be at most ${FEEDBACK_FREE_TEXT_MAX_LENGTH} characters`),
-      body('category').optional().isString(),
+      body('category')
+        .optional()
+        .isString()
+        .isIn([...USAGE_CATEGORIES])
+        .withMessage('category must be a known usage category'),
     ]),
     wrapAsync(async (req, res) => {
       const idempotencyKey = req.headers['idempotency-key'] as string;

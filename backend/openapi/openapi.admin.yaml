@@ -199,6 +199,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
 
+  /v1/admin/feedbacks:
+    get:
+      tags: [Admin]
+      summary: List feedback submissions (admin)
+      description: |
+        Paginated feedback rows, newest first (same ordering as storage). Defaults: `page=1`, `pageSize=50`, max `pageSize=500`.
+      operationId: adminListFeedback
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ListPage'
+        - $ref: '#/components/parameters/ListPageSize'
+      responses:
+        '200':
+          description: Paginated feedback submissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFeedbackSubmissionList'
+        '400':
+          description: Invalid pagination query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
   /v1/admin/flags/{name}:
     put:
       tags: [Admin]
@@ -373,7 +407,9 @@ components:
           description: Optional free-text elaboration (max 500 chars).
         category:
           type: string
-          description: Query category from chat context (optional for MVP).
+          description: |
+            Optional chat context category; must be one of the `UsageCategory` string values
+            from shared usage analytics types (e.g. RAIDING, MSQ), not an arbitrary string.
 
     FeedbackResponse:
       type: object
@@ -382,6 +418,53 @@ components:
         ok:
           type: boolean
           example: true
+
+    FeedbackSubmission:
+      type: object
+      required:
+        [id, idempotencyKey, messageId, rating, reasonCode, freeText, category, createdAt]
+      properties:
+        id:
+          type: integer
+        idempotencyKey:
+          type: string
+        messageId:
+          type: string
+        rating:
+          type: string
+          enum: [up, down]
+        reasonCode:
+          type: string
+          enum: [wrong_answer, outdated, missing_info, unrelated, other]
+        freeText:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+          description: |
+            Usage category from submit payload, or null if omitted (same value set as `FeedbackBody.category`).
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedFeedbackSubmissionList:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackSubmission'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
 
     ApiErrorResponse:
       type: object

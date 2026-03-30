@@ -240,7 +240,9 @@ components:
           description: Optional free-text elaboration (max 500 chars).
         category:
           type: string
-          description: Query category from chat context (optional for MVP).
+          description: |
+            Optional chat context category; must be one of the `UsageCategory` string values
+            from shared usage analytics types (e.g. RAIDING, MSQ), not an arbitrary string.
 
     FeedbackResponse:
       type: object
