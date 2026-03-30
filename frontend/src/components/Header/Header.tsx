@@ -22,6 +22,8 @@ import { useTheme } from '../../hooks/useTheme';
 import dropdownMenuStyles from '../ui/DropdownMenu/DropdownMenu.module.css';
 import { ThemeToggle } from './ThemeToggle';
 import styles from './Header.module.css';
+import { APP_ROUTES } from '../../lib/appRoutes';
+import { ThemePreset } from '../../theme/themeConstants';
 
 const COMPACT_HEADER_NAV_MQ = '(max-width: 639px)';
 
@@ -44,7 +46,7 @@ export function Header() {
   const { themePreset, setThemePreset } = useTheme();
   const { requestStartNewChat, onHomeNavigationClick } = useChatDiscardGuard();
   const { user, login, logout } = useAuth();
-  const hideChatActions = pathname === '/unavailable' || pathname === '/login';
+  const hideChatActions = pathname === APP_ROUTES.UNAVAILABLE || pathname === APP_ROUTES.LOGIN;
   const [compactNav, setCompactNav] = useState(false);
 
   useEffect(() => {
@@ -130,9 +132,9 @@ export function Header() {
                 <DropdownMenuSubTrigger chevronSide="leading">Themes</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className={dropdownMenuStyles.contentAlignEnd}>
                   <DropdownMenuCheckboxItem
-                    checked={themePreset === 'island'}
+                    checked={themePreset === ThemePreset.Island}
                     onCheckedChange={(checked) =>
-                      setThemePreset(checked === true ? 'island' : 'none')
+                      setThemePreset(checked === true ? ThemePreset.Island : ThemePreset.None)
                     }
                   >
                     Island Sanctuary

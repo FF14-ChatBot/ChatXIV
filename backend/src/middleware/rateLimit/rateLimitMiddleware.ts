@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'tsyringe';
-import { HEADERS } from '../../lib/config/constants.js';
+import { HEADERS, RESPONSE_HEADERS } from '../../lib/config/constants.js';
 import type { RateLimitConfig } from './types.js';
 import type { RateLimitStore } from './types.js';
 import { RateLimitStoreToken, RateLimitConfigToken } from '../../lib/di/container.js';
@@ -36,7 +36,7 @@ export class RateLimitMiddleware {
     const { allowed, retryAfterSeconds } = this.store.consume(key, effective);
     if (!allowed) {
       if (retryAfterSeconds !== undefined) {
-        res.setHeader('Retry-After', String(retryAfterSeconds));
+        res.setHeader(RESPONSE_HEADERS.RETRY_AFTER, String(retryAfterSeconds));
       }
       const requestId = requestContext.get()?.requestId;
       next(AppError.rateLimited(RATE_LIMIT_MESSAGE, requestId));
@@ -58,7 +58,7 @@ export function rateLimitMiddleware(store: RateLimitStore, config: RateLimitConf
     const { allowed, retryAfterSeconds } = store.consume(key, effective);
     if (!allowed) {
       if (retryAfterSeconds !== undefined) {
-        res.setHeader('Retry-After', String(retryAfterSeconds));
+        res.setHeader(RESPONSE_HEADERS.RETRY_AFTER, String(retryAfterSeconds));
       }
       const requestId = requestContext.get()?.requestId;
       next(AppError.rateLimited(RATE_LIMIT_MESSAGE, requestId));

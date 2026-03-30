@@ -29,6 +29,7 @@ import { createPublicRouter } from './routes/v1/public/router.js';
 import { createAdminRouter } from './routes/v1/admin/router.js';
 import { createAuthRouter } from './routes/v1/auth/router.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { HTTP_HEADER_NAMES, HTTP_METHOD } from '@chatxiv/cdm';
 import { getSessionSecret, getBootstrapAdminSubs } from './lib/config/env.js';
 import { getOrOpenAppDatabase } from './lib/persistence/sqlite/appDatabaseSingleton.js';
 import { createUserDao } from './lib/persistence/sqlite/userDao.js';
@@ -56,14 +57,20 @@ if (bootstrapSubs.length > 0) {
 app.use(
   cors({
     origin: corsOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: [
+      HTTP_METHOD.GET,
+      HTTP_METHOD.POST,
+      HTTP_METHOD.PUT,
+      HTTP_METHOD.DELETE,
+      HTTP_METHOD.OPTIONS,
+    ],
     allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'Idempotency-Key',
-      'X-Session-Id',
-      'X-Request-Id',
-      'CF-Turnstile-Response',
+      HTTP_HEADER_NAMES.CONTENT_TYPE,
+      HTTP_HEADER_NAMES.AUTHORIZATION,
+      HTTP_HEADER_NAMES.IDEMPOTENCY_KEY,
+      HTTP_HEADER_NAMES.X_SESSION_ID,
+      HTTP_HEADER_NAMES.X_REQUEST_ID,
+      HTTP_HEADER_NAMES.CF_TURNSTILE_RESPONSE,
     ],
     credentials: true,
     maxAge: 86400,

@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { ChatSessionLanding } from '../../types/chatSession';
+import { ChatSessionLanding } from '../../types/chatSession';
 
-export type { ChatSessionLanding };
+export { ChatSessionLanding };
+export type { ChatSessionLanding } from '../../types/chatSession';
 
 /**
  * Chat session boundary: incrementing generation lets the chat UI reset without lifting
@@ -18,10 +19,10 @@ const ChatSessionContext = createContext<ChatSessionContextValue | null>(null);
 
 export function ChatSessionProvider({ children }: { readonly children: ReactNode }) {
   const [sessionGeneration, setSessionGeneration] = useState(0);
-  const [landing, setLanding] = useState<ChatSessionLanding>('welcome');
+  const [landing, setLanding] = useState<ChatSessionLanding>(ChatSessionLanding.Welcome);
 
   const startNewChat = useCallback((options?: { readonly landing?: ChatSessionLanding }) => {
-    const nextLanding = options?.landing ?? 'welcome';
+    const nextLanding = options?.landing ?? ChatSessionLanding.Welcome;
     setLanding(nextLanding);
     setSessionGeneration((n) => n + 1);
   }, []);

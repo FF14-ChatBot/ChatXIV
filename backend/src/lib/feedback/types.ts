@@ -1,5 +1,6 @@
 import type {
   FeedbackBody,
+  FeedbackCountByCategory,
   FeedbackResponse,
   FeedbackSubmission,
   PaginatedResult,
@@ -9,5 +10,5 @@ import type {
 export interface FeedbackService {
   submit(idempotencyKey: string, body: FeedbackBody): FeedbackResponse;
   list(page: number, pageSize: number): PaginatedResult<FeedbackSubmission>;
-  getCountByCategory(): Record<string, number>;
+  getCountByCategory(): FeedbackCountByCategory;
 }

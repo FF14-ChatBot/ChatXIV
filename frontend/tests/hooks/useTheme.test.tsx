@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { ThemeProvider, useTheme } from '@/hooks/useTheme';
-
-const COLOR_MODE_STORAGE_KEY = 'chatxiv-theme';
-const THEME_PRESET_STORAGE_KEY = 'chatxiv-theme-preset';
-const LEGACY_LIGHT_SCHEME_KEY = 'chatxiv-light-scheme';
+import { ColorMode, ThemePreset, THEME_STORAGE_KEYS } from '@/theme/themeConstants';
 
 function mockMatchMedia(matches: boolean) {
   Object.defineProperty(window, 'matchMedia', {
@@ -37,14 +34,14 @@ describe('useTheme', () => {
   });
 
   it('reads light/dark from localStorage when set', () => {
-    localStorage.setItem(COLOR_MODE_STORAGE_KEY, 'light');
+    localStorage.setItem(THEME_STORAGE_KEYS.COLOR_MODE, ColorMode.Light);
     const { result } = renderHook(() => useTheme(), { wrapper });
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe(ColorMode.Light);
   });
 
   it('defaults to dark when localStorage empty', () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
-    expect(result.current.theme).toBe('dark');
+    expect(result.current.theme).toBe(ColorMode.Dark);
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
@@ -55,7 +52,7 @@ describe('useTheme', () => {
       value: undefined,
     });
     const { result } = renderHook(() => useTheme(), { wrapper });
-    expect(result.current.theme).toBe('dark');
+    expect(result.current.theme).toBe(ColorMode.Dark);
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: original,
@@ -64,74 +61,74 @@ describe('useTheme', () => {
 
   it('toggleTheme switches color mode and syncs document class + localStorage', () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
-    expect(result.current.theme).toBe('dark');
+    expect(result.current.theme).toBe(ColorMode.Dark);
 
     act(() => {
       result.current.toggleTheme();
     });
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe(ColorMode.Light);
     expect(document.documentElement.classList.contains('dark')).toBe(false);
-    expect(localStorage.getItem(COLOR_MODE_STORAGE_KEY)).toBe('light');
+    expect(localStorage.getItem(THEME_STORAGE_KEYS.COLOR_MODE)).toBe(ColorMode.Light);
 
     act(() => {
       result.current.toggleTheme();
     });
-    expect(result.current.theme).toBe('dark');
+    expect(result.current.theme).toBe(ColorMode.Dark);
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('persists island preset and sets data-theme-preset (no dark class)', () => {
-    localStorage.setItem(COLOR_MODE_STORAGE_KEY, 'light');
-    localStorage.setItem(THEME_PRESET_STORAGE_KEY, 'island');
+    localStorage.setItem(THEME_STORAGE_KEYS.COLOR_MODE, ColorMode.Light);
+    localStorage.setItem(THEME_STORAGE_KEYS.PRESET, ThemePreset.Island);
     const { result } = renderHook(() => useTheme(), { wrapper });
-    expect(result.current.themePreset).toBe('island');
-    expect(document.documentElement.dataset.themePreset).toBe('island');
+    expect(result.current.themePreset).toBe(ThemePreset.Island);
+    expect(document.documentElement.dataset.themePreset).toBe(ThemePreset.Island);
     expect(document.documentElement.classList.contains('dark')).toBe(false);
 
     act(() => {
-      result.current.setThemePreset('none');
+      result.current.setThemePreset(ThemePreset.None);
     });
-    expect(result.current.themePreset).toBe('none');
+    expect(result.current.themePreset).toBe(ThemePreset.None);
     expect(document.documentElement.dataset.themePreset).toBeUndefined();
     expect(document.documentElement.classList.contains('dark')).toBe(false);
-    expect(localStorage.getItem(THEME_PRESET_STORAGE_KEY)).toBe('none');
+    expect(localStorage.getItem(THEME_STORAGE_KEYS.PRESET)).toBe(ThemePreset.None);
   });
 
   it('migrates legacy chatxiv-light-scheme island into theme preset', () => {
-    localStorage.setItem(COLOR_MODE_STORAGE_KEY, 'light');
-    localStorage.setItem(LEGACY_LIGHT_SCHEME_KEY, 'island');
+    localStorage.setItem(THEME_STORAGE_KEYS.COLOR_MODE, ColorMode.Light);
+    localStorage.setItem(THEME_STORAGE_KEYS.LEGACY_LIGHT_SCHEME, ThemePreset.Island);
     const { result } = renderHook(() => useTheme(), { wrapper });
-    expect(result.current.themePreset).toBe('island');
-    expect(document.documentElement.dataset.themePreset).toBe('island');
+    expect(result.current.themePreset).toBe(ThemePreset.Island);
+    expect(document.documentElement.dataset.themePreset).toBe(ThemePreset.Island);
   });
 
   it('toggleTheme clears island preset and flips color mode', () => {
-    localStorage.setItem(COLOR_MODE_STORAGE_KEY, 'light');
+    localStorage.setItem(THEME_STORAGE_KEYS.COLOR_MODE, ColorMode.Light);
     const { result } = renderHook(() => useTheme(), { wrapper });
     act(() => {
-      result.current.setThemePreset('island');
+      result.current.setThemePreset(ThemePreset.Island);
     });
-    expect(document.documentElement.dataset.themePreset).toBe('island');
+    expect(document.documentElement.dataset.themePreset).toBe(ThemePreset.Island);
 
     act(() => {
       result.current.toggleTheme();
     });
-    expect(result.current.themePreset).toBe('none');
-    expect(result.current.theme).toBe('dark');
+    expect(result.current.themePreset).toBe(ThemePreset.None);
+    expect(result.current.theme).toBe(ColorMode.Dark);
     expect(document.documentElement.dataset.themePreset).toBeUndefined();
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('island preset hides dark class even when stored color mode is dark', () => {
-    localStorage.setItem(COLOR_MODE_STORAGE_KEY, 'dark');
+    localStorage.setItem(THEME_STORAGE_KEYS.COLOR_MODE, ColorMode.Dark);
     const { result } = renderHook(() => useTheme(), { wrapper });
     expect(document.documentElement.classList.contains('dark')).toBe(true);
 
     act(() => {
-      result.current.setThemePreset('island');
+      result.current.setThemePreset(ThemePreset.Island);
     });
     expect(document.documentElement.classList.contains('dark')).toBe(false);
-    expect(document.documentElement.dataset.themePreset).toBe('island');
+    expect(document.documentElement.dataset.themePreset).toBe(ThemePreset.Island);
   });
 
   it('throws when used outside ThemeProvider', () => {

@@ -5,6 +5,7 @@ import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { ChatAdSlot } from './ChatAdSlot';
 import styles from './ChatPage.module.css';
+import { AdsensePlacement } from '../../lib/adsense/adsenseConfig';
 
 export function ChatPage() {
   const { messages, inputValue, setInputValue, sendMessage } = useChatConversationContext();
@@ -22,13 +23,13 @@ export function ChatPage() {
           <div className={styles.messageArea}>
             <MessageList messages={messages} />
           </div>
-          <ChatAdSlot placement="messages" className={styles.adSlot} />
+          <ChatAdSlot placement={AdsensePlacement.Messages} className={styles.adSlot} />
         </>
       ) : (
         <div className={styles.emptyColumn}>
           <div className={styles.emptyStack}>
             <WelcomePanel onPromptSubmit={sendMessage} />
-            <ChatAdSlot placement="welcome" className={styles.adSlot} />
+            <ChatAdSlot placement={AdsensePlacement.Welcome} className={styles.adSlot} />
           </div>
         </div>
       )}

@@ -35,6 +35,17 @@ export const FeedbackReason = {
 
 export const FEEDBACK_FREE_TEXT_MAX_LENGTH = 500;
 
+/**
+ * Key for rows with no `FeedbackBody.category` (null in DB) in category aggregate counts.
+ * Distinct from {@link UsageCategory} values stored when a category was provided.
+ */
+export const FEEDBACK_CATEGORY_NONE_KEY = 'uncategorized' as const;
+
+/** Sparse counts keyed by usage category and {@link FEEDBACK_CATEGORY_NONE_KEY}. */
+export type FeedbackCountByCategory = Partial<
+  Record<UsageCategory | typeof FEEDBACK_CATEGORY_NONE_KEY, number>
+>;
+
 /** Request body for `POST /v1/feedback`. */
 export interface FeedbackBody {
   readonly messageId: string;

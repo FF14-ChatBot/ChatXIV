@@ -5,11 +5,16 @@ const mockSlots = vi.hoisted(() => ({
   messages: '',
 }));
 
-vi.mock('@/lib/adsense/adsenseConfig', () => ({
-  getAdsenseClient: () => undefined,
-  ADSENSE_DISPLAY_SLOTS: mockSlots,
-}));
+vi.mock('@/lib/adsense/adsenseConfig', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/adsense/adsenseConfig')>();
+  return {
+    ...actual,
+    getAdsenseClient: () => undefined,
+    ADSENSE_DISPLAY_SLOTS: mockSlots,
+  };
+});
 
+import { AdsensePlacement } from '@/lib/adsense/adsenseConfig';
 import { getAdsenseDisplaySlot } from '@/lib/adsense/adsenseRegistry';
 
 describe('getAdsenseDisplaySlot', () => {
@@ -19,14 +24,14 @@ describe('getAdsenseDisplaySlot', () => {
   });
 
   it('returns undefined when slot is blank', () => {
-    expect(getAdsenseDisplaySlot('welcome')).toBeUndefined();
-    expect(getAdsenseDisplaySlot('messages')).toBeUndefined();
+    expect(getAdsenseDisplaySlot(AdsensePlacement.Welcome)).toBeUndefined();
+    expect(getAdsenseDisplaySlot(AdsensePlacement.Messages)).toBeUndefined();
   });
 
   it('returns trimmed slot id from config', () => {
     mockSlots.welcome = '  42  ';
     mockSlots.messages = '8';
-    expect(getAdsenseDisplaySlot('welcome')).toBe('42');
-    expect(getAdsenseDisplaySlot('messages')).toBe('8');
+    expect(getAdsenseDisplaySlot(AdsensePlacement.Welcome)).toBe('42');
+    expect(getAdsenseDisplaySlot(AdsensePlacement.Messages)).toBe('8');
   });
 });

@@ -6,6 +6,33 @@ export const HEADERS = {
 } as const;
 
 /**
+ * Incoming request header names (lowercase; matches Node `IncomingMessage.headers` normalization).
+ */
+/** Names passed to `req.get()` / `req.set()` (Express treats these case-insensitively). */
+export const INCOMING_HEADERS = {
+  X_FORWARDED_PROTO: 'X-Forwarded-Proto',
+  X_FORWARDED_HOST: 'x-forwarded-host',
+  HOST: 'host',
+  ORIGIN: 'Origin',
+  REFERER: 'Referer',
+  USER_AGENT: 'user-agent',
+} as const;
+
+/** Outbound response header names set by middleware. */
+export const RESPONSE_HEADERS = {
+  RETRY_AFTER: 'Retry-After',
+  X_CONTENT_TYPE_OPTIONS: 'X-Content-Type-Options',
+  X_FRAME_OPTIONS: 'X-Frame-Options',
+  STRICT_TRANSPORT_SECURITY: 'Strict-Transport-Security',
+} as const;
+
+export const SECURITY_HEADER_VALUES = {
+  X_CONTENT_TYPE_OPTIONS: 'nosniff',
+  X_FRAME_OPTIONS: 'DENY',
+  STRICT_TRANSPORT_SECURITY: 'max-age=31536000; includeSubDomains',
+} as const;
+
+/**
  * Application paths and request limits — **code-only** (not `process.env`).
  * Change here and redeploy; do not add env vars for these.
  */

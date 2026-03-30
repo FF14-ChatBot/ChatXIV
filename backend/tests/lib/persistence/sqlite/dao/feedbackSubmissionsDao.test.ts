@@ -1,3 +1,4 @@
+import { FEEDBACK_CATEGORY_NONE_KEY } from '@chatxiv/cdm';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { SqliteDatabase } from '@src/lib/persistence/sqlite/types.js';
 import { openSqliteDatabase } from '@src/lib/persistence/sqlite/openDb.js';
@@ -132,7 +133,7 @@ describe('FeedbackSubmissionsDao', () => {
       expect(counts).toEqual({
         RAIDING: 2,
         MSQ: 1,
-        uncategorized: 1,
+        [FEEDBACK_CATEGORY_NONE_KEY]: 1,
       });
     });
   });

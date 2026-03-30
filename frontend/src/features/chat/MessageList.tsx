@@ -1,4 +1,4 @@
-import type { Message } from '../../types/chat';
+import { MessageRole, type Message } from '../../types/chat';
 import { MessageFeedbackBar } from './MessageFeedbackBar';
 import styles from './MessageList.module.css';
 
@@ -10,7 +10,7 @@ export function MessageList({ messages }: MessageListProps) {
   return (
     <div className={styles.wrapper}>
       {messages.map((message) =>
-        message.role === 'user' ? (
+        message.role === MessageRole.User ? (
           <div key={message.id} className={styles.user}>
             <p className={styles.bubbleText}>{message.text}</p>
           </div>

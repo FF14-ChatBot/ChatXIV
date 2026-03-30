@@ -4,7 +4,8 @@ import { useChatConversation } from '@/hooks/useChatConversation';
 import { CHAT_THREAD_GREETING } from '@/features/chat/chatThreadGreeting';
 import type { ChatAssistantPort } from '@/lib/chat/chatAssistantPort';
 import { DEMO_ASSISTANT_REPLY } from '@/lib/chat/chatAssistantPort';
-import type { ChatSessionLanding } from '@/types/chatSession';
+import { ChatSessionLanding } from '@/types/chatSession';
+import { MessageRole } from '@/types/chat';
 import { logger } from '@/lib/logger/instance';
 
 describe('useChatConversation', () => {
@@ -19,7 +20,7 @@ describe('useChatConversation', () => {
       result.current.sendMessage('hi');
     });
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0]?.role).toBe('user');
+    expect(result.current.messages[0]?.role).toBe(MessageRole.User);
 
     await waitFor(
       () => {
@@ -52,15 +53,15 @@ describe('useChatConversation', () => {
     const { result, rerender } = renderHook(
       ({ gen, landing }: { gen: number; landing: ChatSessionLanding }) =>
         useChatConversation(gen, { sessionLanding: landing }),
-      { initialProps: { gen: 0, landing: 'welcome' as const } }
+      { initialProps: { gen: 0, landing: ChatSessionLanding.Welcome } }
     );
 
-    rerender({ gen: 1, landing: 'thread' });
+    rerender({ gen: 1, landing: ChatSessionLanding.Thread });
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0]?.role).toBe('assistant');
+    expect(result.current.messages[0]?.role).toBe(MessageRole.Assistant);
     expect(result.current.messages[0]?.text).toBe(CHAT_THREAD_GREETING);
 
-    rerender({ gen: 2, landing: 'welcome' });
+    rerender({ gen: 2, landing: ChatSessionLanding.Welcome });
     expect(result.current.messages).toHaveLength(0);
   });
 

@@ -1,5 +1,6 @@
 import type {
   FeedbackBody,
+  FeedbackCountByCategory,
   FeedbackRating,
   FeedbackReasonCode,
   FeedbackResponse,
@@ -45,7 +46,7 @@ export function createFeedbackService(dao: FeedbackSubmissionsDao): FeedbackServ
       return { items: rows.map(rowToSubmission), total, page, pageSize };
     },
 
-    getCountByCategory(): Record<string, number> {
+    getCountByCategory(): FeedbackCountByCategory {
       return dao.getCountByCategory();
     },
   };
