@@ -40,6 +40,7 @@ export default defineConfig({
         /** Binary assets skew per-file coverage */
         "**/*.{png,jpg,jpeg,gif,webp,svg,ico}",
       ],
+      /** CI minimum; new and changed code should still aim for ~100% coverage when practical. */
       thresholds: {
         lines: 90,
         functions: 90,

@@ -152,6 +152,28 @@ describe('Header', () => {
     expect(screen.getByTestId('session-generation')).toHaveTextContent('0');
   });
 
+  it('shows a confirm dialog before New Chat when the thread is dirty', async () => {
+    render(
+      <MemoryRouter>
+        <ChatSessionProvider>
+          <ChatConversationProvider>
+            <ChatDiscardGuard>
+              <ThemeProvider>
+                <SessionGenerationProbe />
+                <SeedUserMessage text="keep" />
+                <Header />
+              </ThemeProvider>
+            </ChatDiscardGuard>
+          </ChatConversationProvider>
+        </ChatSessionProvider>
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('session-generation')).toHaveTextContent('0');
+    fireEvent.click(screen.getByRole('button', { name: /new chat/i }));
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+    expect(screen.getByTestId('session-generation')).toHaveTextContent('0');
+  });
+
   it('starts a new chat from the dialog when the thread has messages', async () => {
     render(
       <MemoryRouter>
@@ -225,6 +247,22 @@ describe('Header auth UI', () => {
     expect(screen.getByText('WO')).toBeInTheDocument();
   });
 
+  it('uses the first email character when displayName is absent', () => {
+    mockAuth.user = {
+      id: 'u1',
+      email: 'alice@eorzea.com',
+      isAdmin: false,
+    };
+    renderHeader();
+    expect(screen.getByText('A')).toBeInTheDocument();
+  });
+
+  it('shows a question mark when neither displayName nor email is present', () => {
+    mockAuth.user = { id: 'u1', isAdmin: false };
+    renderHeader();
+    expect(screen.getByText('?')).toBeInTheDocument();
+  });
+
   it('shows "Sign out" in the dropdown when authenticated', async () => {
     mockAuth.user = { id: 'u1', displayName: 'Warrior', isAdmin: false };
     renderHeader();
@@ -236,6 +274,19 @@ describe('Header auth UI', () => {
     await waitFor(() => {
       expect(screen.getByRole('menuitem', { name: /sign out/i })).toBeInTheDocument();
     });
+  });
+
+  it('calls logout when Sign out is chosen', async () => {
+    mockAuth.user = { id: 'u1', displayName: 'Warrior', email: 'w@e.com', isAdmin: false };
+    renderHeader();
+    const avatarBtn = screen.getByRole('button', { name: /user menu/i });
+    avatarBtn.focus();
+    await act(async () => {
+      fireEvent.keyDown(avatarBtn, { key: 'ArrowDown', code: 'ArrowDown' });
+    });
+    const signOut = await screen.findByRole('menuitem', { name: /sign out/i });
+    fireEvent.click(signOut);
+    expect(mockAuth.logout).toHaveBeenCalledTimes(1);
   });
 
   it('shows "Sign in" in the dropdown when not authenticated', async () => {

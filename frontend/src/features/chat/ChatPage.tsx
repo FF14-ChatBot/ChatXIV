@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
+import clsx from 'clsx';
 import { useChatConversationContext } from './ChatConversationContext';
 import { WelcomePanel } from './WelcomePanel';
 import { MessageList } from './MessageList';
@@ -9,6 +10,7 @@ import { AdsensePlacement } from '../../lib/adsense/adsenseConfig';
 
 export function ChatPage() {
   const { messages, inputValue, setInputValue, sendMessage } = useChatConversationContext();
+  const mainScrollRef = useRef<HTMLDivElement>(null);
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue);
@@ -16,20 +18,49 @@ export function ChatPage() {
 
   const hasMessages = messages.length > 0;
 
+  useLayoutEffect(() => {
+    if (!hasMessages) {
+      return;
+    }
+    const el = mainScrollRef.current;
+    /* v8 ignore start -- ref is always set for this div after commit */
+    if (el === null) {
+      return;
+    }
+    /* v8 ignore end */
+    el.scrollTop = el.scrollHeight;
+  }, [hasMessages, messages]);
+
   return (
     <div className={styles.container}>
       {hasMessages ? (
-        <>
-          <div className={styles.messageArea}>
-            <MessageList messages={messages} />
+        <div className={styles.threadColumn}>
+          <ChatAdSlot
+            placement={AdsensePlacement.Messages}
+            className={clsx(styles.adSlot, styles.adSlotThread)}
+          />
+          <div
+            ref={mainScrollRef}
+            data-testid="chat-scroll-region"
+            className={clsx(styles.mainScroll, styles.mainScrollThread)}
+          >
+            <div className={styles.messageScrollPad}>
+              <MessageList messages={messages} />
+            </div>
           </div>
-          <ChatAdSlot placement={AdsensePlacement.Messages} className={styles.adSlot} />
-        </>
+        </div>
       ) : (
-        <div className={styles.emptyColumn}>
-          <div className={styles.emptyStack}>
+        <div
+          ref={mainScrollRef}
+          data-testid="chat-scroll-region"
+          className={clsx(styles.mainScroll, styles.mainScrollWelcome)}
+        >
+          <div className={styles.welcomeStack}>
             <WelcomePanel onPromptSubmit={sendMessage} />
-            <ChatAdSlot placement={AdsensePlacement.Welcome} className={styles.adSlot} />
+            <ChatAdSlot
+              placement={AdsensePlacement.Welcome}
+              className={clsx(styles.adSlot, styles.adSlotWelcome)}
+            />
           </div>
         </div>
       )}

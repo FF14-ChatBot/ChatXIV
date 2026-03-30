@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MessageFeedbackBar } from '@/features/chat/MessageFeedbackBar';
 
 const submitFeedback = vi.fn(() => Promise.resolve({ ok: true as const }));
@@ -77,6 +77,45 @@ describe('MessageFeedbackBar', () => {
     expect(send).toBeDisabled();
     fireEvent.click(send);
     expect(submitFeedback).not.toHaveBeenCalled();
+  });
+
+  it('ignores not-helpful toggles while submission is in flight', async () => {
+    submitFeedback.mockImplementation(() => new Promise(() => {}));
+
+    render(<MessageFeedbackBar messageId="m-inflight" />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Mark this response as helpful/i }));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Mark this response as not helpful/i }));
+    expect(screen.queryByRole('button', { name: 'Wrong answer' })).not.toBeInTheDocument();
+  });
+
+  it('does not submit Other feedback when the text is only whitespace', () => {
+    render(<MessageFeedbackBar messageId="m-ws-other" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Mark this response as not helpful/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other' }));
+
+    fireEvent.change(screen.getByRole('textbox', { name: /describe what went wrong/i }), {
+      target: { value: '   ' },
+    });
+
+    const send = screen.getByRole('button', { name: 'Send feedback' });
+    expect(send).toBeDisabled();
+    fireEvent.click(send);
+    expect(submitFeedback).not.toHaveBeenCalled();
+  });
+
+  it('collapses the not-helpful panel when the thumb is toggled off', () => {
+    render(<MessageFeedbackBar messageId="m-toggle" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Mark this response as not helpful/i }));
+    expect(screen.getByRole('button', { name: 'Wrong answer' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Mark this response as not helpful/i }));
+    expect(screen.queryByRole('button', { name: 'Wrong answer' })).not.toBeInTheDocument();
   });
 
   it('returns from Other step via Back', () => {

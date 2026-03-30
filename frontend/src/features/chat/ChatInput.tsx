@@ -1,9 +1,7 @@
-import { useCallback, useRef, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useCallback, type ChangeEvent, type KeyboardEvent } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import styles from './ChatInput.module.css';
-
-const COMPOSER_MAX_PX = 160;
 
 interface ChatInputProps {
   value: string;
@@ -12,21 +10,11 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ value, onChange, onSend }: ChatInputProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const syncHeight = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX_PX)}px`;
-  }, []);
-
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       onChange(e.target.value);
-      queueMicrotask(syncHeight);
     },
-    [onChange, syncHeight]
+    [onChange]
   );
 
   const handleKeyDown = useCallback(
@@ -43,7 +31,6 @@ export function ChatInput({ value, onChange, onSend }: ChatInputProps) {
     <div className={styles.bar}>
       <div className={styles.inner}>
         <textarea
-          ref={textareaRef}
           className={styles.field}
           rows={1}
           placeholder="Ask me anything about FFXIV."

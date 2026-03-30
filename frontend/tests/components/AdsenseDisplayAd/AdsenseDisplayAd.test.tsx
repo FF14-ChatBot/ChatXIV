@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { AdsenseDisplayAd } from '@/components/AdsenseDisplayAd/AdsenseDisplayAd';
@@ -18,7 +19,7 @@ describe('AdsenseDisplayAd', () => {
     expect(ins).toBeTruthy();
     expect(ins).toHaveAttribute('data-ad-client', 'ca-pub-x');
     expect(ins).toHaveAttribute('data-ad-slot', '999');
-    expect(ins).toHaveAttribute('data-ad-format', 'auto');
+    expect(ins).toHaveAttribute('data-ad-format', 'horizontal');
     expect(pushSpy).toHaveBeenCalledTimes(1);
     expect(pushSpy).toHaveBeenCalledWith({});
   });
@@ -32,5 +33,18 @@ describe('AdsenseDisplayAd', () => {
     render(<AdsenseDisplayAd client="ca-pub-x" slot="999" className="ad-slot-test" />);
 
     expect(document.querySelector('ins.adsbygoogle')).toBeTruthy();
+  });
+
+  it('still pushes only once under StrictMode double effect', () => {
+    window.adsbygoogle = [];
+    const pushSpy = vi.spyOn(window.adsbygoogle, 'push');
+
+    render(
+      <StrictMode>
+        <AdsenseDisplayAd client="ca-pub-x" slot="888" className="ad-slot-strict" />
+      </StrictMode>
+    );
+
+    expect(pushSpy).toHaveBeenCalledTimes(1);
   });
 });

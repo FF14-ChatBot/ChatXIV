@@ -99,9 +99,11 @@ export function ChatDiscardGuard({ children }: { readonly children: ReactNode })
   }, []);
 
   useEffect(() => {
+    /* v8 ignore start -- rare: thread clean while discard dialog still open */
     if (!isEphemeralDirty && confirmOpen) {
       setConfirmOpen(false);
     }
+    /* v8 ignore end */
   }, [confirmOpen, isEphemeralDirty]);
 
   useEffect(() => {

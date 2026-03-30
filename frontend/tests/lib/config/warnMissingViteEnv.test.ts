@@ -135,4 +135,39 @@ describe('warnMissingViteEnvVars', () => {
     );
     expect(hostCalls).toHaveLength(0);
   });
+
+  it('warns when VITE_CHATXIV_BACKEND_URL is unset', () => {
+    applyEnv({ VITE_CHATXIV_BACKEND_URL: undefined });
+    warnMissingViteEnvVars();
+    expect(warn).toHaveBeenCalledWith(
+      'VITE_CHATXIV_BACKEND_URL is not set; using same-origin (empty base) for API and auth',
+      { defaultUsed: 'same-origin' }
+    );
+  });
+
+  it('warns when VITE_GRAFANA_FARO_URL is unset', () => {
+    applyEnv({ VITE_GRAFANA_FARO_URL: undefined });
+    warnMissingViteEnvVars();
+    expect(warn).toHaveBeenCalledWith(
+      'VITE_GRAFANA_FARO_URL is not set; Faro observability is disabled',
+      { defaultUsed: 'noop' }
+    );
+  });
+
+  it('warns when VITE_APP_VERSION is unset', () => {
+    applyEnv({ VITE_APP_VERSION: undefined });
+    warnMissingViteEnvVars();
+    expect(warn).toHaveBeenCalledWith('VITE_APP_VERSION is not set; using default app version', {
+      defaultUsed: '0.0.0',
+    });
+  });
+
+  it('warns when VITE_PUBLIC_POSTHOG_TOKEN is unset', () => {
+    applyEnv({ VITE_PUBLIC_POSTHOG_TOKEN: undefined });
+    warnMissingViteEnvVars();
+    expect(warn).toHaveBeenCalledWith(
+      'VITE_PUBLIC_POSTHOG_TOKEN is not set; PostHog analytics is disabled',
+      { defaultUsed: 'noop' }
+    );
+  });
 });
