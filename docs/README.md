@@ -13,7 +13,7 @@ Succinct guide for running, linting, testing, and building the repo.
 1. Clone the repo.
 2. Install dependencies:
    - **Preferred:** `npm install` at the repo root (workspaces install backend, frontend, and `packages/*`).
-   - **Or per-package:** `cd backend && npm install`, `cd frontend && npm install`, etc.
+   - **Avoid** `npm install` only inside `backend/` or `frontend/` — use the root so the workspace lockfile stays consistent.
 3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored. If you enable OIDC login (see `backend/.env.example`), set **`FRONTEND_ORIGIN`** to the SPA’s public URL (e.g. `http://localhost:5173` in dev, `https://www.chatxiv.com` in production) so the browser returns there after OAuth instead of the API host (`/` on port 3000). Optional: set **`LOKI_HOST`**, **`LOKI_USER_ID`**, and **`LOKI_PASSWORD`** together to ship logs to Grafana Cloud Loki (see `backend/README.md`).
 4. Frontend env: create `frontend/.env` (and/or `frontend/.env.production`) for Vite-exposed variables (must start with `VITE_`), e.g. `VITE_CHATXIV_BACKEND_URL`.
 5. Optional repo root **`.env`:** copy [`.env.example`](../.env.example) if you use **`npm run webhook:listen`**. Not loaded by Vite or the backend.
@@ -86,7 +86,7 @@ Install **[Docker Engine](https://docs.docker.com/engine/install/)** and the [Co
 - **GitHub Actions** in `.github/workflows/`: backend and frontend have separate workflows.
 - **Triggers:** Path-based — backend CI on changes under `backend/`, `packages/cdm/`, root `.dockerignore`, and its workflow file; frontend CI on changes under `frontend/` (and its workflow file). Backend CI also runs a **`docker build -f backend/Dockerfile`** smoke build. Lint, test, coverage, build, and audit run per package (frontend path unchanged).
 - **Install:** Workflows run `npm ci` at the **repository root** using the root `package-lock.json` so npm workspaces (and root devDependencies such as Husky) install consistently; job steps still use `backend/` or `frontend/` as their working directory for lint, test, and build.
-- **Lockfiles:** Keep the root `package-lock.json` in sync when you change dependencies. `backend/` and `frontend/` also keep their own lockfiles for local per-package installs.
+- **Lockfile:** Keep the root `package-lock.json` in sync when you change dependencies (workspace-wide graph).
 
 ## Cloudflare Tunnel and Zero Trust Access (team dev URLs)
 
@@ -195,18 +195,18 @@ The secret proves the body came from GitHub. **Access** on the tunnel hostname b
 
 ## Project structure
 
-This repo uses **npm workspaces** (`backend/`, `frontend/`, `packages/*`). Each package has its own `package.json`; `backend/` and `frontend/` also have their own lockfiles for local per-package installs. **CI** uses the root `package-lock.json`. Run `npm install` at the repo root to install everything.
+This repo uses **npm workspaces** (`backend/`, `frontend/`, `packages/*`). Each package has its own `package.json`; the **single** root `package-lock.json` locks the whole workspace (run **`npm install`** / **`npm ci`** at the repo root only).
 
-- **backend/** — Express + TypeScript API; own `package.json` and lockfile.
-- **frontend/** — React + Vite app; own `package.json` and lockfile.
+- **backend/** — Express + TypeScript API; own `package.json`.
+- **frontend/** — React + Vite app; own `package.json`.
 - **packages/cdm/** — Shared types package (`@chatxiv/cdm`).
 - **Root `package.json`** — Workspace root; convenience scripts (`dev:backend`, `dev:frontend`, `build`, `lint`, `format`, `format:check`, `test`, `test:coverage`).
 
 ## FAQ
 
-### Why two lockfiles?
+### Why only one lockfile?
 
-Backend and frontend each have their own `package-lock.json` for local installs and tooling. **GitHub Actions** runs `npm ci` from the repo root using the root lockfile. Root `npm install` via workspaces still installs everything.
+**npm workspaces** are pinned by the root **`package-lock.json`**. That keeps backend, frontend, and CDM in one reproducible graph (including root **`overrides`** for security patches). **GitHub Actions** runs **`npm ci`** from the repo root.
 
 ### How do I run backend and frontend together?
 
