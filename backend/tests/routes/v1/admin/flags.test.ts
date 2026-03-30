@@ -23,33 +23,32 @@ describe('admin flags routes', () => {
   });
 
   describe('GET /flags', () => {
-    it('returns empty array when service returns no flags', async () => {
-      service.getAll.mockResolvedValue([]);
+    it('returns empty page when service returns no flags', async () => {
+      service.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
       const res = await request(buildApp(service)).get('/flags');
       expect(res.status).toBe(200);
-      expect(res.body).toEqual([]);
-      expect(service.getAll).toHaveBeenCalledOnce();
+      expect(res.body).toEqual({ items: [], total: 0, page: 1, pageSize: 50 });
+      expect(service.list).toHaveBeenCalledWith(1, 50);
     });
 
-    it('returns entries with metadata', async () => {
-      service.getAll.mockResolvedValue([
-        {
-          name: 'feature-x',
-          enabled: true,
-          createdAt: '2026-03-19T00:00:00.000Z',
-          updatedAt: '2026-03-19T00:00:00.000Z',
-        },
-      ]);
+    it('returns paginated entries with metadata', async () => {
+      const page = {
+        items: [
+          {
+            name: 'feature-x',
+            enabled: true,
+            createdAt: '2026-03-19T00:00:00.000Z',
+            updatedAt: '2026-03-19T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+      };
+      service.list.mockResolvedValue(page);
       const res = await request(buildApp(service)).get('/flags');
       expect(res.status).toBe(200);
-      expect(res.body).toEqual([
-        {
-          name: 'feature-x',
-          enabled: true,
-          createdAt: '2026-03-19T00:00:00.000Z',
-          updatedAt: '2026-03-19T00:00:00.000Z',
-        },
-      ]);
+      expect(res.body).toEqual(page);
     });
   });
 

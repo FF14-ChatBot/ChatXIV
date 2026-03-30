@@ -46,10 +46,11 @@ describe('createPublicRouter', () => {
   });
 
   it('mounts flags under /v1', async () => {
-    flagService.getAll.mockResolvedValue([]);
+    flagService.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
     const res = await request(buildApp(flagService, feedbackService)).get('/v1/flags');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
+    expect(res.body).toEqual({ items: [], total: 0, page: 1, pageSize: 50 });
+    expect(flagService.list).toHaveBeenCalledWith(1, 50);
   });
 
   it('mounts feedback under /v1', async () => {

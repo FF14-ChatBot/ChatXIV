@@ -1,7 +1,7 @@
-import type { FeedbackBody, FeedbackResponse } from '@chatxiv/cdm';
+import type { FeedbackBody, FeedbackResponse, PaginatedResult } from '@chatxiv/cdm';
 import type { FeedbackSubmissionRow } from '../persistence/sqlite/models/feedbackSubmissionRow.js';
 import type { FeedbackSubmissionsDao } from '../persistence/sqlite/dao/FeedbackSubmissionsDao.js';
-import type { FeedbackService, PaginatedResult } from './types.js';
+import type { FeedbackService } from './types.js';
 
 /** @param dao - Concrete DAO; the service owns the DAO, DIP applies at the service boundary. */
 export function createFeedbackService(dao: FeedbackSubmissionsDao): FeedbackService {

@@ -86,17 +86,25 @@ paths:
     get:
       tags: [Feature flags]
       summary: List feature flags
-      description: Returns all flags sorted by name (public).
+      description: |
+        Returns flags sorted by name in stable offset pages (public). Defaults: `page=1`, `pageSize=50`, max `pageSize=500`.
       operationId: listFeatureFlags
+      parameters:
+        - $ref: '#/components/parameters/ListPage'
+        - $ref: '#/components/parameters/ListPageSize'
       responses:
         '200':
-          description: Sorted flag entries
+          description: Paginated flag entries
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FeatureFlagEntry'
+                $ref: '#/components/schemas/PaginatedFeatureFlagList'
+        '400':
+          description: Invalid pagination query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 
   /v1/flags/{name}:
     get:
@@ -161,19 +169,27 @@ paths:
     get:
       tags: [Admin]
       summary: List feature flags (admin)
-      description: Same entries as the public list; order is not guaranteed to be sorted.
+      description: |
+        Same paginated contract as `GET /v1/flags` (sorted by name). Requires admin session.
       operationId: adminListFeatureFlags
       security:
         - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ListPage'
+        - $ref: '#/components/parameters/ListPageSize'
       responses:
         '200':
-          description: Flag entries
+          description: Paginated flag entries
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FeatureFlagEntry'
+                $ref: '#/components/schemas/PaginatedFeatureFlagList'
+        '400':
+          description: Invalid pagination query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '401':
           description: Not authenticated
         '403':
@@ -283,6 +299,27 @@ components:
         pattern: '^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$'
         example: MyFeature
 
+    ListPage:
+      name: page
+      in: query
+      required: false
+      description: 1-based page index.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    ListPageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Page size (default 50; maximum 500).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 50
+
   schemas:
     FeatureFlagEntry:
       type: object
@@ -296,6 +333,25 @@ components:
           type: string
           format: date-time
           description: Present when the flag exists in the store; omitted for unknown names on public GET.
+
+    PaginatedFeatureFlagList:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureFlagEntry'
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of flags across all pages.
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
 
     FeedbackBody:
       type: object

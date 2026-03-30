@@ -33,15 +33,15 @@ describe('admin router', () => {
     const service = createMockFeatureFlagService();
     const res = await request(buildApp(service, false)).get('/flags');
     expect(res.status).toBe(401);
-    expect(service.getAll).not.toHaveBeenCalled();
+    expect(service.list).not.toHaveBeenCalled();
   });
 
   it('allows admin requests through to sub-routes', async () => {
     const service = createMockFeatureFlagService();
-    service.getAll.mockResolvedValue([]);
+    service.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
     const res = await request(buildApp(service)).get('/flags');
     expect(res.status).toBe(200);
-    expect(service.getAll).toHaveBeenCalledOnce();
+    expect(service.list).toHaveBeenCalledWith(1, 50);
   });
 
   it('GET /openapi.yaml returns full OpenAPI YAML when authenticated', async () => {

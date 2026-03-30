@@ -1,17 +1,22 @@
-import type { FeatureFlagEntry } from '@chatxiv/cdm';
+import type { FeatureFlagEntry, PaginatedResult } from '@chatxiv/cdm';
 import type { FeatureFlagService, FeatureFlagStore } from './types.js';
 import { AppError } from '../errors/AppError.js';
 
 export function createFeatureFlagService(store: FeatureFlagStore): FeatureFlagService {
   return {
-    async getAll(): Promise<FeatureFlagEntry[]> {
+    async list(page: number, pageSize: number): Promise<PaginatedResult<FeatureFlagEntry>> {
       const all = await store.getAll();
-      return Object.entries(all).map(([name, record]) => ({
+      const entries = Object.entries(all).map(([name, record]) => ({
         name,
         enabled: record.enabled,
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
       }));
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+      const total = entries.length;
+      const offset = (page - 1) * pageSize;
+      const items = entries.slice(offset, offset + pageSize);
+      return { items, total, page, pageSize };
     },
 
     async getEntry(name: string): Promise<FeatureFlagEntry> {

@@ -3,7 +3,7 @@ import type { FeatureFlagService } from '@src/lib/featureFlags/types.js';
 
 export function createMockFeatureFlagService(): Mocked<FeatureFlagService> {
   return {
-    getAll: vi.fn().mockResolvedValue([]),
+    list: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 }),
     getEntry: vi.fn().mockImplementation(async (name: string) => ({
       name,
       enabled: false,

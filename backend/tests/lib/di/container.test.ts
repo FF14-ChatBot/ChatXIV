@@ -79,7 +79,7 @@ describe('container', () => {
 
     const featureFlagService = container.resolve<FeatureFlagService>(FeatureFlagServiceToken);
     expect(featureFlagService).toBeDefined();
-    expect(typeof featureFlagService.getAll).toBe('function');
+    expect(typeof featureFlagService.list).toBe('function');
     expect(typeof featureFlagService.setFlag).toBe('function');
     expect(typeof featureFlagService.removeFlag).toBe('function');
     expect(typeof featureFlagService.getEntry).toBe('function');
