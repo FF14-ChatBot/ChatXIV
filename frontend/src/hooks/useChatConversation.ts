@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Message } from '../types/chat';
+import { MessageRole, type Message } from '../types/chat';
 import { CHAT_THREAD_GREETING } from '../features/chat/chatThreadGreeting';
-import type { ChatSessionLanding } from '../types/chatSession';
+import { ChatSessionLanding } from '../types/chatSession';
 import { createDemoChatAssistantPort, type ChatAssistantPort } from '../lib/chat/chatAssistantPort';
 import { logger } from '../lib/logger/instance';
 
@@ -20,7 +20,7 @@ function makeThreadGreetingMessage(): Message {
   return {
     id: crypto.randomUUID(),
     text: CHAT_THREAD_GREETING,
-    role: 'assistant',
+    role: MessageRole.Assistant,
   };
 }
 
@@ -28,7 +28,8 @@ export function useChatConversation(
   sessionGeneration: number,
   options: UseChatConversationOptions = {}
 ) {
-  const { assistantPort: assistantPortOption, sessionLanding = 'welcome' } = options;
+  const { assistantPort: assistantPortOption, sessionLanding = ChatSessionLanding.Welcome } =
+    options;
   const fallbackPortRef = useRef<ChatAssistantPort | null>(null);
   if (fallbackPortRef.current === null) {
     fallbackPortRef.current = createDemoChatAssistantPort();
@@ -56,7 +57,7 @@ export function useChatConversation(
     prevSessionGenerationRef.current = sessionGeneration;
     cancelPendingReply();
     setInputValue('');
-    setMessages(sessionLanding === 'thread' ? [makeThreadGreetingMessage()] : []);
+    setMessages(sessionLanding === ChatSessionLanding.Thread ? [makeThreadGreetingMessage()] : []);
   }, [sessionGeneration, sessionLanding, cancelPendingReply]);
 
   useEffect(() => () => cancelPendingReply(), [cancelPendingReply]);
@@ -69,7 +70,7 @@ export function useChatConversation(
       const userMessage: Message = {
         id: crypto.randomUUID(),
         text: trimmed,
-        role: 'user',
+        role: MessageRole.User,
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -86,7 +87,7 @@ export function useChatConversation(
           const botMessage: Message = {
             id: crypto.randomUUID(),
             text: replyText,
-            role: 'assistant',
+            role: MessageRole.Assistant,
           };
           setMessages((prev) => [...prev, botMessage]);
         } catch (e) {

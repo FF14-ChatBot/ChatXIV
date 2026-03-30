@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ChatConversationProvider } from '@/features/chat/ChatConversationContext';
-import { ChatSessionProvider, useChatSession } from '@/features/chat/ChatSessionContext';
+import {
+  ChatSessionLanding,
+  ChatSessionProvider,
+  useChatSession,
+} from '@/features/chat/ChatSessionContext';
 import { ChatPage } from '@/features/chat/ChatPage';
 
 function NewChatTrigger() {
@@ -16,7 +20,7 @@ function NewChatTrigger() {
 function NewThreadChatTrigger() {
   const { startNewChat } = useChatSession();
   return (
-    <button type="button" onClick={() => startNewChat({ landing: 'thread' })}>
+    <button type="button" onClick={() => startNewChat({ landing: ChatSessionLanding.Thread })}>
       New thread from test
     </button>
   );

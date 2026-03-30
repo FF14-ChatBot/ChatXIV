@@ -7,6 +7,7 @@ import { NotAvailablePage } from './components/NotAvailablePage/NotAvailablePage
 import { ProductNavigationProvider } from './context/ProductNavigationContext';
 import { LoginPage } from './features/auth/LoginPage';
 import { ChatPage } from './features/chat/ChatPage';
+import { APP_ROUTES } from './lib/appRoutes';
 
 export type AppProps = {
   readonly isProductLive: boolean;
@@ -15,7 +16,7 @@ export type AppProps = {
 export default function App({ isProductLive }: AppProps) {
   const blockMain = !isProductLive;
   const showHomeLink = isProductLive;
-  const homeHref = blockMain ? '/unavailable' : '/';
+  const homeHref = blockMain ? APP_ROUTES.UNAVAILABLE : APP_ROUTES.HOME;
 
   return (
     <>
@@ -23,7 +24,7 @@ export default function App({ isProductLive }: AppProps) {
       <ProductNavigationProvider homeHref={homeHref}>
         <FaroRoutes>
           <Route
-            path="/unavailable"
+            path={APP_ROUTES.UNAVAILABLE}
             element={
               <AppShell>
                 <NotAvailablePage showHomeLink={showHomeLink} />
@@ -31,7 +32,7 @@ export default function App({ isProductLive }: AppProps) {
             }
           />
           <Route
-            path="/login"
+            path={APP_ROUTES.LOGIN}
             element={
               <AppShell>
                 <LoginPage />
@@ -39,10 +40,10 @@ export default function App({ isProductLive }: AppProps) {
             }
           />
           <Route
-            path="/"
+            path={APP_ROUTES.HOME}
             element={
               blockMain ? (
-                <Navigate to="/unavailable" replace />
+                <Navigate to={APP_ROUTES.UNAVAILABLE} replace />
               ) : (
                 <MainLayout>
                   <ChatPage />
@@ -50,7 +51,7 @@ export default function App({ isProductLive }: AppProps) {
               )
             }
           />
-          <Route path="*" element={<Navigate to="/unavailable" replace />} />
+          <Route path="*" element={<Navigate to={APP_ROUTES.UNAVAILABLE} replace />} />
         </FaroRoutes>
       </ProductNavigationProvider>
     </>

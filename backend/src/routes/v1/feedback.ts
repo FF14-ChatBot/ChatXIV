@@ -4,6 +4,7 @@ import {
   FEEDBACK_RATINGS,
   FEEDBACK_REASON_CODES,
   FEEDBACK_FREE_TEXT_MAX_LENGTH,
+  HTTP_HEADER_NAMES_LOWER,
   USAGE_CATEGORIES,
 } from '@chatxiv/cdm';
 import type { FeedbackBody } from '@chatxiv/cdm';
@@ -17,7 +18,7 @@ export function createFeedbackRouter(service: FeedbackService): Router {
   router.post(
     '/feedback',
     validate([
-      header('idempotency-key')
+      header(HTTP_HEADER_NAMES_LOWER.IDEMPOTENCY_KEY)
         .isString()
         .notEmpty()
         .withMessage('Idempotency-Key header is required'),
@@ -42,7 +43,7 @@ export function createFeedbackRouter(service: FeedbackService): Router {
         .withMessage('category must be a known usage category'),
     ]),
     wrapAsync(async (req, res) => {
-      const idempotencyKey = req.headers['idempotency-key'] as string;
+      const idempotencyKey = req.headers[HTTP_HEADER_NAMES_LOWER.IDEMPOTENCY_KEY] as string;
       const feedbackBody = req.body as FeedbackBody;
       const result = service.submit(idempotencyKey, feedbackBody);
       res.status(200).json(result);

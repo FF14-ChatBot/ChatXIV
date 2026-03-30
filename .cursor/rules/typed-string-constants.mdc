@@ -1,0 +1,40 @@
+---
+description: Use const objects and derived union types instead of scattered string literals or TypeScript enums for fixed string domains
+alwaysApply: true
+---
+
+# Typed string constants (enum-like values)
+
+When introducing **fixed sets of string values** (routes, roles, UI states, wire tokens, header names meant to be shared, etc.), prefer a **single `as const` object** plus a **derived union type**. Use those members in comparisons and payloads so the codebase stays consistent and refactor-safe.
+
+## Pattern
+
+```typescript
+export const MyDomain = {
+  Foo: 'foo',
+  Bar: 'bar',
+} as const;
+
+export type MyDomain = (typeof MyDomain)[keyof typeof MyDomain];
+```
+
+- **Name** the const object in **PascalCase** (same as the type) so call sites read like `MyDomain.Foo`, matching existing CDM style (`UsageCategory`, `FeedbackReason`, `HTTP_METHOD`, etc.).
+- **Imports (Vite + Babel):** Do not write `import { Foo, type Foo }` when the value and type share one name — Babel reports “already been declared”. Use `import { Foo }` only; TypeScript still allows `Foo` in type positions. To re-export the type, use `export type { Foo } from './module'` separately from `export { Foo }`.
+
+## Where values live
+
+- **API contracts** (error codes, paths, shared header names used by backend + frontend): **`@chatxiv/cdm`** — see `.cursor/rules/cdm-shared-types.mdc`.
+- **Backend-only** env names, correlation headers, security/CORS-related names: **`backend/src/lib/config/constants.ts`** (and related `lib/config/` helpers), per `.cursor/rules/backend-conventions.mdc`.
+- **Frontend-only** routes, theme modes, chat UI enums: small modules next to the feature (e.g. `lib/appRoutes.ts`, `theme/themeConstants.ts`) or `types/` when it is pure shaping.
+
+## Prefer this pattern over
+
+- **Repeated raw strings** (`'welcome'`, `'thread'`, `'idempotency-key'`) across multiple files.
+- **TypeScript `enum`** for new code — prefer `as const` objects for tree-shaking and a single source of truth for both runtime and types.
+
+## Exceptions (keep literals)
+
+- **User-visible copy** (labels, sentences, accessibility strings).
+- **Logs and error messages** meant for humans.
+- **Boundary parsing** (normalizing env or unknown JSON) where literals are unavoidable next to validation.
+- **Test fixtures** when a one-off string is clearer than importing a constant.

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import * as adsenseRegistry from '@/lib/adsense/adsenseRegistry';
+import { AdsensePlacement } from '@/lib/adsense/adsenseConfig';
 import { ChatAdSlot } from '@/features/chat/ChatAdSlot';
 
 describe('ChatAdSlot', () => {
@@ -13,7 +14,7 @@ describe('ChatAdSlot', () => {
     vi.spyOn(adsenseRegistry, 'getAdsenseClient').mockReturnValue(undefined);
     vi.spyOn(adsenseRegistry, 'getAdsenseDisplaySlot').mockReturnValue(undefined);
 
-    render(<ChatAdSlot placement="welcome" className="slot-class" />);
+    render(<ChatAdSlot placement={AdsensePlacement.Welcome} className="slot-class" />);
     const aside = screen.getByRole('complementary', { name: /advertisement/i });
     expect(aside).toHaveClass('slot-class');
     expect(aside.querySelector('ins.adsbygoogle')).toBeNull();
@@ -25,7 +26,7 @@ describe('ChatAdSlot', () => {
     window.adsbygoogle = [];
     vi.spyOn(window.adsbygoogle, 'push');
 
-    render(<ChatAdSlot placement="messages" className="ad" />);
+    render(<ChatAdSlot placement={AdsensePlacement.Messages} className="ad" />);
 
     expect(document.querySelector('ins.adsbygoogle')).toBeTruthy();
   });

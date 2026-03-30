@@ -1,7 +1,11 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { ChatSessionProvider, useChatSession } from '@/features/chat/ChatSessionContext';
+import {
+  ChatSessionLanding,
+  ChatSessionProvider,
+  useChatSession,
+} from '@/features/chat/ChatSessionContext';
 
 function wrapper({ children }: { readonly children: ReactNode }) {
   return <ChatSessionProvider>{children}</ChatSessionProvider>;
@@ -31,14 +35,14 @@ describe('ChatSessionContext', () => {
 
   it('defaults landing to welcome and accepts thread landing', () => {
     const { result } = renderHook(() => useChatSession(), { wrapper });
-    expect(result.current.landing).toBe('welcome');
+    expect(result.current.landing).toBe(ChatSessionLanding.Welcome);
     act(() => {
-      result.current.startNewChat({ landing: 'thread' });
+      result.current.startNewChat({ landing: ChatSessionLanding.Thread });
     });
-    expect(result.current.landing).toBe('thread');
+    expect(result.current.landing).toBe(ChatSessionLanding.Thread);
     act(() => {
       result.current.startNewChat();
     });
-    expect(result.current.landing).toBe('welcome');
+    expect(result.current.landing).toBe(ChatSessionLanding.Welcome);
   });
 });

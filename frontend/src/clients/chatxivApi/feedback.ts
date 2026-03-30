@@ -1,6 +1,5 @@
 import type { FeedbackBody, FeedbackResponse } from '@chatxiv/cdm';
-import { FEEDBACK_PATH } from '@chatxiv/cdm';
-import { HTTP_METHOD } from '../core/httpMethod';
+import { FEEDBACK_PATH, HTTP_HEADER_NAMES, HTTP_METHOD } from '@chatxiv/cdm';
 import { chatxivApiRequest } from './instance';
 import type { ChatxivApiRequestOptions } from './types';
 
@@ -23,6 +22,6 @@ export async function submitFeedback(
   return chatxivApiRequest<FeedbackResponse>(HTTP_METHOD.POST, FEEDBACK_PATH, {
     ...rest,
     body,
-    headers: { ...extraHeaders, 'Idempotency-Key': key },
+    headers: { ...extraHeaders, [HTTP_HEADER_NAMES.IDEMPOTENCY_KEY]: key },
   });
 }

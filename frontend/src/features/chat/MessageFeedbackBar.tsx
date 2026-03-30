@@ -2,7 +2,7 @@ import { useCallback, useId, useState } from 'react';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import type { FeedbackReasonCode, UsageCategory } from '@chatxiv/cdm';
 import { FEEDBACK_FREE_TEXT_MAX_LENGTH, FeedbackRating, FeedbackReason } from '@chatxiv/cdm';
-import { useMessageFeedback } from '../../hooks/useMessageFeedback';
+import { MESSAGE_FEEDBACK_UI_STATE, useMessageFeedback } from '../../hooks/useMessageFeedback';
 import styles from './MessageFeedbackBar.module.css';
 
 const REASON_CHOICES: readonly { code: FeedbackReasonCode; label: string }[] = [
@@ -25,7 +25,8 @@ export function MessageFeedbackBar({ messageId, category }: MessageFeedbackBarPr
   const [otherText, setOtherText] = useState('');
   const otherFieldId = useId();
 
-  const disableInputs = state === 'submitting' || state === 'submitted';
+  const disableInputs =
+    state === MESSAGE_FEEDBACK_UI_STATE.Submitting || state === MESSAGE_FEEDBACK_UI_STATE.Submitted;
 
   const resetNegativeFlow = useCallback(() => {
     setPickingReason(false);
@@ -80,7 +81,7 @@ export function MessageFeedbackBar({ messageId, category }: MessageFeedbackBarPr
 
   const otherTextNonEmpty = otherText.trim().length > 0;
 
-  if (state === 'submitted' && submittedRating !== null) {
+  if (state === MESSAGE_FEEDBACK_UI_STATE.Submitted && submittedRating !== null) {
     return (
       <div className={`${styles.metaRow} ${styles.thanksRow}`} role="status" aria-live="polite">
         <span className={styles.status}>
@@ -179,7 +180,7 @@ export function MessageFeedbackBar({ messageId, category }: MessageFeedbackBarPr
           </div>
         </div>
       ) : null}
-      {state === 'error' ? (
+      {state === MESSAGE_FEEDBACK_UI_STATE.Error ? (
         <span className={styles.error} role="alert">
           Could not send feedback.
           <button type="button" className={styles.retry} onClick={dismissError}>

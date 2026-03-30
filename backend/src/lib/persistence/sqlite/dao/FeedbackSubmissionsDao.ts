@@ -1,3 +1,5 @@
+import type { FeedbackCountByCategory } from '@chatxiv/cdm';
+import { FEEDBACK_CATEGORY_NONE_KEY } from '@chatxiv/cdm';
 import type { SqliteDatabase } from '../types.js';
 import type { FeedbackSubmissionRow } from '../models/feedbackSubmissionRow.js';
 import { logger } from '../../../observability/logger.js';
@@ -65,12 +67,14 @@ export class FeedbackSubmissionsDao {
     return { rows, total };
   }
 
-  /** Aggregate feedback counts grouped by category (null categories grouped as `null`). */
-  getCountByCategory(): Record<string, number> {
+  /** Aggregate feedback counts grouped by category (null categories use {@link FEEDBACK_CATEGORY_NONE_KEY}). */
+  getCountByCategory(): FeedbackCountByCategory {
     const rows = this.countByCategoryStmt.all() as { category: string | null; c: number }[];
-    const counts: Record<string, number> = {};
+    const counts: FeedbackCountByCategory = {};
     for (const row of rows) {
-      counts[row.category ?? 'uncategorized'] = row.c;
+      const bucketKey = (row.category ??
+        FEEDBACK_CATEGORY_NONE_KEY) as keyof FeedbackCountByCategory;
+      counts[bucketKey] = row.c;
     }
     return counts;
   }

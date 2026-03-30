@@ -33,6 +33,7 @@ alwaysApply: false
 - Feature secrets: return `undefined`, caller handles 503
 
 ## Constants and Magic Strings
+- New fixed string domains: `as const` object + derived type — `.cursor/rules/typed-string-constants.mdc`
 - HTTP headers: use `HEADERS.REQUEST_ID` etc. from `lib/config/constants.ts`; never use raw header string literals
 - Error codes: use `ERROR_CODES` from `@chatxiv/cdm`; never invent inline code strings
 

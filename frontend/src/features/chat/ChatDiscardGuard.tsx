@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/AlertDialog';
 import { DestructiveButton, OutlineButton } from '../../components/ui/Button';
-import type { ChatSessionLanding } from '../../types/chatSession';
+import { ChatSessionLanding } from '../../types/chatSession';
 import { useChatSession } from './ChatSessionContext';
 import { useChatConversationContext } from './ChatConversationContext';
 
@@ -62,28 +62,28 @@ export function ChatDiscardGuard({ children }: { readonly children: ReactNode })
 
   const requestStartNewChat = useCallback(() => {
     if (!isEphemeralDirty) {
-      runStartNewChat('thread');
+      runStartNewChat(ChatSessionLanding.Thread);
       return;
     }
-    pendingLandingOnDiscardRef.current = 'thread';
+    pendingLandingOnDiscardRef.current = ChatSessionLanding.Thread;
     setConfirmOpen(true);
   }, [isEphemeralDirty, runStartNewChat]);
 
   const onHomeNavigationClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
       if (!isEphemeralDirty) {
-        runStartNewChat('welcome');
+        runStartNewChat(ChatSessionLanding.Welcome);
         return;
       }
       event.preventDefault();
-      pendingLandingOnDiscardRef.current = 'welcome';
+      pendingLandingOnDiscardRef.current = ChatSessionLanding.Welcome;
       setConfirmOpen(true);
     },
     [isEphemeralDirty, runStartNewChat]
   );
 
   const handleConfirmDiscard = useCallback(() => {
-    const landing = pendingLandingOnDiscardRef.current ?? 'welcome';
+    const landing = pendingLandingOnDiscardRef.current ?? ChatSessionLanding.Welcome;
     pendingLandingOnDiscardRef.current = null;
     setConfirmOpen(false);
     runStartNewChat(landing);

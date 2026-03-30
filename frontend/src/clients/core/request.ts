@@ -1,3 +1,4 @@
+import { HTTP_HEADER_NAMES } from '@chatxiv/cdm';
 import type { HttpClientConfig } from './types';
 
 export function buildUrl(baseUrl: string, path: string): string {
@@ -6,7 +7,7 @@ export function buildUrl(baseUrl: string, path: string): string {
 }
 
 const DEFAULT_HEADERS: Record<string, string> = {
-  'Content-Type': 'application/json',
+  [HTTP_HEADER_NAMES.CONTENT_TYPE]: 'application/json',
 };
 
 /** Returns raw Response; callers handle status and body (so each client can map errors its own way). */

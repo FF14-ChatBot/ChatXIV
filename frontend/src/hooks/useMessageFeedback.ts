@@ -4,7 +4,14 @@ import { submitFeedback } from '../clients/chatxivApi/feedback';
 import { logger } from '../lib/logger/instance';
 import type { ChatxivApiConfig } from '../clients/chatxivApi/types';
 
-export type MessageFeedbackUiState = 'idle' | 'submitting' | 'submitted' | 'error';
+export const MESSAGE_FEEDBACK_UI_STATE = {
+  Idle: 'idle',
+  Submitting: 'submitting',
+  Submitted: 'submitted',
+  Error: 'error',
+} as const;
+export type MessageFeedbackUiState =
+  (typeof MESSAGE_FEEDBACK_UI_STATE)[keyof typeof MESSAGE_FEEDBACK_UI_STATE];
 
 export interface UseMessageFeedbackResult {
   readonly state: MessageFeedbackUiState;
@@ -21,29 +28,29 @@ export interface UseMessageFeedbackResult {
  * Each successful submit freezes the control; use one hook instance per message row.
  */
 export function useMessageFeedback(messageId: string): UseMessageFeedbackResult {
-  const [state, setState] = useState<MessageFeedbackUiState>('idle');
+  const [state, setState] = useState<MessageFeedbackUiState>(MESSAGE_FEEDBACK_UI_STATE.Idle);
   const [submittedRating, setSubmittedRating] = useState<FeedbackRating | null>(null);
 
   const dismissError = useCallback(() => {
-    setState('idle');
+    setState(MESSAGE_FEEDBACK_UI_STATE.Idle);
   }, []);
 
   const submit = useCallback(
     async (payload: Omit<FeedbackBody, 'messageId'>, apiConfig?: ChatxivApiConfig) => {
-      setState('submitting');
+      setState(MESSAGE_FEEDBACK_UI_STATE.Submitting);
       try {
         await submitFeedback(
           { ...payload, messageId },
           apiConfig ? { config: apiConfig } : undefined
         );
         setSubmittedRating(payload.rating);
-        setState('submitted');
+        setState(MESSAGE_FEEDBACK_UI_STATE.Submitted);
       } catch (e) {
         logger.error('Feedback submission failed', {
           messageId,
           error: e instanceof Error ? e.message : String(e),
         });
-        setState('error');
+        setState(MESSAGE_FEEDBACK_UI_STATE.Error);
       }
     },
     [messageId]

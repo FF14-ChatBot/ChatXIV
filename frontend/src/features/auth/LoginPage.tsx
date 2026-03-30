@@ -2,6 +2,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { OutlineButton } from '../../components/ui/Button';
 import { useAuth } from './AuthProvider';
 import styles from './LoginPage.module.css';
+import { APP_ROUTES } from '../../lib/appRoutes';
 
 export function LoginPage() {
   const { user, loading, login } = useAuth();
@@ -19,7 +20,7 @@ export function LoginPage() {
   }
 
   if (user !== null) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={APP_ROUTES.HOME} replace />;
   }
 
   return (
@@ -31,7 +32,7 @@ export function LoginPage() {
           Continue to sign in
         </OutlineButton>
         <p className={styles.hint}>
-          <Link to="/unavailable">Back to site notice</Link>
+          <Link to={APP_ROUTES.UNAVAILABLE}>Back to site notice</Link>
         </p>
       </div>
     </div>

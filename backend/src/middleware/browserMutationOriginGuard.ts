@@ -1,8 +1,15 @@
 import type { Request, Response, NextFunction } from 'express';
+import { HTTP_METHOD } from '@chatxiv/cdm';
 import { AppError } from '../lib/errors/AppError.js';
+import { INCOMING_HEADERS } from '../lib/config/constants.js';
 import { requestContext } from '../lib/request/requestContext.js';
 
-const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const MUTATING = new Set<string>([
+  HTTP_METHOD.POST,
+  HTTP_METHOD.PUT,
+  HTTP_METHOD.PATCH,
+  HTTP_METHOD.DELETE,
+]);
 
 function matchesAllowedOrigin(origin: string, allowed: readonly string[]): boolean {
   return allowed.some((o) => o === origin);
@@ -25,11 +32,11 @@ function matchesAllowedReferer(referer: string, allowed: readonly string[]): boo
  * proxies), use its first hop so `Origin` from the public URL still matches.
  */
 function getRequestPublicOrigin(req: Request): string | undefined {
-  const forwardedHost = req.get('x-forwarded-host');
+  const forwardedHost = req.get(INCOMING_HEADERS.X_FORWARDED_HOST);
   const host =
     forwardedHost && forwardedHost.trim() !== ''
       ? forwardedHost.split(',')[0]?.trim()
-      : req.get('host');
+      : req.get(INCOMING_HEADERS.HOST);
   if (!host || host.trim() === '') return undefined;
   const proto = req.protocol;
   if (!proto || proto.trim() === '') return undefined;
@@ -65,8 +72,8 @@ export function createBrowserMutationOriginGuard(
       return;
     }
 
-    const origin = req.get('Origin');
-    const referer = req.get('Referer');
+    const origin = req.get(INCOMING_HEADERS.ORIGIN);
+    const referer = req.get(INCOMING_HEADERS.REFERER);
 
     if (origin) {
       if (!originMatchesThisRequest(req, origin) && !matchesAllowedOrigin(origin, allowedOrigins)) {
