@@ -94,3 +94,8 @@ export const REDACT = {
  * Same intent as rate-limit skips for docs, but we still record API traffic under `/v1/admin`.
  */
 export const METRICS_SKIP_ROUTE_PREFIXES = ['/v1/docs', '/v1/admin/docs', '/health'] as const;
+
+// ── XIVAPI (external game-data API) ────────────────────────────────
+export const XIVAPI_BASE_URL = 'https://v2.xivapi.com/api' as const;
+export const XIVAPI_TIMEOUT_MS = 5_000 as const;
+export const XIVAPI_RATE_LIMIT_PER_SECOND = 20 as const;
