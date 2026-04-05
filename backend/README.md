@@ -175,6 +175,7 @@ JSON error bodies follow the shared shape `ApiErrorResponse` in `@chatxiv/cdm` (
 ## Scheduled jobs
 
 In-process periodic work uses [`src/lib/scheduler/processJobScheduler.ts`](src/lib/scheduler/processJobScheduler.ts): register jobs with `schedulePeriodic`, and call `stopAll` on shutdown (see [`src/server.ts`](src/server.ts)). This is for maintenance tasks that run in the same Node process as the API, not a separate worker or distributed scheduler.
+
 ## BFF + private API (target architecture optional)
 
 The browser can call **`https://www.chatxiv.com/api/...`** (or a Cloudflare **Worker** / **Pages Function** on that host) so requests are **same-origin** with the SPA. That Worker forwards to the real API over **Cloudflare Tunnel** or a **non-public origin**; clients never need your VPS IP. Only Cloudflare’s edge talks to the tunnel / internal URL. See [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) and [Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
