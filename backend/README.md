@@ -174,7 +174,7 @@ JSON error bodies follow the shared shape `ApiErrorResponse` in `@chatxiv/cdm` (
 
 ## Scheduled jobs
 
-In-process periodic work uses [`src/lib/scheduler/processJobScheduler.ts`](src/lib/scheduler/processJobScheduler.ts): register jobs with `schedulePeriodic`, and call `stopAll` on shutdown (see [`src/server.ts`](src/server.ts)). This is for maintenance tasks that run in the same Node process as the API, not a separate worker or distributed scheduler.
+In-process maintenance uses UTC wall-clock scheduling in [`src/lib/scheduler/processJobScheduler.ts`](src/lib/scheduler/processJobScheduler.ts) (`scheduleUtcJob` + [`utcSchedule.ts`](src/lib/scheduler/utcSchedule.ts)). Concrete jobs are registered in [`src/lib/scheduler/scheduledJobs.ts`](src/lib/scheduler/scheduledJobs.ts); [`src/server.ts`](src/server.ts) constructs the scheduler, calls `registerProcessScheduledJobs`, and `dispose()` on shutdown. This is for work co-located with the API process, not a separate worker or distributed scheduler.
 
 ## BFF + private API (target architecture optional)
 

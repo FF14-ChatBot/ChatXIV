@@ -1,67 +1,73 @@
-import type { Logger } from 'pino';
+import type pino from 'pino';
+import { getNextRunUtc, type UtcJobSchedule } from './utcSchedule.js';
 
-export type PeriodicJobConfig = {
-  readonly name: string;
-  readonly intervalMs: number;
-  readonly task: () => void | Promise<void>;
-  /**
-   * When true (default), the timer does not keep the Node process alive on its own.
-   * Match Node’s `Timeout#unref()` behavior for background maintenance work.
-   */
-  readonly unrefTimer?: boolean;
-};
+export type ScheduledUtcTask = () => void | Promise<void>;
 
-type SchedulerLogger = Pick<Logger, 'warn'>;
+export type ScheduleUtcJobOptions = Readonly<{
+  name: string;
+  schedule: UtcJobSchedule;
+  task: ScheduledUtcTask;
+}>;
 
-function isThenable(value: unknown): value is Promise<unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'then' in value &&
-    typeof (value as Promise<unknown>).then === 'function'
-  );
-}
+export type ProcessJobSchedulerOptions = Readonly<{
+  /** When true, timers do not keep the process alive (default true for background maintenance) */
+  unrefTimers?: boolean;
+}>;
 
 /**
- * In-process periodic jobs (setInterval-based). For maintenance tasks co-located with the API server.
- * Stops all timers on {@link ProcessJobScheduler.stopAll} (e.g. graceful shutdown).
+ * Single-process UTC scheduler: arms `setTimeout` to the next calendar instant, runs the task,
+ * then recomputes the following fire time. Avoids drift and misalignment from fixed intervals.
  */
 export class ProcessJobScheduler {
-  private readonly timers: NodeJS.Timeout[] = [];
+  private readonly timeoutByJob = new Map<string, NodeJS.Timeout>();
+  private readonly unrefTimers: boolean;
 
-  constructor(private readonly log: SchedulerLogger) {}
+  constructor(
+    private readonly log: pino.Logger,
+    options?: ProcessJobSchedulerOptions
+  ) {
+    this.unrefTimers = options?.unrefTimers ?? true;
+  }
 
-  schedulePeriodic(job: PeriodicJobConfig): void {
-    const { name, intervalMs, task, unrefTimer = true } = job;
+  scheduleUtcJob(options: ScheduleUtcJobOptions): void {
+    const { name, schedule, task } = options;
 
-    const runTick = (): void => {
-      try {
-        const result = task();
-        if (isThenable(result)) {
-          void result.catch((error: unknown) => {
-            this.log.warn({ error, job: name }, 'Scheduled job failed');
-          });
-        }
-      } catch (error) {
-        this.log.warn({ error, job: name }, 'Scheduled job failed');
+    const arm = (): void => {
+      const now = new Date();
+      const next = getNextRunUtc(now, schedule);
+      const delayMs = Math.max(0, next.getTime() - now.getTime());
+      const id = setTimeout(() => {
+        void (async () => {
+          try {
+            await Promise.resolve(task());
+            this.log.info({ job: name, ranFor: next.toISOString() }, 'Scheduled job succeeded');
+          } catch (error) {
+            this.log.warn(
+              { error, job: name, scheduledFor: next.toISOString() },
+              'Scheduled job failed'
+            );
+          }
+          arm();
+        })();
+      }, delayMs);
+      if (this.unrefTimers) {
+        id.unref();
       }
+      const prev = this.timeoutByJob.get(name);
+      if (prev) {
+        clearTimeout(prev);
+      }
+      this.timeoutByJob.set(name, id);
     };
 
-    const timer = setInterval(runTick, intervalMs);
-    if (unrefTimer) {
-      timer.unref();
-    }
-    this.timers.push(timer);
+    arm();
   }
 
-  stopAll(): void {
-    for (const timer of this.timers) {
-      clearInterval(timer);
+  /** Clears pending timers; does not cancel an already-running task callback */
+  dispose(): void {
+    for (const id of this.timeoutByJob.values()) {
+      clearTimeout(id);
     }
-    this.timers.length = 0;
+    this.timeoutByJob.clear();
   }
-}
-
-export function createProcessJobScheduler(log: SchedulerLogger): ProcessJobScheduler {
-  return new ProcessJobScheduler(log);
 }
