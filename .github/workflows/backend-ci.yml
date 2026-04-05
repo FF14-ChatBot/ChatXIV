@@ -5,11 +5,13 @@ on:
     paths:
       - "backend/**"
       - "packages/cdm/**"
+      - ".dockerignore"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
       - "packages/cdm/**"
+      - ".dockerignore"
       - ".github/workflows/backend-ci.yml"
 
 jobs:
@@ -29,7 +31,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: package-lock.json
 
@@ -60,3 +62,7 @@ jobs:
 
       - name: Security audit
         run: npm run audit
+
+      - name: Docker build
+        working-directory: .
+        run: docker build -f backend/Dockerfile .

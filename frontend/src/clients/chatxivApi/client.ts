@@ -1,5 +1,5 @@
 import type { ApiErrorResponse } from '@chatxiv/cdm';
-import { ERROR_CODES } from '@chatxiv/cdm';
+import { ERROR_CODES, HTTP_HEADER_NAMES } from '@chatxiv/cdm';
 import { request as coreRequest } from '../core/request';
 import { getChatxivApiBaseUrl } from './config';
 import { ApiClientError } from './errors/ApiClientError';
@@ -16,11 +16,11 @@ function buildChatxivApiHeaders(
   apiConfig: ChatxivApiConfig
 ): Record<string, string> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-Request-Id': randomRequestId(),
+    [HTTP_HEADER_NAMES.CONTENT_TYPE]: 'application/json',
+    [HTTP_HEADER_NAMES.X_REQUEST_ID]: randomRequestId(),
   };
   const sessionId = apiConfig.getSessionId?.();
-  if (sessionId) headers['X-Session-Id'] = sessionId;
+  if (sessionId) headers[HTTP_HEADER_NAMES.X_SESSION_ID] = sessionId;
   return headers;
 }
 
@@ -39,12 +39,15 @@ async function runRequest<T = unknown>(
   path: string,
   options: ChatxivApiRequestOptions = {}
 ): Promise<T> {
-  const { body, config = {}, signal } = options;
+  const { body, config = {}, signal, headers: requestHeaders } = options;
   const baseUrl = config.baseUrl ?? getChatxivApiBaseUrl();
 
   const httpConfig = {
     baseUrl,
-    getHeaders: (m: string, p: string, b: unknown) => buildChatxivApiHeaders(m, p, b, config),
+    getHeaders: (m: string, p: string, b: unknown) => {
+      const base = buildChatxivApiHeaders(m, p, b, config);
+      return requestHeaders ? { ...base, ...requestHeaders } : base;
+    },
   };
 
   let response: Response;

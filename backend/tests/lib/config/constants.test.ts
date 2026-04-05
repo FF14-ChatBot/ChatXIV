@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { ENV_KEYS, HEADERS, REDACT } from '@src/lib/config/constants.js';
+import {
+  APP_DATA_DIRECTORY,
+  ENV_KEYS,
+  HEADERS,
+  MAX_JSON_BODY_SIZE_KB,
+  RATE_LIMIT_BUCKET_CAPACITY,
+  RATE_LIMIT_REFILL_PER_MINUTE,
+  REDACT,
+  REQUEST_TIMEOUT_MS,
+} from '@src/lib/config/constants.js';
 
 describe('lib/config/constants', () => {
   it('exports stable header names', () => {
@@ -18,21 +27,18 @@ describe('lib/config/constants', () => {
     expect(ENV_KEYS.DEBUG_MODE).toBe('DEBUG_MODE');
     expect(ENV_KEYS.ANTHROPIC_API_KEY).toBe('ANTHROPIC_API_KEY');
     expect(ENV_KEYS.ANTHROPIC_MODEL).toBe('ANTHROPIC_MODEL');
-    expect(ENV_KEYS.DATA_DIR).toBe('DATA_DIR');
   });
 
-  it('exports ADMIN_API_KEY env key', () => {
-    expect(ENV_KEYS.ADMIN_API_KEY).toBe('ADMIN_API_KEY');
+  it('exports code-only tuning constants', () => {
+    expect(APP_DATA_DIRECTORY).toBe('./data');
+    expect(MAX_JSON_BODY_SIZE_KB).toBe(50);
+    expect(REQUEST_TIMEOUT_MS).toBe(30_000);
+    expect(RATE_LIMIT_BUCKET_CAPACITY).toBe(20);
+    expect(RATE_LIMIT_REFILL_PER_MINUTE).toBe(4);
   });
 
   it('exports redaction config', () => {
-    expect(REDACT.HEADER_NAMES).toEqual([
-      'authorization',
-      'x-api-key',
-      'x-admin-key',
-      'api-key',
-      'cookie',
-    ]);
+    expect(REDACT.HEADER_NAMES).toEqual(['authorization', 'x-api-key', 'api-key', 'cookie']);
     expect(REDACT.QUERY_PARAMS).toEqual(['key', 'token', 'api_key', 'apikey', 'auth']);
   });
 });

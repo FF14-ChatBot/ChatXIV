@@ -9,7 +9,6 @@ import {
   RateLimitConfigToken,
   RequestConfigToken,
   CorsOriginsToken,
-  AuthStrategyToken,
   FeatureFlagStoreToken,
   FeatureFlagServiceToken,
 } from '@src/lib/di/container.js';
@@ -17,13 +16,11 @@ import type { MetricsStore } from '@src/lib/observability/metrics/types.js';
 import type { UsageStore } from '@src/lib/observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '@src/middleware/rateLimit/types.js';
 import type { RequestConfig } from '@src/lib/config/requestConfig.js';
-import type { AuthStrategy } from '@src/lib/auth/types.js';
 import type { FeatureFlagStore, FeatureFlagService } from '@src/lib/featureFlags/types.js';
 import { RequestMetricsMiddleware } from '@src/middleware/requestMetrics.js';
 import { UsageAnalyticsMiddleware } from '@src/middleware/usageAnalytics.js';
 import { RateLimitMiddleware } from '@src/middleware/rateLimit/rateLimitMiddleware.js';
 import { RequestTimeoutMiddleware } from '@src/middleware/requestTimeout.js';
-import { AdminAuthMiddleware } from '@src/middleware/adminAuth.js';
 import { resetBackendContainerForTests } from '@test/helpers/resetBackendContainer.js';
 
 function emptyUsageCounts(): Record<UsageCategory, number> {
@@ -73,10 +70,6 @@ describe('container', () => {
     const corsOrigins = container.resolve<string[]>(CorsOriginsToken);
     expect(Array.isArray(corsOrigins)).toBe(true);
 
-    const authStrategy = container.resolve<AuthStrategy>(AuthStrategyToken);
-    expect(authStrategy).toBeDefined();
-    expect(typeof authStrategy.authenticate).toBe('function');
-
     const featureFlagStore = container.resolve<FeatureFlagStore>(FeatureFlagStoreToken);
     expect(featureFlagStore).toBeDefined();
     expect(typeof featureFlagStore.get).toBe('function');
@@ -86,7 +79,7 @@ describe('container', () => {
 
     const featureFlagService = container.resolve<FeatureFlagService>(FeatureFlagServiceToken);
     expect(featureFlagService).toBeDefined();
-    expect(typeof featureFlagService.getAll).toBe('function');
+    expect(typeof featureFlagService.list).toBe('function');
     expect(typeof featureFlagService.setFlag).toBe('function');
     expect(typeof featureFlagService.removeFlag).toBe('function');
     expect(typeof featureFlagService.getEntry).toBe('function');
@@ -108,9 +101,5 @@ describe('container', () => {
     const timeoutMw = container.resolve(RequestTimeoutMiddleware);
     expect(timeoutMw).toBeDefined();
     expect(typeof timeoutMw.handler).toBe('function');
-
-    const adminAuthMw = container.resolve(AdminAuthMiddleware);
-    expect(adminAuthMw).toBeDefined();
-    expect(typeof adminAuthMw.handler).toBe('function');
   });
 });

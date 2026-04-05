@@ -13,7 +13,7 @@ export class UsageRecordsDao {
   constructor(db: SqliteDatabase) {
     this.insertStmt = db.prepare(
       `INSERT INTO usage_records (category, request_id, recorded_at)
-       VALUES (@category, @request_id, @recorded_at)`
+       VALUES (?, ?, ?)`
     );
     this.selectAllStmt = db.prepare(
       `SELECT category, request_id, recorded_at FROM usage_records ORDER BY id ASC`
@@ -30,11 +30,7 @@ export class UsageRecordsDao {
   }
 
   insert(entry: UsageRecord): void {
-    this.insertStmt.run({
-      category: entry.category,
-      request_id: entry.requestId,
-      recorded_at: entry.timestamp,
-    });
+    this.insertStmt.run(entry.category, entry.requestId, entry.timestamp);
   }
 
   selectAll(): UsageRecord[] {

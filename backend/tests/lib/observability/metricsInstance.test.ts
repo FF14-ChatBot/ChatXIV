@@ -26,7 +26,7 @@ describe('metricsInstance', () => {
       route: '/x',
       statusCode: 200,
       durationMs: 1,
-      timestamp: 1,
+      timestamp: '1970-01-01T00:00:00.000Z',
     });
     expect(getMetrics().getEntries()).toHaveLength(1);
     expect(metrics.getSummary().totalRequests).toBe(1);

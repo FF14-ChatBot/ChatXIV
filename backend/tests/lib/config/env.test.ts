@@ -1,16 +1,28 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
   getPort,
   getNodeEnv,
+  RUNTIME_STAGE,
+  shouldDotenvOverrideShellEnv,
   isProduction,
   getDataDir,
   getAnthropicApiKey,
   getAnthropicModel,
-  getAdminApiKey,
   getLogLevel,
   getDebugMode,
-  getObservabilityDatabasePath,
+  getAppDatabasePath,
+  getOidcIssuer,
+  getOidcClientId,
+  getOidcClientSecret,
+  getOidcRedirectUri,
+  getFrontendOrigin,
+  getOauthSuccessRedirectUrl,
+  getSessionSecret,
+  getBootstrapAdminSubs,
+  getTurnstileSecretKey,
+  getLokiPushConfig,
 } from '@src/lib/config/env.js';
+import { ENV_KEYS } from '@src/lib/config/constants.js';
 
 describe('lib/config/env', () => {
   const saved = { ...process.env };
@@ -19,25 +31,77 @@ describe('lib/config/env', () => {
     process.env = { ...saved };
   });
 
-  describe('getNodeEnv', () => {
-    it('returns "development" by default', () => {
+  describe('shouldDotenvOverrideShellEnv', () => {
+    it('returns true when NODE_ENV is unset (dotenv not loaded yet)', () => {
       delete process.env.NODE_ENV;
-      expect(getNodeEnv()).toBe('development');
+      expect(shouldDotenvOverrideShellEnv()).toBe(true);
     });
 
-    it('returns "production" when set', () => {
+    it('returns false for production and beta', () => {
       process.env.NODE_ENV = 'production';
-      expect(getNodeEnv()).toBe('production');
+      expect(shouldDotenvOverrideShellEnv()).toBe(false);
+      process.env.NODE_ENV = 'beta';
+      expect(shouldDotenvOverrideShellEnv()).toBe(false);
     });
 
-    it('returns "test" when set', () => {
+    it('returns true for development, test, and legacy dev', () => {
+      process.env.NODE_ENV = 'development';
+      expect(shouldDotenvOverrideShellEnv()).toBe(true);
       process.env.NODE_ENV = 'test';
-      expect(getNodeEnv()).toBe('test');
+      expect(shouldDotenvOverrideShellEnv()).toBe(true);
+      process.env.NODE_ENV = 'dev' as never;
+      expect(shouldDotenvOverrideShellEnv()).toBe(true);
+    });
+  });
+
+  describe('getNodeEnv', () => {
+    it('returns development by default', () => {
+      delete process.env.NODE_ENV;
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
     });
 
-    it('falls back to "development" for unknown values', () => {
+    it('returns production when NODE_ENV=production', () => {
+      process.env.NODE_ENV = 'production';
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.PRODUCTION);
+    });
+
+    it('returns beta when NODE_ENV=beta', () => {
+      process.env.NODE_ENV = 'beta';
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.BETA);
+    });
+
+    it('returns development when NODE_ENV=development', () => {
+      process.env.NODE_ENV = 'development';
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
+    });
+
+    it('normalizes test and legacy dev to development', () => {
+      process.env.NODE_ENV = 'test';
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
+      process.env.NODE_ENV = 'dev' as never;
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
+    });
+
+    it('does not emit invalid NODE_ENV warning for legacy dev when not under Vitest', () => {
+      const savedVitest = process.env.VITEST;
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        delete process.env.VITEST;
+        process.env.NODE_ENV = 'dev' as never;
+        expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
+        expect(warnSpy.mock.calls.some((c) => String(c[0]).includes('Invalid NODE_ENV'))).toBe(
+          false
+        );
+      } finally {
+        if (savedVitest === undefined) delete process.env.VITEST;
+        else process.env.VITEST = savedVitest;
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('falls back to development for unknown NODE_ENV', () => {
       process.env.NODE_ENV = 'staging' as never;
-      expect(getNodeEnv()).toBe('development');
+      expect(getNodeEnv()).toBe(RUNTIME_STAGE.DEVELOPMENT);
     });
   });
 
@@ -47,13 +111,13 @@ describe('lib/config/env', () => {
       expect(isProduction()).toBe(true);
     });
 
-    it('returns false when NODE_ENV is "development"', () => {
+    it('returns false when NODE_ENV is unset (logical development)', () => {
       delete process.env.NODE_ENV;
       expect(isProduction()).toBe(false);
     });
 
-    it('returns false when NODE_ENV is "test"', () => {
-      process.env.NODE_ENV = 'test';
+    it('returns false when NODE_ENV is development', () => {
+      process.env.NODE_ENV = 'development';
       expect(isProduction()).toBe(false);
     });
   });
@@ -91,30 +155,26 @@ describe('lib/config/env', () => {
   });
 
   describe('getDataDir', () => {
-    it('returns "./data" by default', () => {
+    it('returns code constant (not env-driven)', () => {
       delete process.env.DATA_DIR;
       expect(getDataDir()).toBe('./data');
-    });
-
-    it('returns env value when set', () => {
       process.env.DATA_DIR = '/var/lib/chatxiv';
-      expect(getDataDir()).toBe('/var/lib/chatxiv');
+      expect(getDataDir()).toBe('./data');
     });
   });
 
-  describe('getObservabilityDatabasePath', () => {
-    it('in test uses a per-worker temp file', () => {
-      process.env.NODE_ENV = 'test';
+  describe('getAppDatabasePath', () => {
+    it('uses a per-worker temp file when VITEST_WORKER_ID is set', () => {
       process.env.VITEST_WORKER_ID = '3';
-      const got = getObservabilityDatabasePath();
-      expect(got).toContain('chatxiv-observability-test-w3');
+      const got = getAppDatabasePath();
+      expect(got).toContain('chatxiv-test-w3');
       expect(got.endsWith('.db')).toBe(true);
     });
 
-    it('uses DATA_DIR/observability.db when not in test', () => {
+    it('uses APP_DATA_DIRECTORY/app.db when not under Vitest worker', () => {
+      delete process.env.VITEST_WORKER_ID;
       process.env.NODE_ENV = 'development';
-      process.env.DATA_DIR = './myobsdata';
-      expect(getObservabilityDatabasePath()).toMatch(/myobsdata[\\/]observability\.db$/);
+      expect(getAppDatabasePath()).toMatch(/data[\\/]app\.db$/);
     });
   });
 
@@ -144,38 +204,6 @@ describe('lib/config/env', () => {
     it('returns the model when set', () => {
       process.env.ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
       expect(getAnthropicModel()).toBe('claude-sonnet-4-20250514');
-    });
-  });
-
-  describe('getAdminApiKey', () => {
-    it('returns undefined when unset', () => {
-      delete process.env.ADMIN_API_KEY;
-      expect(getAdminApiKey()).toBeUndefined();
-    });
-
-    it('returns undefined for empty string', () => {
-      process.env.ADMIN_API_KEY = '';
-      expect(getAdminApiKey()).toBeUndefined();
-    });
-
-    it('returns the key when set', () => {
-      process.env.ADMIN_API_KEY = 'my-admin-key';
-      expect(getAdminApiKey()).toBe('my-admin-key');
-    });
-
-    it('returns undefined for whitespace-only value', () => {
-      process.env.ADMIN_API_KEY = '   \t  ';
-      expect(getAdminApiKey()).toBeUndefined();
-    });
-
-    it('trims surrounding whitespace', () => {
-      process.env.ADMIN_API_KEY = '  my-admin-key  ';
-      expect(getAdminApiKey()).toBe('my-admin-key');
-    });
-
-    it('strips UTF-8 BOM when present', () => {
-      process.env.ADMIN_API_KEY = '\uFEFFmy-admin-key';
-      expect(getAdminApiKey()).toBe('my-admin-key');
     });
   });
 
@@ -223,6 +251,200 @@ describe('lib/config/env', () => {
     it.each(['false', '0', 'nope'])('returns false when set to %j', (value) => {
       process.env.DEBUG_MODE = value;
       expect(getDebugMode()).toBe(false);
+    });
+  });
+
+  describe('getOidcIssuer', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.OIDC_ISSUER;
+      expect(getOidcIssuer()).toBeUndefined();
+    });
+
+    it('returns undefined for empty string', () => {
+      process.env.OIDC_ISSUER = '';
+      expect(getOidcIssuer()).toBeUndefined();
+    });
+
+    it('returns the value when set', () => {
+      process.env.OIDC_ISSUER = 'https://accounts.google.com';
+      expect(getOidcIssuer()).toBe('https://accounts.google.com');
+    });
+  });
+
+  describe('getOidcClientId', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.OIDC_CLIENT_ID;
+      expect(getOidcClientId()).toBeUndefined();
+    });
+
+    it('returns the value when set', () => {
+      process.env.OIDC_CLIENT_ID = 'my-client-id';
+      expect(getOidcClientId()).toBe('my-client-id');
+    });
+  });
+
+  describe('getOidcClientSecret', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.OIDC_CLIENT_SECRET;
+      expect(getOidcClientSecret()).toBeUndefined();
+    });
+
+    it('returns the value when set', () => {
+      process.env.OIDC_CLIENT_SECRET = 'secret-123';
+      expect(getOidcClientSecret()).toBe('secret-123');
+    });
+  });
+
+  describe('getFrontendOrigin', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.FRONTEND_ORIGIN;
+      expect(getFrontendOrigin()).toBeUndefined();
+    });
+
+    it('returns normalized origin (no path)', () => {
+      process.env.FRONTEND_ORIGIN = 'https://www.chatxiv.com/app/';
+      expect(getFrontendOrigin()).toBe('https://www.chatxiv.com');
+    });
+
+    it('accepts http with port', () => {
+      process.env.FRONTEND_ORIGIN = 'http://localhost:5173';
+      expect(getFrontendOrigin()).toBe('http://localhost:5173');
+    });
+
+    it('returns undefined for invalid URL', () => {
+      process.env.FRONTEND_ORIGIN = 'not-a-url';
+      expect(getFrontendOrigin()).toBeUndefined();
+    });
+
+    it('returns undefined for non-http(s) schemes', () => {
+      process.env.FRONTEND_ORIGIN = 'javascript:alert(1)';
+      expect(getFrontendOrigin()).toBeUndefined();
+    });
+  });
+
+  describe('getOauthSuccessRedirectUrl', () => {
+    it('returns / when FRONTEND_ORIGIN unset', () => {
+      delete process.env.FRONTEND_ORIGIN;
+      expect(getOauthSuccessRedirectUrl()).toBe('/');
+    });
+
+    it('returns frontend root when FRONTEND_ORIGIN set', () => {
+      process.env.FRONTEND_ORIGIN = 'http://localhost:5173';
+      expect(getOauthSuccessRedirectUrl()).toBe('http://localhost:5173/');
+    });
+  });
+
+  describe('getOidcRedirectUri', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.OIDC_REDIRECT_URI;
+      expect(getOidcRedirectUri()).toBeUndefined();
+    });
+
+    it('returns env value when set', () => {
+      process.env.OIDC_REDIRECT_URI = 'https://example.com/callback';
+      expect(getOidcRedirectUri()).toBe('https://example.com/callback');
+    });
+  });
+
+  describe('getSessionSecret', () => {
+    it('returns undefined when unset', () => {
+      delete process.env.SESSION_SECRET;
+      expect(getSessionSecret()).toBeUndefined();
+    });
+
+    it('returns the value when set', () => {
+      process.env.SESSION_SECRET = 'my-secret';
+      expect(getSessionSecret()).toBe('my-secret');
+    });
+  });
+
+  describe('getBootstrapAdminSubs', () => {
+    it('returns empty array when unset', () => {
+      delete process.env.BOOTSTRAP_ADMIN_SUBS;
+      expect(getBootstrapAdminSubs()).toEqual([]);
+    });
+
+    it('returns empty array for empty string', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = '';
+      expect(getBootstrapAdminSubs()).toEqual([]);
+    });
+
+    it('returns empty array for whitespace-only', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = '   ';
+      expect(getBootstrapAdminSubs()).toEqual([]);
+    });
+
+    it('splits comma-separated values', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = 'sub1,sub2,sub3';
+      expect(getBootstrapAdminSubs()).toEqual(['sub1', 'sub2', 'sub3']);
+    });
+
+    it('trims whitespace around values', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = ' sub1 , sub2 ';
+      expect(getBootstrapAdminSubs()).toEqual(['sub1', 'sub2']);
+    });
+
+    it('filters out empty segments', () => {
+      process.env.BOOTSTRAP_ADMIN_SUBS = 'sub1,,sub2,';
+      expect(getBootstrapAdminSubs()).toEqual(['sub1', 'sub2']);
+    });
+  });
+
+  describe('getTurnstileSecretKey', () => {
+    it('returns undefined when unset', () => {
+      delete process.env[ENV_KEYS.TURNSTILE_SECRET_KEY];
+      expect(getTurnstileSecretKey()).toBeUndefined();
+    });
+
+    it('returns trimmed value when set', () => {
+      process.env[ENV_KEYS.TURNSTILE_SECRET_KEY] = '  sk-secret  ';
+      expect(getTurnstileSecretKey()).toBe('sk-secret');
+    });
+  });
+
+  describe('getLokiPushConfig', () => {
+    it('returns undefined when any key is missing', () => {
+      delete process.env[ENV_KEYS.LOKI_HOST];
+      delete process.env[ENV_KEYS.LOKI_USER_ID];
+      delete process.env[ENV_KEYS.LOKI_PASSWORD];
+      expect(getLokiPushConfig()).toBeUndefined();
+
+      process.env[ENV_KEYS.LOKI_HOST] = 'https://logs.example.com';
+      delete process.env[ENV_KEYS.LOKI_USER_ID];
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
+      expect(getLokiPushConfig()).toBeUndefined();
+    });
+
+    it('returns config when all keys are set and host is valid https URL', () => {
+      process.env[ENV_KEYS.LOKI_HOST] = 'https://logs-prod-042.grafana.net';
+      process.env[ENV_KEYS.LOKI_USER_ID] = '12345';
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'token';
+      expect(getLokiPushConfig()).toEqual({
+        host: 'https://logs-prod-042.grafana.net',
+        userId: '12345',
+        password: 'token',
+      });
+    });
+
+    it('normalizes host without scheme to https', () => {
+      process.env[ENV_KEYS.LOKI_HOST] = 'logs-prod-042.grafana.net';
+      process.env[ENV_KEYS.LOKI_USER_ID] = 'u';
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
+      expect(getLokiPushConfig()?.host).toBe('https://logs-prod-042.grafana.net');
+    });
+
+    it('strips path from host URL', () => {
+      process.env[ENV_KEYS.LOKI_HOST] = 'https://logs.example.com/loki/api/v1/push';
+      process.env[ENV_KEYS.LOKI_USER_ID] = 'u';
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
+      expect(getLokiPushConfig()?.host).toBe('https://logs.example.com');
+    });
+
+    it('returns undefined for invalid LOKI_HOST', () => {
+      process.env[ENV_KEYS.LOKI_HOST] = ':::';
+      process.env[ENV_KEYS.LOKI_USER_ID] = 'u';
+      process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
+      expect(getLokiPushConfig()).toBeUndefined();
     });
   });
 });

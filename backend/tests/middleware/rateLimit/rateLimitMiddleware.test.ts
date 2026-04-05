@@ -6,6 +6,7 @@ import {
 } from '@src/middleware/rateLimit/rateLimitMiddleware.js';
 import type { RateLimitStore, RateLimitConfig } from '@src/middleware/rateLimit/types.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
+import { RESPONSE_HEADERS } from '@src/lib/config/constants.js';
 
 const config: RateLimitConfig = { capacity: 10, refillPerMin: 2 };
 
@@ -57,11 +58,11 @@ describe('rateLimitMiddleware (factory)', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
-  it('skips rate limit for /v1/docs and subpaths', () => {
+  it('applies rate limit for /v1/docs and subpaths', () => {
     (req as unknown as { path: string }).path = '/v1/docs/';
     const mw = rateLimitMiddleware(store, config);
     mw(req, res, next);
-    expect(store.consume).not.toHaveBeenCalled();
+    expect(store.consume).toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith();
   });
 
@@ -73,11 +74,19 @@ describe('rateLimitMiddleware (factory)', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
-  it('skips rate limit for /v1/openapi.yaml', () => {
+  it('applies rate limit for /v1/openapi.yaml', () => {
     (req as unknown as { path: string }).path = '/v1/openapi.yaml';
     const mw = rateLimitMiddleware(store, config);
     mw(req, res, next);
-    expect(store.consume).not.toHaveBeenCalled();
+    expect(store.consume).toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('applies rate limit for /v1/auth paths', () => {
+    (req as unknown as { path: string }).path = '/v1/auth/login';
+    const mw = rateLimitMiddleware(store, config);
+    mw(req, res, next);
+    expect(store.consume).toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith();
   });
 
@@ -145,7 +154,7 @@ describe('rateLimitMiddleware (factory)', () => {
     });
     const mw = rateLimitMiddleware(store, config);
     requestContext.run({ requestId: 'r2' }, () => mw(req, res, next));
-    expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '60');
+    expect(res.setHeader).toHaveBeenCalledWith(RESPONSE_HEADERS.RETRY_AFTER, '60');
     expect(next).toHaveBeenCalledTimes(1);
     const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(err.status).toBe(429);
@@ -219,7 +228,7 @@ describe('RateLimitMiddleware (injectable class)', () => {
     });
     const mw = new RateLimitMiddleware(store, config);
     requestContext.run({ requestId: 'r2' }, () => mw.handler(req, res, next));
-    expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '30');
+    expect(res.setHeader).toHaveBeenCalledWith(RESPONSE_HEADERS.RETRY_AFTER, '30');
     const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(err.status).toBe(429);
     expect(err.code).toBe('RATE_LIMITED');

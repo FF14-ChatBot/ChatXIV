@@ -1,22 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Message } from '../types/chat';
+import { MessageRole, type Message } from '../types/chat';
+import { CHAT_THREAD_GREETING } from '../features/chat/chatThreadGreeting';
+import { ChatSessionLanding } from '../types/chatSession';
 import { createDemoChatAssistantPort, type ChatAssistantPort } from '../lib/chat/chatAssistantPort';
 import { logger } from '../lib/logger/instance';
 
 export type UseChatConversationOptions = {
   /** Injected assistant (tests); defaults to a demo delayed reply. */
   assistantPort?: ChatAssistantPort;
+  /** Landing for the current session after each generation bump (from {@link useChatSession}). */
+  sessionLanding?: ChatSessionLanding;
 };
 
 /**
  * Message list + composer state, reset on `sessionGeneration`, and send pipeline via
  * {@link ChatAssistantPort}.
  */
+function makeThreadGreetingMessage(): Message {
+  return {
+    id: crypto.randomUUID(),
+    text: CHAT_THREAD_GREETING,
+    role: MessageRole.Assistant,
+  };
+}
+
 export function useChatConversation(
   sessionGeneration: number,
   options: UseChatConversationOptions = {}
 ) {
-  const { assistantPort: assistantPortOption } = options;
+  const { assistantPort: assistantPortOption, sessionLanding = ChatSessionLanding.Welcome } =
+    options;
   const fallbackPortRef = useRef<ChatAssistantPort | null>(null);
   if (fallbackPortRef.current === null) {
     fallbackPortRef.current = createDemoChatAssistantPort();
@@ -26,6 +39,7 @@ export function useChatConversation(
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+  const prevSessionGenerationRef = useRef<number | null>(null);
 
   const cancelPendingReply = useCallback(() => {
     abortRef.current?.abort();
@@ -33,10 +47,18 @@ export function useChatConversation(
   }, []);
 
   useEffect(() => {
+    if (prevSessionGenerationRef.current === null) {
+      prevSessionGenerationRef.current = sessionGeneration;
+      return;
+    }
+    if (prevSessionGenerationRef.current === sessionGeneration) {
+      return;
+    }
+    prevSessionGenerationRef.current = sessionGeneration;
     cancelPendingReply();
-    setMessages([]);
     setInputValue('');
-  }, [sessionGeneration, cancelPendingReply]);
+    setMessages(sessionLanding === ChatSessionLanding.Thread ? [makeThreadGreetingMessage()] : []);
+  }, [sessionGeneration, sessionLanding, cancelPendingReply]);
 
   useEffect(() => () => cancelPendingReply(), [cancelPendingReply]);
 
@@ -48,7 +70,7 @@ export function useChatConversation(
       const userMessage: Message = {
         id: crypto.randomUUID(),
         text: trimmed,
-        role: 'user',
+        role: MessageRole.User,
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -65,7 +87,7 @@ export function useChatConversation(
           const botMessage: Message = {
             id: crypto.randomUUID(),
             text: replyText,
-            role: 'assistant',
+            role: MessageRole.Assistant,
           };
           setMessages((prev) => [...prev, botMessage]);
         } catch (e) {

@@ -101,6 +101,7 @@ function toStarterPromptCard(item: StarterPromptSeed): StarterPromptCard {
     ? item.category
     : [item.category];
   const displayCategory = categories.join(' & ');
+  /* v8 ignore next -- categories is always non-empty (array from ternary above) */
   const firstCategory: UsageCategoryValue = categories[0] ?? UsageCategory.UNCATEGORIZED;
 
   return {

@@ -14,6 +14,32 @@ describe('chatxivApiRequest', () => {
     vi.restoreAllMocks();
   });
 
+  it('merges custom headers with defaults', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () => Promise.resolve({}),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await chatxivApiRequest('POST', '/v1/feedback', {
+      config: { baseUrl: 'http://localhost:3000' },
+      headers: { 'Idempotency-Key': 'k-1' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/v1/feedback',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'k-1',
+          'X-Request-Id': 'test-uuid',
+        }),
+      })
+    );
+  });
+
   it('adds X-Request-Id and optional X-Session-Id to headers', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

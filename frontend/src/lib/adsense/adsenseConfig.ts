@@ -1,6 +1,19 @@
 import { parseAdsensePublisherClient } from './adsensePublisher.js';
 
-export type AdsensePlacement = 'welcome' | 'messages';
+export const AdsensePlacement = {
+  Welcome: 'welcome',
+  Messages: 'messages',
+} as const;
+export type AdsensePlacement = (typeof AdsensePlacement)[keyof typeof AdsensePlacement];
+
+/**
+ * `data-ad-format` for responsive display units. Horizontal keeps banner-shaped slots;
+ * `auto` can pick tall vertical sizes and inconsistent placeholder heights.
+ */
+export const AdsenseDisplayFormat = {
+  Horizontal: 'horizontal',
+} as const;
+export type AdsenseDisplayFormat = (typeof AdsenseDisplayFormat)[keyof typeof AdsenseDisplayFormat];
 
 /**
  * Google AdSense publisher id (`ca-pub-…`). Public (script URL + optional crawler meta).
@@ -15,8 +28,8 @@ export const ADSENSE_PUBLISHER_CLIENT = 'ca-pub-2641843614227152';
 const SHARED_DISPLAY_SLOT = '8711119409';
 
 export const ADSENSE_DISPLAY_SLOTS: Readonly<Record<AdsensePlacement, string>> = {
-  welcome: SHARED_DISPLAY_SLOT,
-  messages: SHARED_DISPLAY_SLOT,
+  [AdsensePlacement.Welcome]: SHARED_DISPLAY_SLOT,
+  [AdsensePlacement.Messages]: SHARED_DISPLAY_SLOT,
 };
 
 export function getAdsenseClient(): string | undefined {

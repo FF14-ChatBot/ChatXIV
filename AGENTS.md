@@ -8,6 +8,10 @@ ChatXIV is an FFXIV data chatbot. See `docs/README.md` for developer setup, comm
 - Task specs in `docs/tasks/backend/` and `docs/tasks/frontend/` (git-crypt encrypted; may not be readable)
 - PR template in `.github/PULL_REQUEST_TEMPLATE.md`
 
+## Conventions
+
+- For fixed string domains (routes, roles, wire values), use an `as const` object plus derived union type — see `.cursor/rules/typed-string-constants.mdc`. Prefer `@chatxiv/cdm` for anything that is part of the API contract.
+
 ## Hard Constraints
 
 - Do not lower the 90% coverage thresholds in `vitest.config.ts`

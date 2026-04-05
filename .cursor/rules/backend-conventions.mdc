@@ -29,11 +29,20 @@ alwaysApply: false
 - **`process.env` must only appear in `lib/config/` files.** All other code reads env values through typed getters in `lib/config/env.ts` (e.g. `getPort()`, `getLogLevel()`, `getDebugMode()`).
 - Reference env var names via `ENV_KEYS` in `lib/config/constants.ts`; never use bare string literals like `'NODE_ENV'`
 - Adding a new var: (1) `ENV_KEYS`, (2) `environment.d.ts`, (3) `.env.example`, (4) typed getter in `env.ts`, (5) tests in `tests/lib/config/env.test.ts`
-- Startup-critical: `STARTUP_REQUIRED` in `validate.ts`; feature secrets: return `undefined`, caller handles 503
+- Startup-critical: `STARTUP_REQUIRED` in `validate.ts` (fatal missing keys only). Optional default / missing-env `[config]` warnings: emit next to the parser (`env.ts`, `cors.ts`, etc.), not in `validate.ts`. Tunables that are **not** env-driven live as named exports in `constants.ts` (e.g. `APP_DATA_DIRECTORY`, `MAX_JSON_BODY_SIZE_KB`, rate-limit numbers).
+- Feature secrets: return `undefined`, caller handles 503
 
 ## Constants and Magic Strings
+- New fixed string domains: `as const` object + derived type — `.cursor/rules/typed-string-constants.mdc`
 - HTTP headers: use `HEADERS.REQUEST_ID` etc. from `lib/config/constants.ts`; never use raw header string literals
 - Error codes: use `ERROR_CODES` from `@chatxiv/cdm`; never invent inline code strings
+
+## List APIs and pagination
+- **New `GET` endpoints that return a collection** (public or admin) must be **paginated** from the start: no unbounded arrays as the sole response body.
+- Use **`PaginatedResult<T>`** and limits from **`@chatxiv/cdm`** (`LIST_DEFAULT_PAGE`, `LIST_DEFAULT_PAGE_SIZE`, `LIST_MAX_PAGE_SIZE`).
+- Reuse **`listPageQueryValidators`** and **`getListQuery`** from `lib/pagination/listQuery.js` with `validate()` on the route; pass `(page, pageSize)` into the service.
+- Document **`page` / `pageSize`** query params and the paginated JSON shape in **OpenAPI** (public and/or admin YAML as appropriate).
+- Rationale and retrieval-specific notes: `docs/tasks/backend/Retrieval-Layer-Design.md` §7.
 
 ## Naming
 - Files: camelCase — Classes: PascalCase — Constants: UPPER_SNAKE_CASE

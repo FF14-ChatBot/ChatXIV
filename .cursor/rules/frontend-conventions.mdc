@@ -26,6 +26,7 @@ alwaysApply: false
 - Singletons wired in `main.tsx` via `set*()` / `create*()` functions
 
 ## Naming
+- Fixed string unions (routes, UI state values, roles): `as const` object + derived type — see `.cursor/rules/typed-string-constants.mdc`
 - Types, interfaces, and type aliases: PascalCase; do not prefix with `I` (enforced by ESLint `naming-convention`, same rule as backend)
 - Constants: UPPER_SNAKE_CASE
 - React components and their modules: PascalCase (e.g. `Button.tsx`, `ChatPage.tsx`)

@@ -2,5 +2,5 @@
 export type UsageRecordRow = {
   category: string;
   request_id: string;
-  recorded_at: number;
+  recorded_at: string;
 };

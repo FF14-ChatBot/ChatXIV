@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatConversation } from '@/hooks/useChatConversation';
+import { CHAT_THREAD_GREETING } from '@/features/chat/chatThreadGreeting';
 import type { ChatAssistantPort } from '@/lib/chat/chatAssistantPort';
 import { DEMO_ASSISTANT_REPLY } from '@/lib/chat/chatAssistantPort';
+import { ChatSessionLanding } from '@/types/chatSession';
+import { MessageRole } from '@/types/chat';
 import { logger } from '@/lib/logger/instance';
 
 describe('useChatConversation', () => {
@@ -17,7 +20,7 @@ describe('useChatConversation', () => {
       result.current.sendMessage('hi');
     });
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0]?.role).toBe('user');
+    expect(result.current.messages[0]?.role).toBe(MessageRole.User);
 
     await waitFor(
       () => {
@@ -26,6 +29,20 @@ describe('useChatConversation', () => {
       },
       { timeout: 3000 }
     );
+  });
+
+  it('does not reset messages when sessionGeneration is unchanged across rerenders', () => {
+    const { result, rerender } = renderHook(({ gen }) => useChatConversation(gen), {
+      initialProps: { gen: 0 },
+    });
+
+    act(() => {
+      result.current.sendMessage('same-gen');
+    });
+    expect(result.current.messages).toHaveLength(1);
+
+    rerender({ gen: 0 });
+    expect(result.current.messages).toHaveLength(1);
   });
 
   it('resets state when sessionGeneration changes', async () => {
@@ -43,6 +60,22 @@ describe('useChatConversation', () => {
 
     await waitFor(() => expect(result.current.messages).toHaveLength(0), { timeout: 100 });
     await new Promise((r) => setTimeout(r, 1100));
+    expect(result.current.messages).toHaveLength(0);
+  });
+
+  it('seeds a thread greeting when generation changes with sessionLanding thread', () => {
+    const { result, rerender } = renderHook(
+      ({ gen, landing }: { gen: number; landing: ChatSessionLanding }) =>
+        useChatConversation(gen, { sessionLanding: landing }),
+      { initialProps: { gen: 0, landing: ChatSessionLanding.Welcome } }
+    );
+
+    rerender({ gen: 1, landing: ChatSessionLanding.Thread });
+    expect(result.current.messages).toHaveLength(1);
+    expect(result.current.messages[0]?.role).toBe(MessageRole.Assistant);
+    expect(result.current.messages[0]?.text).toBe(CHAT_THREAD_GREETING);
+
+    rerender({ gen: 2, landing: ChatSessionLanding.Welcome });
     expect(result.current.messages).toHaveLength(0);
   });
 

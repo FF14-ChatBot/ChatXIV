@@ -1,0 +1,14 @@
+# Backend image build context (repo root). Keep context small; never ship local secrets.
+**/node_modules
+.git
+.github
+.cursor
+**/.env
+**/.env.*
+**/.env.local
+**/coverage
+**/dist
+backend/tests
+# Frontend sources bloat the context; only package.json is copied in the Dockerfile (workspace lockfile layout).
+frontend/*
+!frontend/package.json

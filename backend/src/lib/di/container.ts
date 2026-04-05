@@ -32,22 +32,22 @@ import {
   getRateLimitConfig,
 } from '../config/requestConfig.js';
 import { getCorsOrigins } from '../config/cors.js';
-import { getAdminApiKey } from '../config/env.js';
 import { createMemoryStore } from '../../middleware/rateLimit/memoryStore.js';
-import { createApiKeyAuthStrategy } from '../auth/apiKeyAuthStrategy.js';
-import { createInMemoryFeatureFlagStore } from '../featureFlags/inMemoryFeatureFlagStore.js';
 import { createFeatureFlagService } from '../featureFlags/featureFlagService.js';
 import type { MetricsStore } from '../observability/metrics/types.js';
 import type { UsageStore } from '../observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '../../middleware/rateLimit/types.js';
-import type { AuthStrategy } from '../auth/types.js';
 import type { FeatureFlagStore, FeatureFlagService } from '../featureFlags/types.js';
+import { createSqliteFeatureFlagStore } from '../featureFlags/sqliteFeatureFlagStore.js';
 import { setMetrics } from '../observability/metricsInstance.js';
 import { setUsageAnalytics } from '../observability/usageAnalyticsInstance.js';
 import { setFeatureFlagService } from '../featureFlags/featureFlagInstance.js';
 import { getOrOpenAppDatabase } from '../persistence/sqlite/appDatabaseSingleton.js';
 import { createSqliteMetricsStore } from '../persistence/sqlite/sqliteMetricsStore.js';
 import { createSqliteUsageStore } from '../persistence/sqlite/sqliteUsageStore.js';
+import { FeedbackSubmissionsDao } from '../persistence/sqlite/dao/FeedbackSubmissionsDao.js';
+import { createFeedbackService } from '../feedback/feedbackService.js';
+import type { FeedbackService } from '../feedback/types.js';
 
 export const MetricsStoreToken = Symbol('MetricsStore');
 export const UsageStoreToken = Symbol('UsageStore');
@@ -55,9 +55,9 @@ export const RateLimitStoreToken = Symbol('RateLimitStore');
 export const RateLimitConfigToken = Symbol('RateLimitConfig');
 export const RequestConfigToken = Symbol('RequestConfig');
 export const CorsOriginsToken = Symbol('CorsOrigins');
-export const AuthStrategyToken = Symbol('AuthStrategy');
 export const FeatureFlagStoreToken = Symbol('FeatureFlagStore');
 export const FeatureFlagServiceToken = Symbol('FeatureFlagService');
+export const FeedbackServiceToken = Symbol('FeedbackService');
 
 /** The DI container. Call register() once at startup before resolving any dependencies. */
 export const container = tsyringeContainer as DependencyContainer;
@@ -86,13 +86,14 @@ export function register(): void {
   container.register<string[]>(CorsOriginsToken, {
     useFactory: () => getCorsOrigins(),
   });
-  container.register<AuthStrategy>(AuthStrategyToken, {
-    useFactory: () => createApiKeyAuthStrategy(() => getAdminApiKey() ?? ''),
-  });
-  const flagStore = createInMemoryFeatureFlagStore();
+  const flagStore = createSqliteFeatureFlagStore(db);
   container.registerInstance<FeatureFlagStore>(FeatureFlagStoreToken, flagStore);
   const flagService = createFeatureFlagService(flagStore);
   container.registerInstance<FeatureFlagService>(FeatureFlagServiceToken, flagService);
+  const feedbackDao = new FeedbackSubmissionsDao(db);
+  const feedbackService = createFeedbackService(feedbackDao);
+  container.registerInstance<FeedbackService>(FeedbackServiceToken, feedbackService);
+
   setMetrics(container.resolve<MetricsStore>(MetricsStoreToken));
   setUsageAnalytics(container.resolve<UsageStore>(UsageStoreToken));
   setFeatureFlagService(flagService);

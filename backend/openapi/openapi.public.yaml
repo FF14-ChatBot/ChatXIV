@@ -6,8 +6,8 @@ info:
     Update `backend/openapi/openapi.public.yaml` when you change public `/v1` contracts.
 
     Full API (including admin) is documented in `openapi.admin.yaml` and served at
-    `GET /v1/admin/openapi.yaml` with admin authentication — see `/v1/admin/docs` in the browser
-    (requires `X-Admin-Key`).
+    `GET /v1/admin/openapi.yaml` — see `/v1/admin/docs` in the browser
+    (requires admin session cookie).
   version: 1.0.0
 
 servers:
@@ -23,6 +23,7 @@ servers:
 tags:
   - name: Health
   - name: Feature flags
+  - name: Feedback
   - name: Documentation
 
 paths:
@@ -50,7 +51,7 @@ paths:
       summary: Public OpenAPI document (YAML)
       description: |
         Returns this public specification only. For the full API (admin routes), use
-        `GET /v1/admin/openapi.yaml` with a valid `X-Admin-Key`.
+        `GET /v1/admin/openapi.yaml` (requires admin session).
       operationId: getOpenApiPublicYaml
       responses:
         '200':
@@ -64,17 +65,25 @@ paths:
     get:
       tags: [Feature flags]
       summary: List feature flags
-      description: Returns all flags sorted by name (public).
+      description: |
+        Returns flags sorted by name in stable offset pages (public). Defaults: `page=1`, `pageSize=50`, max `pageSize=500`.
       operationId: listFeatureFlags
+      parameters:
+        - $ref: '#/components/parameters/ListPage'
+        - $ref: '#/components/parameters/ListPageSize'
       responses:
         '200':
-          description: Sorted flag entries
+          description: Paginated flag entries
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FeatureFlagEntry'
+                $ref: '#/components/schemas/PaginatedFeatureFlagList'
+        '400':
+          description: Invalid pagination query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 
   /v1/flags/{name}:
     get:
@@ -99,8 +108,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
 
+  /v1/feedback:
+    post:
+      tags: [Feedback]
+      summary: Submit feedback for a message
+      description: |
+        Accepts thumbs-up/down feedback with an idempotency key.
+        Duplicate submissions (same key) return 200 without re-inserting.
+      operationId: submitFeedback
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackBody'
+      responses:
+        '200':
+          description: Feedback accepted (new or duplicate)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackResponse'
+        '400':
+          description: Validation error (missing/invalid body or Idempotency-Key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
 components:
   parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated opaque string (e.g. UUID) for idempotent submission.
+      schema:
+        type: string
+        example: 550e8400-e29b-41d4-a716-446655440000
+
     FlagName:
       name: name
       in: path
@@ -111,6 +165,27 @@ components:
         type: string
         pattern: '^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$'
         example: MyFeature
+
+    ListPage:
+      name: page
+      in: query
+      required: false
+      description: 1-based page index.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    ListPageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Page size (default 50; maximum 500).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 50
 
   schemas:
     FeatureFlagEntry:
@@ -125,6 +200,57 @@ components:
           type: string
           format: date-time
           description: Present when the flag exists in the store; omitted for unknown names on public GET.
+
+    PaginatedFeatureFlagList:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureFlagEntry'
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of flags across all pages.
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+
+    FeedbackBody:
+      type: object
+      required: [messageId, rating, reasonCode]
+      properties:
+        messageId:
+          type: string
+          description: Assistant message ID from the chat response.
+        rating:
+          type: string
+          enum: [up, down]
+        reasonCode:
+          type: string
+          enum: [wrong_answer, outdated, missing_info, unrelated, other]
+          description: Required context when rating is "down".
+        freeText:
+          type: string
+          maxLength: 500
+          description: Optional free-text elaboration (max 500 chars).
+        category:
+          type: string
+          description: |
+            Optional chat context category; must be one of the `UsageCategory` string values
+            from shared usage analytics types (e.g. RAIDING, MSQ), not an arbitrary string.
+
+    FeedbackResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          example: true
 
     ApiErrorResponse:
       type: object

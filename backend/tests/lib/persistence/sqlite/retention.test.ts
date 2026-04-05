@@ -1,7 +1,7 @@
-import Database from 'better-sqlite3';
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { SqliteDatabase } from '@src/lib/persistence/sqlite/types.js';
 import { runMigrations } from '@src/lib/persistence/sqlite/runMigrations.js';
+import { openSqliteDatabase } from '@src/lib/persistence/sqlite/openDb.js';
 import { RequestMetricsDao } from '@src/lib/persistence/sqlite/dao/RequestMetricsDao.js';
 import { UsageRecordsDao } from '@src/lib/persistence/sqlite/dao/UsageRecordsDao.js';
 import {
@@ -16,7 +16,7 @@ describe('sweepObservabilityRetention', () => {
   let usageDao: UsageRecordsDao;
 
   beforeEach(() => {
-    db = new Database(':memory:');
+    db = openSqliteDatabase(':memory:');
     runMigrations(db);
     metricsDao = new RequestMetricsDao(db);
     usageDao = new UsageRecordsDao(db);
@@ -29,15 +29,15 @@ describe('sweepObservabilityRetention', () => {
     );
     const n = MAX_REQUEST_METRICS_ROWS + 5;
     for (let i = 0; i < n; i++) {
-      insert.run(i);
+      insert.run(new Date(i).toISOString());
     }
     sweepObservabilityRetention(metricsDao, usageDao);
     const row = db.prepare('SELECT COUNT(*) AS c FROM request_metrics').get() as { c: number };
     expect(row.c).toBe(MAX_REQUEST_METRICS_ROWS);
     const min = db.prepare('SELECT MIN(recorded_at) AS m FROM request_metrics').get() as {
-      m: number;
+      m: string;
     };
-    expect(min.m).toBe(5);
+    expect(min.m).toBe(new Date(5).toISOString());
   });
 
   it('trims usage_records to MAX_USAGE_RECORDS_ROWS by oldest recorded_at', () => {
@@ -46,14 +46,14 @@ describe('sweepObservabilityRetention', () => {
     );
     const n = MAX_USAGE_RECORDS_ROWS + 10;
     for (let i = 0; i < n; i++) {
-      insert.run(`r${i}`, i);
+      insert.run(`r${i}`, new Date(i).toISOString());
     }
     sweepObservabilityRetention(metricsDao, usageDao);
     const row = db.prepare('SELECT COUNT(*) AS c FROM usage_records').get() as { c: number };
     expect(row.c).toBe(MAX_USAGE_RECORDS_ROWS);
     const min = db.prepare('SELECT MIN(recorded_at) AS m FROM usage_records').get() as {
-      m: number;
+      m: string;
     };
-    expect(min.m).toBe(10);
+    expect(min.m).toBe(new Date(10).toISOString());
   });
 });

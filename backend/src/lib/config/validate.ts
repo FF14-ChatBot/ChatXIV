@@ -1,4 +1,11 @@
 /**
+ * Fatal startup **validation** only: missing required keys → `console.error` + `process.exit(1)`.
+ *
+ * Optional env reads, defaults, and `[config]` warnings live in `env.ts` (and related parsers such as
+ * `requestConfig.ts` / `cors.ts`) next to the code that consumes each value.
+ */
+
+/**
  * Env var names that must be set for the server to start.
  * Leave empty when every critical setting has a code default.
  * Feature-specific secrets stay lazy-validated on use.
@@ -17,9 +24,7 @@ export function validateRequiredEnvKeys(keys: readonly string[]): void {
   }
 }
 
-/**
- * Call once at startup before the server begins accepting requests.
- */
+/** Call once at startup before the server begins accepting requests. */
 export function validateStartupConfig(): void {
   validateRequiredEnvKeys(STARTUP_REQUIRED);
 }

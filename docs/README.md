@@ -4,25 +4,56 @@ Succinct guide for running, linting, testing, and building the repo.
 
 ## What you'll need
 
-- **Node 20+** and **npm**
+- **Node 24+** and **npm**
 - Optional: **git-crypt** if you need access to encrypted design docs in `docs/design-documents/` (see [git-crypt setup](git-crypt-setup.md))
+- Optional: **Docker** if you build or run the [backend container](../backend/README.md#docker). On **Windows**, use **Docker Desktop** with the **WSL 2–based Linux engine** (see [Docker Desktop and Linux engine](#docker-desktop-and-linux-engine-optional)).
 
 ## First-time setup
 
 1. Clone the repo.
 2. Install dependencies:
    - **Preferred:** `npm install` at the repo root (workspaces install backend, frontend, and `packages/*`).
-   - **Or per-package:** `cd backend && npm install`, `cd frontend && npm install`, etc.
-3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored.
+   - **Avoid** `npm install` only inside `backend/` or `frontend/` — use the root so the workspace lockfile stays consistent.
+3. Backend env: the backend loads variables from `backend/.env` via dotenv. Create `backend/.env` if needed (e.g. `DEBUG_MODE`, `PORT`). `.env` is gitignored. If you enable OIDC login (see `backend/.env.example`), set **`FRONTEND_ORIGIN`** to the SPA’s public URL (e.g. `http://localhost:5173` in dev, `https://www.chatxiv.com` in production) so the browser returns there after OAuth instead of the API host (`/` on port 3000). Optional: set **`LOKI_HOST`**, **`LOKI_USER_ID`**, and **`LOKI_PASSWORD`** together to ship logs to Grafana Cloud Loki (see `backend/README.md`).
 4. Frontend env: create `frontend/.env` (and/or `frontend/.env.production`) for Vite-exposed variables (must start with `VITE_`), e.g. `VITE_CHATXIV_BACKEND_URL`.
 5. Optional repo root **`.env`:** copy [`.env.example`](../.env.example) if you use **`npm run webhook:listen`**. Not loaded by Vite or the backend.
-6. **Observability (metrics + usage) uses SQLite** at `{DATA_DIR}/observability.db` (`DATA_DIR` defaults to `./data`). See [Observability-SQLite-Persistence](tasks/backend/Observability-SQLite-Persistence.md) and `backend/.env.example`. Requires `better-sqlite3` (native addon; on Windows you may need build tools if prebuilds are missing).
+6. **Backend persistence uses SQLite** at `./data/app.db` relative to the backend process cwd (`APP_DATA_DIRECTORY` in `backend/src/lib/config/constants.ts`; not env-driven). See [Observability-SQLite-Persistence](tasks/backend/Observability-SQLite-Persistence.md). Uses [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3) — **not** `node:sqlite`. **`npm run build`** only runs TypeScript/Vite; it does **not** compile the addon. **Native code runs during `npm install`:** `better-sqlite3` downloads a prebuilt binary when available (usual case). If not, it compiles with **`node-gyp`** (comes with **npm**); that fallback needs [OS-level C++ build tools](https://github.com/nodejs/node-gyp#installation) (e.g. Visual Studio Build Tools on Windows). This repo does **not** add a separate `node-gyp` dependency — `better-sqlite3` already runs the install/rebuild step.
 
 ## How to run
 
-- **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: public Swagger UI at `http://localhost:3000/v1/docs/`, admin Swagger UI at `http://localhost:3000/v1/admin/docs/` (requires `X-Admin-Key`); public OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`, full YAML at `http://localhost:3000/v1/admin/openapi.yaml` (with admin key). See [backend/README.md](../backend/README.md) for curl, Postman, and headers.
+- **Backend (dev):** `cd backend && npm run dev` — Express + TypeScript; health at `http://localhost:3000/health`. API docs: public Swagger UI at `http://localhost:3000/v1/docs/`, admin Swagger UI at `http://localhost:3000/v1/admin/docs/` (requires an **admin** OAuth session cookie); public OpenAPI YAML at `http://localhost:3000/v1/openapi.yaml`, full YAML at `http://localhost:3000/v1/admin/openapi.yaml` (same session auth). See [backend/README.md](../backend/README.md) for curl, Postman, CORS / Swagger **Try it out**, and headers.
 - **Frontend (dev):** `cd frontend && npm run dev` — React + Vite at `http://localhost:5173`. No **`node --watch`**: **`src/`** updates hot-reload via Vite; restart the dev server yourself after **`vite.config.ts`** or **`scripts/dev.mjs`** changes. The bootstrap **retries binding 5173** briefly if the port is still releasing. If **5173** stays busy, stop the other process.
 - **From repo root:** `npm run dev:backend` / `npm run dev:frontend` (after root `npm install`)
+
+## Docker Desktop and Linux engine (optional)
+
+Use this when you want to run **`docker build -f backend/Dockerfile`** locally (same image CI builds). The backend image is **Linux/amd64** (Alpine); on Windows and macOS, Docker runs it through a **Linux VM** (Docker Desktop).
+
+### Windows
+
+1. **Install [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/)** using the official installer. Allow it to enable **WSL 2** and install/update components when prompted — the default **Linux containers** backend is **WSL 2**, not “Windows containers.”
+2. Ensure **WSL 2** is available: follow Microsoft’s [WSL install guide](https://learn.microsoft.com/windows/wsl/install) if Docker prompts you. After major OS updates, run **`wsl --update`** in an elevated terminal if Docker’s Linux engine misbehaves.
+3. **Start Docker Desktop** and wait until it reports **running** (whale icon in the system tray). First launch can take a minute while the Linux engine starts.
+4. Optional: **Settings → Resources → WSL integration** — turn on integration for your default WSL distro if you use the CLI from inside WSL.
+5. **Verify** in PowerShell or cmd:
+   - `docker version` — you should see both **Client** and **Server** sections.
+   - `docker run --rm hello-world` — confirms the Linux engine can pull and run images.
+
+### macOS
+
+Install **[Docker Desktop for Mac](https://docs.docker.com/desktop/setup/install/mac-install/)**, start it, then run `docker version` and `docker run --rm hello-world`.
+
+### Linux
+
+Install **[Docker Engine](https://docs.docker.com/engine/install/)** and the [Compose plugin](https://docs.docker.com/compose/install/linux/) per your distribution. Add your user to the `docker` group if you use rootless paths, then verify with `docker version`.
+
+### Troubleshooting (Windows)
+
+| Symptom | What to try |
+|--------|-------------|
+| `docker_engine` pipe / “daemon not running” | Start **Docker Desktop**; wait until fully up; open a **new** terminal. |
+| `500 Internal Server Error` / Linux engine | Restart Docker Desktop; run **`wsl --shutdown`** then start Docker again; **`wsl --update`**. |
+| `docker` not found | Reboot after install, or confirm Docker Desktop added itself to **PATH**. |
 
 ## Lint and format
 
@@ -48,13 +79,14 @@ Succinct guide for running, linting, testing, and building the repo.
 - Root (per side): `npm run build:backend` or `npm run build:frontend`
 - Per package: `cd backend && npm run build`; `cd frontend && npm run build`
 - **Clean outputs:** `npm run clean` removes `dist`, `dist-node`, and `coverage` under backend, frontend, and CDM (does **not** delete `node_modules`). Use when you suspect stale compiled files before rebuilding. To fully reset dependencies, delete **`node_modules`** at the repo root (and any workspace copies) and run **`npm ci`**.
+- **Backend container:** from the repo root, `npm run docker:build:backend` then `npm run docker:run:backend` (needs `backend/.env`; see [backend/README.md](../backend/README.md#docker)). Or use the `docker build` / `docker run` commands shown there. [Docker Desktop / WSL 2](#docker-desktop-and-linux-engine-optional) if you have not installed Docker yet. SQLite lives on the **`chatxiv-data`** volume at **`/data/app.db`** inside the container; to list OIDC `sub` values, run SQL via a throwaway Alpine container (or `docker cp`) as described in [Inspecting SQLite and bootstrapping admin (OIDC)](../backend/README.md#inspecting-sqlite-and-bootstrapping-admin-oidc).
 
 ## CI
 
 - **GitHub Actions** in `.github/workflows/`: backend and frontend have separate workflows.
-- **Triggers:** Path-based — backend CI on changes under `backend/` (and its workflow file); frontend CI on changes under `frontend/` (and its workflow file). Lint, test, coverage, build, and audit run per package.
+- **Triggers:** Path-based — backend CI on changes under `backend/`, `packages/cdm/`, root `.dockerignore`, and its workflow file; frontend CI on changes under `frontend/` (and its workflow file). Backend CI also runs a **`docker build -f backend/Dockerfile`** smoke build. Lint, test, coverage, build, and audit run per package (frontend path unchanged).
 - **Install:** Workflows run `npm ci` at the **repository root** using the root `package-lock.json` so npm workspaces (and root devDependencies such as Husky) install consistently; job steps still use `backend/` or `frontend/` as their working directory for lint, test, and build.
-- **Lockfiles:** Keep the root `package-lock.json` in sync when you change dependencies. `backend/` and `frontend/` also keep their own lockfiles for local per-package installs.
+- **Lockfile:** Keep the root `package-lock.json` in sync when you change dependencies (workspace-wide graph).
 
 ## Cloudflare Tunnel and Zero Trust Access (team dev URLs)
 
@@ -90,7 +122,7 @@ Access sits **in front of** the tunnel hostname on Cloudflare’s edge: users si
 ### Local app config (Vite + env)
 
 - **[`frontend/vite.config.ts`](../frontend/vite.config.ts):** **`server.allowedHosts: ['.chatxiv.com']`** for tunnel **`Host`**; **`server.host: true`** so **`cloudflared`** → **`127.0.0.1:5173`** does not hit an IPv6-only bind (**502**). **`server.proxy`** maps **`/v1`**, **`/health`** → **`localhost:3000`** (no **`/api`** prefix). **[`frontend/scripts/dev.mjs`](../frontend/scripts/dev.mjs)** repeats **`server`** on **`createServer()`** so merge does not drop **`host`** / **`allowedHosts`** while proxy/port still come from the file.
-- **`frontend/.env`:** **`VITE_CHATXIV_BACKEND_URL`** = your **https** API tunnel URL (e.g. `https://dev-alex-api.chatxiv.com`). Optional **AdSense** publisher + slot ids live in **`frontend/src/lib/adsense/adsenseConfig.ts`** — see **`frontend/.env.example`**.
+- **`frontend/.env`:** **`VITE_CHATXIV_BACKEND_URL`** = your **https** API tunnel URL (e.g. `https://dev-alex-api.chatxiv.com`). Optional **`VITE_DEPLOY_ENV`** (e.g. `production` vs `preview` or `beta`) distinguishes Cloudflare **Pages** production vs preview builds in telemetry; unset uses Vite **`MODE`**. Optional **AdSense** publisher + slot ids live in **`frontend/src/lib/adsense/adsenseConfig.ts`** — see **`frontend/.env.example`**.
 
 #### Tunnel: public URL works but UI is unstyled (localhost looks fine)
 
@@ -127,7 +159,7 @@ When **`dev-www` / `dev-api` point at your laptop** via Cloudflare Tunnel, CI de
 
 - **`GITHUB_WEBHOOK_SECRET`** in repo root **`.env`** must match the GitHub webhook **Secret** (see [`.env.example`](../.env.example); separate from **`frontend/.env`** / **`backend/.env`**).
 - **`npm run webhook:listen`** (repo root): **`http://127.0.0.1:8790`** by default — **`GET /health`**, **`POST /webhooks/github`**.
-- **Branch:** on each push to **`main`**, the listener **checks out `main`**, **fast-forwards** to **`origin/main`** (refuses if the working tree is not clean), runs **`npm install`** at the repo root when **`package-lock.json`** changed, then runs **`npm run build:cdm`** and **`npm run build:backend`** from the repo root when **`HEAD`** is **`main`** (otherwise the webhook fails so the backend is not built from the wrong branch). It then updates the mtime of **`backend/src/server.ts`** so **`npm run dev:backend`** (**`node --watch`**) picks up a restart. **`dev:frontend`** is not watch-driven; Vite HMR applies pulled app code—restart it yourself if **`vite.config`** or dev bootstrap changed. For production **`node dist/server.js`** or other process managers, restart those yourself if needed.
+- **Branch:** on each push to **`main`**, the listener **checks out `main`**, **fast-forwards** to **`origin/main`** (refuses if the working tree is not clean), runs **`npm install`** at the repo root when **`package-lock.json`** changed, then runs **`npm run build:cdm`** and **`npm run build:backend`** from the repo root when **`HEAD`** is **`main`** (otherwise the webhook fails so the backend is not built from the wrong branch). It then updates the mtime of **`backend/src/server.ts`** so **`npm run dev:backend`** (**`tsx watch`**) picks up a restart. **`dev:frontend`** is not watch-driven; Vite HMR applies pulled app code—restart it yourself if **`vite.config`** or dev bootstrap changed. For production **`node dist/server.js`** or other process managers, restart those yourself if needed.
 
 ### 2. Cloudflare Tunnel
 
@@ -148,7 +180,7 @@ The listener writes **`GET /health`** and every webhook **`→ HTTP …`** respo
 
 ### 4. After a pull
 
-**Vite** hot-reloads many edits while the dev server runs. After a webhook sync it still runs **`npm run build:cdm`** and **`npm run build:backend`**, then touches **`backend/src/server.ts`** so **`dev:backend`** restarts via **`node --watch`**. Restart **`dev:frontend`** yourself when **`vite.config`**, env, or dev bootstrap changes. Production **`dist`** still needs a manual or external restart.
+**Vite** hot-reloads many edits while the dev server runs. After a webhook sync it still runs **`npm run build:cdm`** and **`npm run build:backend`**, then touches **`backend/src/server.ts`** so **`dev:backend`** restarts via **`tsx watch`**. Restart **`dev:frontend`** yourself when **`vite.config`**, env, or dev bootstrap changes. Production **`dist`** still needs a manual or external restart.
 
 ### 5. Security
 
@@ -163,18 +195,18 @@ The secret proves the body came from GitHub. **Access** on the tunnel hostname b
 
 ## Project structure
 
-This repo uses **npm workspaces** (`backend/`, `frontend/`, `packages/*`). Each package has its own `package.json`; `backend/` and `frontend/` also have their own lockfiles for local per-package installs. **CI** uses the root `package-lock.json`. Run `npm install` at the repo root to install everything.
+This repo uses **npm workspaces** (`backend/`, `frontend/`, `packages/*`). Each package has its own `package.json`; the **single** root `package-lock.json` locks the whole workspace (run **`npm install`** / **`npm ci`** at the repo root only).
 
-- **backend/** — Express + TypeScript API; own `package.json` and lockfile.
-- **frontend/** — React + Vite app; own `package.json` and lockfile.
+- **backend/** — Express + TypeScript API; own `package.json`.
+- **frontend/** — React + Vite app; own `package.json`.
 - **packages/cdm/** — Shared types package (`@chatxiv/cdm`).
 - **Root `package.json`** — Workspace root; convenience scripts (`dev:backend`, `dev:frontend`, `build`, `lint`, `format`, `format:check`, `test`, `test:coverage`).
 
 ## FAQ
 
-### Why two lockfiles?
+### Why only one lockfile?
 
-Backend and frontend each have their own `package-lock.json` for local installs and tooling. **GitHub Actions** runs `npm ci` from the repo root using the root lockfile. Root `npm install` via workspaces still installs everything.
+**npm workspaces** are pinned by the root **`package-lock.json`**. That keeps backend, frontend, and CDM in one reproducible graph (including root **`overrides`** for security patches). **GitHub Actions** runs **`npm ci`** from the repo root.
 
 ### How do I run backend and frontend together?
 

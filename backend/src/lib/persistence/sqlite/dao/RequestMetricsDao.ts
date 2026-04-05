@@ -11,7 +11,7 @@ export class RequestMetricsDao {
   constructor(db: SqliteDatabase) {
     this.insertStmt = db.prepare(
       `INSERT INTO request_metrics (method, route, status_code, duration_ms, recorded_at)
-       VALUES (@method, @route, @status_code, @duration_ms, @recorded_at)`
+       VALUES (?, ?, ?, ?, ?)`
     );
     this.selectAllStmt = db.prepare(
       `SELECT method, route, status_code, duration_ms, recorded_at
@@ -26,13 +26,13 @@ export class RequestMetricsDao {
   }
 
   insert(entry: RequestMetricEntry): void {
-    this.insertStmt.run({
-      method: entry.method,
-      route: entry.route,
-      status_code: entry.statusCode,
-      duration_ms: entry.durationMs,
-      recorded_at: entry.timestamp,
-    });
+    this.insertStmt.run(
+      entry.method,
+      entry.route,
+      entry.statusCode,
+      entry.durationMs,
+      entry.timestamp
+    );
   }
 
   selectAll(): RequestMetricEntry[] {

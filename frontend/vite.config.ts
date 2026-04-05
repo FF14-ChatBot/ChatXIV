@@ -14,6 +14,10 @@ export default defineConfig(() => {
   const adsenseClient = getAdsenseClient();
 
   return {
+    build: {
+      /* Default 500 kB is tight for React + router + deps; not a hard limit. */
+      chunkSizeWarningLimit: 1024,
+    },
     plugins: [
       react(),
       {

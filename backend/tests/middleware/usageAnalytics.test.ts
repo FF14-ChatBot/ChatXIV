@@ -21,7 +21,7 @@ describe('middleware/usageAnalyticsMiddleware', () => {
     return res;
   }
 
-  it('records uncategorized usage when handlers do not set a category', () => {
+  it('does not record when handlers do not set usageCategory', () => {
     const usageStore = createMockUsageStore();
     const middleware = new UsageAnalyticsMiddleware(usageStore);
     const req = {} as Request;
@@ -34,10 +34,23 @@ describe('middleware/usageAnalyticsMiddleware', () => {
     });
 
     expect(next).toHaveBeenCalledOnce();
-    const records = usageStore.getRecords();
-    expect(records).toHaveLength(1);
-    expect(records[0].category).toBe(UsageCategory.UNCATEGORIZED);
-    expect(records[0].requestId).toBe('r1');
+    expect(usageStore.getRecords()).toHaveLength(0);
+  });
+
+  it('does not record when usageCategory is UNCATEGORIZED (OTHER)', () => {
+    const usageStore = createMockUsageStore();
+    const middleware = new UsageAnalyticsMiddleware(usageStore);
+    const req = {} as Request;
+    const res = createRes();
+    res.locals.usageCategory = UsageCategory.UNCATEGORIZED;
+    const next = vi.fn();
+
+    requestContext.run({ requestId: 'r1' }, () => {
+      middleware.handler(req, res, next);
+      res._emit('finish');
+    });
+
+    expect(usageStore.getRecords()).toHaveLength(0);
   });
 
   it('records the handler-provided usage category', () => {
@@ -53,21 +66,23 @@ describe('middleware/usageAnalyticsMiddleware', () => {
       res._emit('finish');
     });
 
+    expect(usageStore.getRecords()).toHaveLength(1);
     expect(usageStore.getRecords()[0].category).toBe(UsageCategory.BIS);
+    expect(usageStore.getRecords()[0].requestId).toBe('r2');
   });
 
-  it("uses requestId 'unknown' when requestContext is missing", () => {
+  it("uses requestId 'unknown' when requestContext is missing but category is set", () => {
     const usageStore = createMockUsageStore();
     const middleware = new UsageAnalyticsMiddleware(usageStore);
     const req = {} as Request;
     const res = createRes();
+    res.locals.usageCategory = UsageCategory.MSQ;
     const next = vi.fn();
 
     middleware.handler(req, res, next);
     res._emit('finish');
 
-    const records = usageStore.getRecords();
-    expect(records).toHaveLength(1);
-    expect(records[0].requestId).toBe('unknown');
+    expect(usageStore.getRecords()).toHaveLength(1);
+    expect(usageStore.getRecords()[0].requestId).toBe('unknown');
   });
 });

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AdsenseDisplayFormat } from '../../lib/adsense/adsenseConfig';
 
 declare global {
   interface Window {
@@ -37,7 +38,7 @@ export function AdsenseDisplayAd({ client, slot, className }: AdsenseDisplayAdPr
         style={{ display: 'block' }}
         data-ad-client={client}
         data-ad-slot={slot}
-        data-ad-format="auto"
+        data-ad-format={AdsenseDisplayFormat.Horizontal}
         data-full-width-responsive="true"
       />
     </aside>

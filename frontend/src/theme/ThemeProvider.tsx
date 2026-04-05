@@ -7,16 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-
-/** Base appearance when no scenic preset is active. */
-export type ColorMode = 'light' | 'dark';
-/** Scenic preset overrides ColorMode for visuals until cleared. */
-export type ThemePreset = 'none' | 'island';
-
-const COLOR_MODE_STORAGE_KEY = 'chatxiv-theme';
-const THEME_PRESET_STORAGE_KEY = 'chatxiv-theme-preset';
-/** Legacy: was only applied when theme was light; migrate into preset. */
-const LEGACY_LIGHT_SCHEME_KEY = 'chatxiv-light-scheme';
+import { ColorMode, ThemePreset, THEME_STORAGE_KEYS } from './themeConstants';
 
 type ThemeContextValue = {
   readonly theme: ColorMode;
@@ -29,46 +20,48 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readStoredColorMode(): ColorMode {
   try {
-    const stored = localStorage.getItem(COLOR_MODE_STORAGE_KEY) as ColorMode | null;
-    if (stored === 'light' || stored === 'dark') return stored;
+    const stored = localStorage.getItem(THEME_STORAGE_KEYS.COLOR_MODE) as ColorMode | null;
+    if (stored === ColorMode.Light || stored === ColorMode.Dark) return stored;
   } catch {
     /* localStorage unavailable */
   }
-  return 'dark';
+  return ColorMode.Dark;
 }
 
 function readStoredPreset(): ThemePreset {
   try {
-    const v = localStorage.getItem(THEME_PRESET_STORAGE_KEY);
-    if (v === 'island' || v === 'none') return v;
-    const legacy = localStorage.getItem(LEGACY_LIGHT_SCHEME_KEY);
-    if (legacy === 'island') return 'island';
+    const v = localStorage.getItem(THEME_STORAGE_KEYS.PRESET);
+    if (v === ThemePreset.Island || v === ThemePreset.None) return v;
+    const legacy = localStorage.getItem(THEME_STORAGE_KEYS.LEGACY_LIGHT_SCHEME);
+    if (legacy === ThemePreset.Island) return ThemePreset.Island;
   } catch {
     /* localStorage unavailable */
   }
-  return 'none';
+  return ThemePreset.None;
 }
 
 function syncDocument(colorMode: ColorMode, themePreset: ThemePreset) {
-  if (themePreset === 'island') {
+  if (themePreset === ThemePreset.Island) {
     document.documentElement.classList.remove('dark');
-    document.documentElement.dataset.themePreset = 'island';
+    document.documentElement.dataset.themePreset = ThemePreset.Island;
   } else {
     delete document.documentElement.dataset.themePreset;
-    document.documentElement.classList.toggle('dark', colorMode === 'dark');
+    document.documentElement.classList.toggle('dark', colorMode === ColorMode.Dark);
   }
   delete document.documentElement.dataset.lightScheme;
 }
 
 function persist(colorMode: ColorMode, themePreset: ThemePreset) {
   try {
-    localStorage.setItem(COLOR_MODE_STORAGE_KEY, colorMode);
-    localStorage.setItem(THEME_PRESET_STORAGE_KEY, themePreset);
-    localStorage.removeItem(LEGACY_LIGHT_SCHEME_KEY);
+    localStorage.setItem(THEME_STORAGE_KEYS.COLOR_MODE, colorMode);
+    localStorage.setItem(THEME_STORAGE_KEYS.PRESET, themePreset);
+    localStorage.removeItem(THEME_STORAGE_KEYS.LEGACY_LIGHT_SCHEME);
   } catch {
     /* localStorage unavailable */
   }
 }
+
+export type { ColorMode, ThemePreset } from './themeConstants';
 
 export function ThemeProvider({ children }: { readonly children: ReactNode }) {
   const [theme, setTheme] = useState<ColorMode>(() => readStoredColorMode());
@@ -85,8 +78,8 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
 
   /** Clears scenic preset and flips light/dark. */
   const toggleTheme = useCallback(() => {
-    setThemePresetState('none');
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setThemePresetState(ThemePreset.None);
+    setTheme((prev) => (prev === ColorMode.Light ? ColorMode.Dark : ColorMode.Light));
   }, []);
 
   const value = useMemo(
