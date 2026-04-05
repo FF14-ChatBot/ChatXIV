@@ -5,7 +5,9 @@ import type { ChatRequestBody, ChatResponseBody, ChatStreamEvent } from '@chatxi
  * Route handlers depend on this interface only.
  */
 export interface ChatService {
-  /** Full response: internally consumes the stream and accumulates the result. */
+  /** Full response: internally consumes the stream and
+   * accumulates the result all at once.
+   */
   handleMessage(request: ChatRequestBody): Promise<ChatResponseBody>;
 
   /**

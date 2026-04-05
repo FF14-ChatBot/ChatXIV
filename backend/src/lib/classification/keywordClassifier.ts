@@ -1,99 +1,67 @@
-import { UsageCategory } from '@chatxiv/cdm';
-import type { ClassificationResult, ClassificationService } from './types.js';
+import { Languages, UsageCategory, type Language } from '@chatxiv/cdm';
+import {
+  englishKeywordPatternRules,
+  type KeywordPatternRule,
+} from './englishKeywordPatternRules.js';
+import { resolveKeywordLanguage } from './keywordLanguage.js';
+import {
+  ClassificationRouting,
+  type ClassificationResult,
+  type ClassificationService,
+} from './types.js';
 
-interface PatternRule {
-  readonly category: UsageCategory;
-  readonly pattern: RegExp;
-  readonly confidence: number;
+/**
+ * ## Keyword stage vs {@link UsageCategory.UNCATEGORIZED}
+ *
+ * `UsageCategory.UNCATEGORIZED` (wire value `OTHER` in `@chatxiv/cdm`) means **no English keyword
+ * rule fired**. {@link createRoutingClassifier} then calls {@link UsageRoutingModel} (typically an
+ * LLM) when language has rules; see {@link ClassificationRouting.LlmMinConfidenceExclusive}.
+ *
+ * **Intentionally uncategorized** (examples — should reach LLM or stay broad):
+ * - Typos and variants we do not encode (`msqe`, `glamur`, `tombstone` for tomestone, etc.).
+ * - Natural phrasing with no token (`rotation for samurai`, `is Thordan still in roulette`).
+ * - Non-English copy pasted without Latin job/duty tokens matching these patterns.
+ * - Languages with no rules table yet — patterns are skipped entirely → uncategorized with
+ *   confidence `0` (same funnel).
+ *
+ * **Do not** widen regexes to chase every typo unless the variant is unambiguous; false positives
+ * are worse than an LLM pass. Prefer tests that document “stays uncategorized” vs “known false
+ * positive” for a few high-signal tokens (`fish`, `quality`, `mine`).
+ *
+ * Several rules use `.` in alternations (e.g. `best.in.slot`) as a **flexible separator** (space,
+ * hyphen, dot). Other dotted groups like `main.scenario` follow the same idea.
+ *
+ * English regex rows live in {@link englishKeywordPatternRules} so this file stays the service
+ * implementation and language dispatch only.
+ */
+const RULES_BY_LANGUAGE: Record<Language, readonly KeywordPatternRule[]> = {
+  [Languages.En]: englishKeywordPatternRules,
+};
+
+function patternRulesForLanguage(language?: string | null): readonly KeywordPatternRule[] {
+  const key = resolveKeywordLanguage(language);
+  if (key === null) {
+    return [];
+  }
+  return RULES_BY_LANGUAGE[key];
 }
 
 /**
- * Pattern rules evaluated top-to-bottom; first match wins.
- * More specific patterns (higher confidence) go first.
- */
-const RULES: readonly PatternRule[] = [
-  {
-    category: UsageCategory.GATHERING,
-    pattern:
-      /\b((gathering|gatherer|gather|miner|fisher|botanist|botani)\s+bis|bis\s+for\s+(gathering|gatherer|gather|miner|fisher|botanist|botani)|(gathering|gatherer|gather|miner|fisher|botanist|botani)\s+best\s+in\s+slot|best\s+in\s+slot\s+for\s+(gathering|gatherer|gather|miner|fisher|botanist|botani))\b/i,
-    confidence: 0.85,
-  },
-  {
-    category: UsageCategory.CRAFTING,
-    pattern:
-      /\b((crafting|crafter|craft)\s+bis|bis\s+for\s+(crafting|crafter|craft)|(crafting|crafter|craft)\s+best\s+in\s+slot|best\s+in\s+slot\s+for\s+(crafting|crafter|craft))\b/i,
-    confidence: 0.85,
-  },
-  {
-    category: UsageCategory.BIS,
-    pattern: /\b(bis|best.in.slot|gear(ing|set)?|meld(s|ing)?|materia)\b/i,
-    confidence: 0.8,
-  },
-  {
-    category: UsageCategory.RAIDING,
-    pattern:
-      /\b(raid|savage|extreme|ultimate|ex\d|[epm]\d+s|ucob|uwu|tea|dsr|top|fru|toolbox|hector|raidplan|kobe)\b/i,
-    confidence: 0.8,
-  },
-  {
-    category: UsageCategory.MSQ,
-    pattern: /\b(msq|main.scenario|main.story|story.quest|quest.line)\b/i,
-    confidence: 0.8,
-  },
-  {
-    category: UsageCategory.UNLOCKS,
-    pattern: /\b(unlock|how.do.i.get|how.to.get|where.to.unlock|attune|aether(yte)?)\b/i,
-    confidence: 0.75,
-  },
-  {
-    category: UsageCategory.SETTINGS,
-    pattern: /\b(setting|config(uration|ure)?|hud|ui.option|camera|keybind|hotbar|display)\b/i,
-    confidence: 0.75,
-  },
-  {
-    category: UsageCategory.CRAFTING,
-    pattern:
-      /\b(craft(ing|er)?|recipe|collectab|firmament|doh|disciple of the hands|lunar\s+envoy|cp)\b/i,
-    confidence: 0.7,
-  },
-  {
-    category: UsageCategory.GATHERING,
-    pattern:
-      /\b(gather(ing|er)?|botanist|botani|miner|mining|fisher|fishing|dol|disciple of the land|timed\s+nodes?|ephemeral\s+nodes?|gp|collectable)\b/i,
-    confidence: 0.7,
-  },
-  {
-    category: UsageCategory.GLAMOUR,
-    pattern: /\b(glamour|glam|transmog|fashion|dye(ing)?|outfit)\b/i,
-    confidence: 0.7,
-  },
-  {
-    category: UsageCategory.HOUSING,
-    pattern: /\b(hous(e|ing)|apartment|plot|ward|furnish|décor|decor|lottery)\b/i,
-    confidence: 0.7,
-  },
-  {
-    category: UsageCategory.RELIC_WEAPONS,
-    pattern: /\b(relic|anima|eureka|bozja|manderville|lux|zodiac|resistance)\b/i,
-    confidence: 0.7,
-  },
-  {
-    category: UsageCategory.ITEMS,
-    pattern: /\b(item|drop|loot|reward|vendor|where.to.buy|tomestone)\b/i,
-    confidence: 0.6,
-  },
-];
-
-/**
- * MVP classifier using regex pattern matching.
- * Swap to an LLM-based classifier by replacing this in container.ts.
+ * Regex-based classifier: first routing stage with deterministic confidence on match.
+ * Only `Languages.En` has rules today; other `language` values skip patterns (see module doc:
+ * {@link UsageCategory.UNCATEGORIZED} funnel). Pair with {@link createRoutingClassifier} +
+ * {@link UsageRoutingModel} for LLM fallback.
  */
 export function createKeywordClassifier(): ClassificationService {
   return {
-    async classify(message: string): Promise<ClassificationResult> {
-      for (const rule of RULES) {
+    async classify(message: string, language?: string): Promise<ClassificationResult> {
+      const rules = patternRulesForLanguage(language);
+      for (const rule of rules) {
         if (rule.pattern.test(message)) {
-          return { category: rule.category, confidence: rule.confidence };
+          return {
+            category: rule.category,
+            confidence: ClassificationRouting.KeywordRuleConfidence,
+          };
         }
       }
 

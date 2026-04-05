@@ -54,6 +54,8 @@ import type { ChatService } from '../chat/types.js';
 import type { LlmClient, LlmFormatResult } from '../llm/types.js';
 import type { CacheClient } from '../cache/types.js';
 import { createKeywordClassifier } from '../classification/keywordClassifier.js';
+import { createRoutingClassifier } from '../classification/routingClassifier.js';
+import { createStubUsageRoutingModel } from '../classification/stubUsageRoutingModel.js';
 import { createKnowledgeService } from '../knowledge/knowledgeService.js';
 import { createChatService } from '../chat/chatService.js';
 import { createMemoryCacheClient } from '../cache/memoryCacheClient.js';
@@ -143,7 +145,11 @@ export function register(): void {
   const knowledgeService = createKnowledgeService([stubResolver]);
   container.registerInstance<KnowledgeService>(KnowledgeServiceToken, knowledgeService);
 
-  const classificationService = createKeywordClassifier();
+  // TODO: Replace createStubUsageRoutingModel with an LLM JSON classifier that maps to UsageCategory.
+  const classificationService = createRoutingClassifier(
+    createKeywordClassifier(),
+    createStubUsageRoutingModel()
+  );
   container.registerInstance<ClassificationService>(
     ClassificationServiceToken,
     classificationService

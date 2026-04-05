@@ -21,7 +21,7 @@ export interface ConversationTurn {
   readonly content: string;
 }
 
-/** Request body for `POST /v1/chat`. */
+/** Request body for `POST /v1/chat`. (non-streaming). */
 export interface ChatRequestBody {
   readonly message: string;
   readonly sessionId?: string;
