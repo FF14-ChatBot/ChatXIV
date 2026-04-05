@@ -90,6 +90,10 @@ JSON error bodies follow the shared shape `ApiErrorResponse` in `@chatxiv/cdm` (
 - **401** on admin routes: missing or wrong `X-Admin-Key`.
 - **400** with `VALIDATION_ERROR`: bad flag name pattern or invalid JSON body (`enabled` must be a boolean).
 
+## Scheduled jobs
+
+In-process periodic work uses [`src/lib/scheduler/processJobScheduler.ts`](src/lib/scheduler/processJobScheduler.ts): register jobs with `schedulePeriodic`, and call `stopAll` on shutdown (see [`src/server.ts`](src/server.ts)). This is for maintenance tasks that run in the same Node process as the API, not a separate worker or distributed scheduler.
+
 ## Developer commands
 
 See the repo root [docs/README.md](../docs/README.md) for install, lint, test, coverage, and build across workspaces.

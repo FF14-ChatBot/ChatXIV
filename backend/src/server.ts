@@ -14,6 +14,7 @@ import {
   sweepObservabilityRetention,
   OBSERVABILITY_RETENTION_INTERVAL_MS,
 } from './lib/persistence/sqlite/retention.js';
+import { createProcessJobScheduler } from './lib/scheduler/processJobScheduler.js';
 
 validateStartupConfig();
 registerProcessErrorHandlers(logger);
@@ -21,15 +22,15 @@ registerProcessErrorHandlers(logger);
 const port = getPort();
 const shutdownTimeoutMs = 10_000;
 
-const retentionTimer = setInterval(() => {
-  try {
+const jobScheduler = createProcessJobScheduler(logger);
+jobScheduler.schedulePeriodic({
+  name: 'observability-retention-sweep',
+  intervalMs: OBSERVABILITY_RETENTION_INTERVAL_MS,
+  task: () => {
     const db = getOrOpenAppDatabase();
     sweepObservabilityRetention(new RequestMetricsDao(db), new UsageRecordsDao(db));
-  } catch (error) {
-    logger.warn({ error }, 'Observability retention sweep failed');
-  }
-}, OBSERVABILITY_RETENTION_INTERVAL_MS);
-retentionTimer.unref();
+  },
+});
 
 const server = app.listen(port, () => {
   logger.info({ port }, 'Server listening');
@@ -45,7 +46,7 @@ const gracefulShutdown = (signal: NodeJS.Signals): void => {
 
   shuttingDown = true;
   logger.info({ signal, shutdownTimeoutMs }, 'Received shutdown signal');
-  clearInterval(retentionTimer);
+  jobScheduler.stopAll();
 
   const forceExitTimer = setTimeout(() => {
     logger.error({ signal, shutdownTimeoutMs }, 'Forced shutdown after timeout');
