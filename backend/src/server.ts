@@ -33,26 +33,39 @@ const gracefulShutdown = (signal: NodeJS.Signals): void => {
   logger.info({ signal, shutdownTimeoutMs }, 'Received shutdown signal');
   jobScheduler.dispose();
 
-  const forceExitTimer = setTimeout(() => {
-    logger.error({ signal, shutdownTimeoutMs }, 'Forced shutdown after timeout');
-    process.exit(1);
-  }, shutdownTimeoutMs);
-  forceExitTimer.unref();
+  const shutdownStartedAt = Date.now();
 
-  server.close((error) => {
-    clearTimeout(forceExitTimer);
-
-    if (error) {
-      logger.error({ error, signal }, 'Failed to close server cleanly');
-      closeAppDatabase();
-      process.exit(1);
-      return;
+  void (async () => {
+    try {
+      await jobScheduler.waitForInFlightJobs(shutdownTimeoutMs);
+    } catch (error) {
+      logger.warn({ error, signal }, 'Error while waiting for in-flight scheduled jobs');
     }
 
-    logger.info({ signal }, 'Server closed cleanly');
-    closeAppDatabase();
-    process.exit(0);
-  });
+    const elapsed = Date.now() - shutdownStartedAt;
+    const closeBudgetMs = Math.max(1_000, shutdownTimeoutMs - elapsed);
+
+    const forceExitTimer = setTimeout(() => {
+      logger.error({ signal, shutdownTimeoutMs, closeBudgetMs }, 'Forced shutdown after timeout');
+      process.exit(1);
+    }, closeBudgetMs);
+    forceExitTimer.unref();
+
+    server.close((error) => {
+      clearTimeout(forceExitTimer);
+
+      if (error) {
+        logger.error({ error, signal }, 'Failed to close server cleanly');
+        closeAppDatabase();
+        process.exit(1);
+        return;
+      }
+
+      logger.info({ signal }, 'Server closed cleanly');
+      closeAppDatabase();
+      process.exit(0);
+    });
+  })();
 };
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

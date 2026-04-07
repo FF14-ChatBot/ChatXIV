@@ -11,17 +11,26 @@ import type { ProcessJobScheduler } from './processJobScheduler.js';
  */
 export const OBSERVABILITY_RETENTION_WEEKLY_ANCHOR_UTC = new Date('2026-01-04T04:00:00.000Z');
 
+/** Stable name for the retention sweep — use with {@link ProcessJobScheduler.runJobNow} */
+export const OBSERVABILITY_RETENTION_SWEEP_JOB = 'observability-retention-sweep' as const;
+
+/**
+ * Body of the observability retention job. Call directly for adhoc runs (scripts, REPL, future
+ * admin route) without going through the scheduler; or use `scheduler.runJobNow(OBSERVABILITY_RETENTION_SWEEP_JOB)`.
+ */
+export function runObservabilityRetentionSweepTask(): void {
+  const db = getOrOpenAppDatabase();
+  sweepObservabilityRetention(new RequestMetricsDao(db), new UsageRecordsDao(db));
+}
+
 /** Register all in-process UTC scheduled jobs on the given scheduler */
 export function registerProcessScheduledJobs(scheduler: ProcessJobScheduler): void {
   scheduler.scheduleUtcJob({
-    name: 'observability-retention-sweep',
+    name: OBSERVABILITY_RETENTION_SWEEP_JOB,
     schedule: {
       cadence: ScheduleCadence.Weekly,
       anchorUtc: OBSERVABILITY_RETENTION_WEEKLY_ANCHOR_UTC,
     },
-    task: () => {
-      const db = getOrOpenAppDatabase();
-      sweepObservabilityRetention(new RequestMetricsDao(db), new UsageRecordsDao(db));
-    },
+    task: runObservabilityRetentionSweepTask,
   });
 }

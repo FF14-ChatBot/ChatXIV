@@ -174,7 +174,9 @@ JSON error bodies follow the shared shape `ApiErrorResponse` in `@chatxiv/cdm` (
 
 ## Scheduled jobs
 
-In-process maintenance uses UTC wall-clock scheduling in [`src/lib/scheduler/processJobScheduler.ts`](src/lib/scheduler/processJobScheduler.ts) (`scheduleUtcJob` + [`utcSchedule.ts`](src/lib/scheduler/utcSchedule.ts)). Concrete jobs are registered in [`src/lib/scheduler/scheduledJobs.ts`](src/lib/scheduler/scheduledJobs.ts); [`src/server.ts`](src/server.ts) constructs the scheduler, calls `registerProcessScheduledJobs`, and `dispose()` on shutdown. This is for work co-located with the API process, not a separate worker or distributed scheduler.
+In-process maintenance uses UTC wall-clock scheduling in [`src/lib/scheduler/processJobScheduler.ts`](src/lib/scheduler/processJobScheduler.ts) (`scheduleUtcJob` + [`utcSchedule.ts`](src/lib/scheduler/utcSchedule.ts)). Concrete jobs are registered in [`src/lib/scheduler/scheduledJobs.ts`](src/lib/scheduler/scheduledJobs.ts); [`src/server.ts`](src/server.ts) constructs the scheduler, calls `registerProcessScheduledJobs`, clears timers with `dispose()` on shutdown, then **`waitForInFlightJobs`** so any run in progress can finish (within the shutdown budget) before `server.close`. This is for work co-located with the API process, not a separate worker or distributed scheduler.
+
+**Adhoc runs:** call exported task functions (e.g. `runObservabilityRetentionSweepTask`) from a script or REPL, or `await scheduler.runJobNow(OBSERVABILITY_RETENTION_SWEEP_JOB)` when you hold the scheduler instance. A future admin route could wrap the same helpers.
 
 ## BFF + private API (target architecture optional)
 
