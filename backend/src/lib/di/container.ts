@@ -48,6 +48,19 @@ import { createSqliteUsageStore } from '../persistence/sqlite/sqliteUsageStore.j
 import { FeedbackSubmissionsDao } from '../persistence/sqlite/dao/FeedbackSubmissionsDao.js';
 import { createFeedbackService } from '../feedback/feedbackService.js';
 import type { FeedbackService } from '../feedback/types.js';
+import type { ClassificationService } from '../classification/types.js';
+import type { KnowledgeService } from '../knowledge/types.js';
+import type { ChatService } from '../chat/types.js';
+import type { LlmClient, LlmFormatResult } from '../llm/types.js';
+import type { CacheClient } from '../cache/types.js';
+import { createKeywordClassifier } from '../classification/keywordClassifier.js';
+import { createRoutingClassifier } from '../classification/routingClassifier.js';
+import { createStubUsageRoutingModel } from '../classification/stubUsageRoutingModel.js';
+import { createKnowledgeService } from '../knowledge/knowledgeService.js';
+import { createChatService } from '../chat/chatService.js';
+import { createMemoryCacheClient } from '../cache/memoryCacheClient.js';
+import { createStubResolver } from '../knowledge/resolvers/stubResolver.js';
+import { UsageCategory } from '@chatxiv/cdm';
 
 export const MetricsStoreToken = Symbol('MetricsStore');
 export const UsageStoreToken = Symbol('UsageStore');
@@ -58,6 +71,11 @@ export const CorsOriginsToken = Symbol('CorsOrigins');
 export const FeatureFlagStoreToken = Symbol('FeatureFlagStore');
 export const FeatureFlagServiceToken = Symbol('FeatureFlagService');
 export const FeedbackServiceToken = Symbol('FeedbackService');
+export const ClassificationServiceToken = Symbol('ClassificationService');
+export const KnowledgeServiceToken = Symbol('KnowledgeService');
+export const ChatServiceToken = Symbol('ChatService');
+export const LlmClientToken = Symbol('LlmClient');
+export const CacheClientToken = Symbol('CacheClient');
 
 /** The DI container. Call register() once at startup before resolving any dependencies. */
 export const container = tsyringeContainer as DependencyContainer;
@@ -97,4 +115,46 @@ export function register(): void {
   setMetrics(container.resolve<MetricsStore>(MetricsStoreToken));
   setUsageAnalytics(container.resolve<UsageStore>(UsageStoreToken));
   setFeatureFlagService(flagService);
+
+  // ── Chat pipeline ────────────────────────────────────────────────────
+
+  const cacheClient = createMemoryCacheClient();
+  container.registerInstance<CacheClient>(CacheClientToken, cacheClient);
+
+  // TODO: Replace with real AnthropicClient once lib/clients/anthropic/ is implemented.
+  const stubLlmClient: LlmClient = {
+    async *formatWithCitationsStream(): AsyncIterable<string> {
+      yield 'Chat is not yet available. The LLM client has not been configured.';
+    },
+    async formatWithCitations(): Promise<LlmFormatResult> {
+      return {
+        content: 'Chat is not yet available.',
+        sources: [],
+        inputTokens: 0,
+        outputTokens: 0,
+      };
+    },
+  };
+  container.registerInstance<LlmClient>(LlmClientToken, stubLlmClient);
+
+  // TODO: Replace stub resolver with real SourceResolver implementations
+  //       (XivApiResolver, MediaWikiResolver, CuratedDataResolver) once
+  //       lib/clients/xivapi/ and lib/clients/mediawiki/ are implemented.
+  //       Register each resolver and pass the array to createKnowledgeService.
+  const stubResolver = createStubResolver(Object.values(UsageCategory) as UsageCategory[]);
+  const knowledgeService = createKnowledgeService([stubResolver]);
+  container.registerInstance<KnowledgeService>(KnowledgeServiceToken, knowledgeService);
+
+  // TODO: Replace createStubUsageRoutingModel with an LLM JSON classifier that maps to UsageCategory.
+  const classificationService = createRoutingClassifier(
+    createKeywordClassifier(),
+    createStubUsageRoutingModel()
+  );
+  container.registerInstance<ClassificationService>(
+    ClassificationServiceToken,
+    classificationService
+  );
+
+  const chatService = createChatService(classificationService, knowledgeService, stubLlmClient);
+  container.registerInstance<ChatService>(ChatServiceToken, chatService);
 }

@@ -10,10 +10,12 @@ import {
   CorsOriginsToken,
   FeatureFlagServiceToken,
   FeedbackServiceToken,
+  ChatServiceToken,
 } from './lib/di/container.js';
 import type { RequestConfig } from './lib/config/requestConfig.js';
 import type { FeatureFlagService } from './lib/featureFlags/types.js';
 import type { FeedbackService } from './lib/feedback/types.js';
+import type { ChatService } from './lib/chat/types.js';
 
 register();
 
@@ -45,6 +47,7 @@ const requestConfig = container.resolve<RequestConfig>(RequestConfigToken);
 const corsOrigins = container.resolve<string[]>(CorsOriginsToken);
 const flagService = container.resolve<FeatureFlagService>(FeatureFlagServiceToken);
 const feedbackService = container.resolve<FeedbackService>(FeedbackServiceToken);
+const chatService = container.resolve<ChatService>(ChatServiceToken);
 const db = getOrOpenAppDatabase();
 
 const bootstrapSubs = getBootstrapAdminSubs();
@@ -96,7 +99,7 @@ app.get('/health', (_req, res) => {
 
 // ── Public routes (/v1) ──────────────────────────────────────────────
 
-app.use('/v1', createPublicRouter(flagService, feedbackService));
+app.use('/v1', createPublicRouter(flagService, feedbackService, chatService));
 
 // ── Auth routes (/v1/auth) ───────────────────────────────────────────
 
