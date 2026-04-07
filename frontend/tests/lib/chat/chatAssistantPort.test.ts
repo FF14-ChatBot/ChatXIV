@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createDemoChatAssistantPort, DEMO_ASSISTANT_REPLY } from '@/lib/chat/chatAssistantPort';
+import {
+  createDemoChatAssistantPort,
+  DEMO_ASSISTANT_REPLY,
+  DEMO_ASSISTANT_SOURCES,
+} from '@/lib/chat/chatAssistantPort';
 
 describe('createDemoChatAssistantPort', () => {
   beforeEach(() => {
@@ -10,11 +14,14 @@ describe('createDemoChatAssistantPort', () => {
     vi.useRealTimers();
   });
 
-  it('resolves with the demo reply after the delay', async () => {
+  it('resolves with the demo reply and sources after the delay', async () => {
     const port = createDemoChatAssistantPort(500);
     const p = port.getReply('hello');
     await vi.advanceTimersByTimeAsync(500);
-    await expect(p).resolves.toEqual({ text: DEMO_ASSISTANT_REPLY });
+    await expect(p).resolves.toEqual({
+      text: DEMO_ASSISTANT_REPLY,
+      sources: DEMO_ASSISTANT_SOURCES,
+    });
   });
 
   it('rejects with AbortError when the signal is aborted before the delay', async () => {
