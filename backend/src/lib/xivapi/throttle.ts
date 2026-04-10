@@ -1,34 +1,26 @@
-/**
- * In-process token-bucket rate limiter for outbound XIVAPI requests.
- *
- * Ensures a single backend instance stays under XIVAPI's per-IP rate cap.
- * The bucket refills continuously based on elapsed wall-clock time; when empty,
- * `consume()` returns a promise that resolves once a token becomes available.
- *
- * Multi-instance shared limiting (e.g. Redis) is out of scope for MVP.
- */
+import type pino from 'pino';
 
 export interface TokenBucket {
-  /** Waits until a token is available, then consumes one. */
-  consume(): Promise<void>;
+  /** Optional structured fields for logs (e.g. `url` from the outbound HTTP request). */
+  consume(meta?: Readonly<Record<string, unknown>>): Promise<void>;
 }
 
-/**
- * Creates a token bucket that allows `tokensPerSecond` requests per second.
- * Burst capacity equals one full second of tokens.
- */
-export function createTokenBucket(tokensPerSecond: number): TokenBucket {
-  let tokens = tokensPerSecond;
+export function createTokenBucket(
+  ratePerSecond: number,
+  burstCapacity: number = ratePerSecond,
+  log?: pino.Logger
+): TokenBucket {
+  let tokens = burstCapacity;
   let lastRefill = Date.now();
 
   function refill(): void {
     const now = Date.now();
     const elapsed = (now - lastRefill) / 1_000;
-    tokens = Math.min(tokensPerSecond, tokens + elapsed * tokensPerSecond);
+    tokens = Math.min(burstCapacity, tokens + elapsed * ratePerSecond);
     lastRefill = now;
   }
 
-  function consume(): Promise<void> {
+  function consume(meta?: Readonly<Record<string, unknown>>): Promise<void> {
     refill();
 
     if (tokens >= 1) {
@@ -36,7 +28,19 @@ export function createTokenBucket(tokensPerSecond: number): TokenBucket {
       return Promise.resolve();
     }
 
-    const waitMs = ((1 - tokens) / tokensPerSecond) * 1_000;
+    const waitMs = ((1 - tokens) / ratePerSecond) * 1_000;
+    if (log) {
+      log.warn(
+        {
+          waitMs,
+          tokens,
+          ratePerSecond,
+          burstCapacity,
+          ...meta,
+        },
+        'Token bucket empty; awaiting token refill'
+      );
+    }
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         refill();

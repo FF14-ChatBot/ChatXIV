@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type pino from 'pino';
 import { createTokenBucket } from '@src/lib/xivapi/throttle.js';
+
+function createMockLogger(): pino.Logger {
+  return { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as pino.Logger;
+}
 
 describe('lib/xivapi/throttle', () => {
   beforeEach(() => {
@@ -15,9 +20,16 @@ describe('lib/xivapi/throttle', () => {
     await expect(bucket.consume()).resolves.toBeUndefined();
   });
 
-  it('allows burst up to tokensPerSecond without delay', async () => {
+  it('allows burst up to ratePerSecond without delay when burst equals rate', async () => {
     const bucket = createTokenBucket(5);
     for (let i = 0; i < 5; i++) {
+      await expect(bucket.consume()).resolves.toBeUndefined();
+    }
+  });
+
+  it('allows burst up to explicit burst capacity', async () => {
+    const bucket = createTokenBucket(5, 10);
+    for (let i = 0; i < 10; i++) {
       await expect(bucket.consume()).resolves.toBeUndefined();
     }
   });
@@ -75,5 +87,30 @@ describe('lib/xivapi/throttle', () => {
     await pending;
 
     expect(resolved).toBe(true);
+  });
+
+  it('warns when empty and a logger is configured', async () => {
+    const log = createMockLogger();
+    const bucket = createTokenBucket(2, 2, log);
+
+    await bucket.consume();
+    await bucket.consume();
+
+    const pending = bucket.consume({ url: 'https://example.com/x' });
+
+    expect(log.warn).toHaveBeenCalledTimes(1);
+    expect(log.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        waitMs: expect.any(Number),
+        tokens: expect.any(Number),
+        ratePerSecond: 2,
+        burstCapacity: 2,
+        url: 'https://example.com/x',
+      }),
+      'Token bucket empty; awaiting token refill'
+    );
+
+    await vi.advanceTimersByTimeAsync(500);
+    await pending;
   });
 });

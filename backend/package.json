@@ -31,7 +31,8 @@
     "pino-loki": "^3.0.0",
     "reflect-metadata": "^0.2.2",
     "swagger-ui-express": "^5.0.1",
-    "tsyringe": "^4.8.0"
+    "tsyringe": "^4.8.0",
+    "typescript-retry-decorator": "^2.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchWithRetry, type FetchWithRetryOptions } from '@src/lib/http/fetchWithRetry.js';
+import { RetryingHttpClient, type RetryingHttpClientConfig } from '@src/lib/http/fetchWithRetry.js';
 import { AppError } from '@src/lib/errors/AppError.js';
+import { requestContext } from '@src/lib/request/requestContext.js';
 import { ERROR_CODES } from '@chatxiv/cdm';
 import type pino from 'pino';
 
@@ -8,12 +9,21 @@ function createMockLogger(): pino.Logger {
   return { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as pino.Logger;
 }
 
-const defaultOptions: FetchWithRetryOptions = {
+/** Minimal concrete client for exercising `RetryingHttpClient.fetchJson`. */
+function createTestHttpClient(config: RetryingHttpClientConfig): RetryingHttpClient {
+  return new (class extends RetryingHttpClient {
+    constructor(c: RetryingHttpClientConfig) {
+      super(c);
+    }
+  })(config);
+}
+
+const defaultOptions: RetryingHttpClientConfig = {
   timeoutMs: 5_000,
   sourceName: 'TestAPI',
 };
 
-describe('lib/http/fetchWithRetry', () => {
+describe('RetryingHttpClient', () => {
   const fetchMock = vi.fn();
   let log: pino.Logger;
 
@@ -55,9 +65,29 @@ describe('lib/http/fetchWithRetry', () => {
     it('returns parsed JSON on 200', async () => {
       fetchMock.mockResolvedValue(okJson({ id: 1 }));
 
-      const result = await fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+      const result = await createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log
+      );
 
       expect(result).toEqual({ id: 1 });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns blob on 200 from fetchBlob', async () => {
+      const blob = new Blob(['x']);
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        blob: () => Promise.resolve(blob),
+      } as Partial<Response>);
+
+      const result = await createTestHttpClient(defaultOptions).fetchBlob(
+        'https://api.example.com/asset',
+        log
+      );
+
+      expect(result).toBe(blob);
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
   });
@@ -67,10 +97,10 @@ describe('lib/http/fetchWithRetry', () => {
   describe('beforeAttempt', () => {
     it('calls beforeAttempt before each fetch', async () => {
       const order: string[] = [];
-      const opts: FetchWithRetryOptions = {
+      const opts: RetryingHttpClientConfig = {
         ...defaultOptions,
-        beforeAttempt: vi.fn().mockImplementation(() => {
-          order.push('hook');
+        beforeAttempt: vi.fn().mockImplementation((ctx) => {
+          order.push(`hook:${ctx.url}`);
           return Promise.resolve();
         }),
       };
@@ -79,9 +109,27 @@ describe('lib/http/fetchWithRetry', () => {
         return Promise.resolve(okJson({ ok: true }));
       });
 
-      await fetchWithRetry('https://api.example.com/data', opts, log);
+      await createTestHttpClient(opts).fetchJson('https://api.example.com/data', log);
 
-      expect(order).toEqual(['hook', 'fetch']);
+      expect(order).toEqual(['hook:https://api.example.com/data', 'fetch']);
+    });
+
+    it('passes requestId from requestContext when present', async () => {
+      const hook = vi.fn().mockResolvedValue(undefined);
+      const opts: RetryingHttpClientConfig = {
+        ...defaultOptions,
+        beforeAttempt: hook,
+      };
+      fetchMock.mockResolvedValue(okJson({ ok: true }));
+
+      await requestContext.run({ requestId: 'incoming-req-99' }, () =>
+        createTestHttpClient(opts).fetchJson('https://api.example.com/data', log)
+      );
+
+      expect(hook).toHaveBeenCalledWith({
+        url: 'https://api.example.com/data',
+        requestId: 'incoming-req-99',
+      });
     });
   });
 
@@ -92,7 +140,7 @@ describe('lib/http/fetchWithRetry', () => {
       fetchMock.mockRejectedValue(new DOMException('signal timed out', 'TimeoutError'));
 
       try {
-        await fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+        await createTestHttpClient(defaultOptions).fetchJson('https://api.example.com/data', log);
         expect.unreachable('should have thrown');
       } catch (err) {
         expectSourceUnavailable(err);
@@ -107,7 +155,7 @@ describe('lib/http/fetchWithRetry', () => {
       fetchMock.mockRejectedValue(abort);
 
       try {
-        await fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+        await createTestHttpClient(defaultOptions).fetchJson('https://api.example.com/data', log);
         expect.unreachable('should have thrown');
       } catch (err) {
         expectSourceUnavailable(err);
@@ -119,7 +167,7 @@ describe('lib/http/fetchWithRetry', () => {
       fetchMock.mockRejectedValue(new TypeError('fetch failed'));
 
       try {
-        await fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+        await createTestHttpClient(defaultOptions).fetchJson('https://api.example.com/data', log);
         expect.unreachable('should have thrown');
       } catch (err) {
         expectSourceUnavailable(err);
@@ -131,7 +179,7 @@ describe('lib/http/fetchWithRetry', () => {
       fetchMock.mockRejectedValue('non-error throw');
 
       try {
-        await fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+        await createTestHttpClient(defaultOptions).fetchJson('https://api.example.com/data', log);
         expect.unreachable('should have thrown');
       } catch (err) {
         expectSourceUnavailable(err);
@@ -148,7 +196,10 @@ describe('lib/http/fetchWithRetry', () => {
 
       fetchMock.mockResolvedValueOnce(errorResponse(429)).mockResolvedValueOnce(okJson({ id: 1 }));
 
-      const promise = fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log
+      );
 
       await vi.advanceTimersByTimeAsync(1_000);
       const result = await promise;
@@ -166,7 +217,10 @@ describe('lib/http/fetchWithRetry', () => {
         .mockResolvedValueOnce(errorResponse(429, '3'))
         .mockResolvedValueOnce(okJson({ id: 1 }));
 
-      const promise = fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log
+      );
 
       await vi.advanceTimersByTimeAsync(3_000);
       const result = await promise;
@@ -185,7 +239,10 @@ describe('lib/http/fetchWithRetry', () => {
         .mockResolvedValueOnce(errorResponse(503))
         .mockResolvedValueOnce(okJson({ id: 1 }));
 
-      const promise = fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log
+      );
 
       await vi.advanceTimersByTimeAsync(1_000);
       await vi.advanceTimersByTimeAsync(2_000);
@@ -202,7 +259,10 @@ describe('lib/http/fetchWithRetry', () => {
 
       fetchMock.mockResolvedValue(errorResponse(500));
 
-      const promise = fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log
+      );
       promise.catch(() => {});
 
       await vi.advanceTimersByTimeAsync(7_000);
@@ -226,7 +286,7 @@ describe('lib/http/fetchWithRetry', () => {
       fetchMock.mockResolvedValue(errorResponse(404));
 
       try {
-        await fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+        await createTestHttpClient(defaultOptions).fetchJson('https://api.example.com/data', log);
         expect.unreachable('should have thrown');
       } catch (err) {
         expectSourceUnavailable(err);
@@ -242,12 +302,12 @@ describe('lib/http/fetchWithRetry', () => {
 
       fetchMock.mockResolvedValueOnce(errorResponse(500)).mockResolvedValueOnce(okJson({ id: 1 }));
 
-      const opts: FetchWithRetryOptions = {
+      const opts: RetryingHttpClientConfig = {
         ...defaultOptions,
         maxRetries: 1,
         backoffBaseMs: 500,
       };
-      const promise = fetchWithRetry('https://api.example.com/data', opts, log);
+      const promise = createTestHttpClient(opts).fetchJson('https://api.example.com/data', log);
 
       await vi.advanceTimersByTimeAsync(500);
       const result = await promise;
@@ -267,7 +327,10 @@ describe('lib/http/fetchWithRetry', () => {
 
       fetchMock.mockResolvedValueOnce(errorResponse(503)).mockResolvedValueOnce(okJson({ id: 1 }));
 
-      const promise = fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log
+      );
 
       await vi.advanceTimersByTimeAsync(1_000);
       await promise;
@@ -286,7 +349,10 @@ describe('lib/http/fetchWithRetry', () => {
 
       fetchMock.mockResolvedValueOnce(errorResponse(429)).mockResolvedValueOnce(okJson({ id: 1 }));
 
-      const promise = fetchWithRetry('https://api.example.com/data', defaultOptions, log);
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log
+      );
 
       await vi.advanceTimersByTimeAsync(1_000);
       await promise;

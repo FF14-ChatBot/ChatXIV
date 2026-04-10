@@ -95,7 +95,8 @@ export const REDACT = {
  */
 export const METRICS_SKIP_ROUTE_PREFIXES = ['/v1/docs', '/v1/admin/docs', '/health'] as const;
 
-// ── XIVAPI (external game-data API) ────────────────────────────────
 export const XIVAPI_BASE_URL = 'https://v2.xivapi.com/api' as const;
 export const XIVAPI_TIMEOUT_MS = 5_000 as const;
-export const XIVAPI_RATE_LIMIT_PER_SECOND = 20 as const;
+// Universalis API: https://docs.universalis.app/ — 25 req/s sustained, 50 req/s burst
+export const XIVAPI_RATE_LIMIT_PER_SECOND = 25 as const;
+export const XIVAPI_RATE_LIMIT_BURST = 50 as const;
