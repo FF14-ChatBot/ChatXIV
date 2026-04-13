@@ -1,0 +1,17 @@
+---
+description: Avoid barrel files (index re-export facades); use direct imports
+alwaysApply: true
+---
+
+# No barrel files
+
+- **Do not add** new `index.ts` / `index.tsx` files whose main job is to **re-export** siblings (barrel / facade modules). Import from the **concrete module** instead (e.g. `import { x } from './foo/feature.js'` not `from './foo/index.js'`).
+- **Do not** grow existing barrels with more `export * from` / `export { … } from` indirection when you can import the defining file directly.
+- **Rationale:** clearer dependency graph, better jump-to-definition, fewer merge conflicts, and tooling (ESM, tree-shaking) stays explicit.
+
+## Exceptions
+
+- **`@chatxiv/cdm`** — Shared library consumed by backend and frontend. A **single re-export entry** (`src/index.ts` plus `package.json` `exports`) is the **intentional public API** (stable import path, encapsulation of internal modules). That is normal for packages and is **not** the kind of sibling-only `index.ts` this rule discourages in app code. Prefer **avoiding extra nested** `index.ts` re-export layers under `packages/cdm/src/` unless they match an existing pattern.
+- **Legacy / existing** `index.ts` files already in the tree (e.g. some UI folders) — **do not** expand them for new code; prefer direct imports for **new** symbols. Refactors that remove barrels are welcome when scoped to the task.
+
+When in doubt, **import the file that defines the symbol**.

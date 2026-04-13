@@ -8,6 +8,10 @@ import {
   RATE_LIMIT_REFILL_PER_MINUTE,
   REDACT,
   REQUEST_TIMEOUT_MS,
+  XIVAPI_BASE_URL,
+  XIVAPI_TIMEOUT_MS,
+  XIVAPI_RATE_LIMIT_PER_SECOND,
+  XIVAPI_RATE_LIMIT_BURST,
 } from '@src/lib/config/constants.js';
 
 describe('lib/config/constants', () => {
@@ -40,5 +44,12 @@ describe('lib/config/constants', () => {
   it('exports redaction config', () => {
     expect(REDACT.HEADER_NAMES).toEqual(['authorization', 'x-api-key', 'api-key', 'cookie']);
     expect(REDACT.QUERY_PARAMS).toEqual(['key', 'token', 'api_key', 'apikey', 'auth']);
+  });
+
+  it('exports XIVAPI constants', () => {
+    expect(XIVAPI_BASE_URL).toBe('https://v2.xivapi.com/api');
+    expect(XIVAPI_TIMEOUT_MS).toBe(5_000);
+    expect(XIVAPI_RATE_LIMIT_PER_SECOND).toBe(25);
+    expect(XIVAPI_RATE_LIMIT_BURST).toBe(50);
   });
 });
