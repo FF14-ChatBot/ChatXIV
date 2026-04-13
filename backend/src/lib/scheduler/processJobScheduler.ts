@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import type pino from 'pino';
+import { requestContext } from '../request/requestContext.js';
 import { getNextRunUtc, type UtcJobSchedule } from './utcSchedule.js';
 
 export const JobTrigger = {
@@ -126,7 +128,9 @@ export class ProcessJobScheduler {
     task: ScheduledUtcTask,
     trigger: JobTrigger
   ): Promise<void> {
-    const shell = (async (): Promise<void> => {
+    /** Same field as HTTP middleware so every `logger` line in the task carries a correlatable id */
+    const requestId = randomUUID();
+    const shell = requestContext.run({ requestId }, async (): Promise<void> => {
       try {
         await Promise.resolve(task());
         this.log.info(
@@ -142,7 +146,7 @@ export class ProcessJobScheduler {
           throw error;
         }
       }
-    })();
+    });
     this.inFlight.add(shell);
     return shell.finally(() => {
       this.inFlight.delete(shell);

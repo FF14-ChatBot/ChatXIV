@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type pino from 'pino';
+import { requestContext } from '@src/lib/request/requestContext.js';
 import { ProcessJobScheduler, JobTrigger } from '@src/lib/scheduler/processJobScheduler.js';
 import { ScheduleCadence } from '@src/lib/scheduler/utcSchedule.js';
 
@@ -199,6 +200,28 @@ describe('ProcessJobScheduler', () => {
       expect.objectContaining({ job: 'bad-manual', trigger: JobTrigger.Manual }),
       'Scheduled job failed'
     );
+
+    scheduler.dispose();
+  });
+
+  it('establishes requestContext.requestId for the whole job run for log correlation', async () => {
+    const log = createMockLogger();
+    const scheduler = new ProcessJobScheduler(log, { unrefTimers: false });
+    const seen: string[] = [];
+
+    scheduler.scheduleUtcJob({
+      name: 'correlate',
+      schedule: { cadence: ScheduleCadence.Daily, timesUtc: [{ hour: 23, minute: 0 }] },
+      task: async () => {
+        seen.push(requestContext.get()?.requestId ?? '');
+        await Promise.resolve();
+        seen.push(requestContext.get()?.requestId ?? '');
+      },
+    });
+
+    await scheduler.runJobNow('correlate');
+    expect(seen[0]).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(seen[1]).toBe(seen[0]);
 
     scheduler.dispose();
   });

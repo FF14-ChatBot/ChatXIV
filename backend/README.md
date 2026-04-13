@@ -178,6 +178,8 @@ In-process maintenance uses UTC wall-clock scheduling in [`src/lib/scheduler/pro
 
 **Adhoc runs:** call exported task functions (e.g. `runObservabilityRetentionSweepTask`) from a script or REPL, or `await scheduler.runJobNow(OBSERVABILITY_RETENTION_SWEEP_JOB)` when you hold the scheduler instance. A future admin route could wrap the same helpers.
 
+**Log correlation:** each scheduler run executes inside `requestContext.run({ requestId })` (same shape as HTTP). The shared `logger` therefore includes `requestId` on every line for that run—including nested services—so you can tie scheduler warnings to other logs in Loki or stdout. Direct calls to exported task functions outside the scheduler do not set context unless you wrap them yourself.
+
 ## BFF + private API (target architecture optional)
 
 The browser can call **`https://www.chatxiv.com/api/...`** (or a Cloudflare **Worker** / **Pages Function** on that host) so requests are **same-origin** with the SPA. That Worker forwards to the real API over **Cloudflare Tunnel** or a **non-public origin**; clients never need your VPS IP. Only Cloudflare’s edge talks to the tunnel / internal URL. See [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) and [Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
