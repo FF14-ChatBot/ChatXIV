@@ -23,6 +23,11 @@ export type ProcessJobSchedulerOptions = Readonly<{
   unrefTimers?: boolean;
 }>;
 
+type InFlightRun = Readonly<{
+  name: string;
+  promise: Promise<void>;
+}>;
+
 /**
  * Single-process UTC scheduler: arms `setTimeout` to the next calendar instant, runs the task,
  * then recomputes the following fire time. Avoids drift and misalignment from fixed intervals.
@@ -30,7 +35,7 @@ export type ProcessJobSchedulerOptions = Readonly<{
 export class ProcessJobScheduler {
   private readonly timeoutByJob = new Map<string, NodeJS.Timeout>();
   private readonly tasksByName = new Map<string, ScheduledUtcTask>();
-  private readonly inFlight = new Set<Promise<void>>();
+  private readonly inFlight = new Set<InFlightRun>();
   private schedulingStopped = false;
   private readonly unrefTimers: boolean;
 
@@ -61,7 +66,7 @@ export class ProcessJobScheduler {
     if (this.inFlight.size === 0) {
       return;
     }
-    const pending = [...this.inFlight];
+    const pending = [...this.inFlight].map((run) => run.promise);
     let timeoutId: NodeJS.Timeout | undefined;
     const onTimeout = new Promise<void>((resolve) => {
       timeoutId = setTimeout(resolve, timeoutMs);
@@ -74,8 +79,9 @@ export class ProcessJobScheduler {
       }
     }
     if (this.inFlight.size > 0) {
+      const remainingJobs = [...this.inFlight].map((run) => run.name);
       this.log.warn(
-        { remaining: this.inFlight.size, timeoutMs },
+        { remaining: this.inFlight.size, remainingJobs, timeoutMs },
         'Shutdown: in-flight scheduled jobs still running after wait timeout'
       );
     }
@@ -147,9 +153,10 @@ export class ProcessJobScheduler {
         }
       }
     });
-    this.inFlight.add(shell);
+    const run: InFlightRun = { name, promise: shell };
+    this.inFlight.add(run);
     return shell.finally(() => {
-      this.inFlight.delete(shell);
+      this.inFlight.delete(run);
     });
   }
 }

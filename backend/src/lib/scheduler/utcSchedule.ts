@@ -11,6 +11,19 @@ export const ScheduleCadence = {
 
 export type ScheduleCadence = (typeof ScheduleCadence)[keyof typeof ScheduleCadence];
 
+/** UTC weekday for weekly schedules (`Date#getUTCDay()` convention: 0 = Sunday … 6 = Saturday) */
+export const UtcDayOfWeek = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+} as const;
+
+export type UtcDayOfWeek = (typeof UtcDayOfWeek)[keyof typeof UtcDayOfWeek];
+
 export type UtcTimeOfDay = Readonly<{
   hour: number;
   minute: number;
@@ -25,13 +38,15 @@ export type UtcJobSchedule =
     }
   | {
       cadence: typeof ScheduleCadence.Weekly;
-      /** Same UTC weekday and time-of-day as this instant, repeating every week */
-      anchorUtc: Date;
+      /** UTC weekday (0 = Sunday … 6 = Saturday) */
+      dayOfWeekUtc: UtcDayOfWeek;
+      timeUtc: UtcTimeOfDay;
     }
   | {
       cadence: typeof ScheduleCadence.Monthly;
-      /** Same UTC calendar day (clamped) and time-of-day as this instant, repeating each month */
-      anchorUtc: Date;
+      /** Calendar day of month in UTC (1–31; clamped when the month is shorter) */
+      dayOfMonthUtc: number;
+      timeUtc: UtcTimeOfDay;
     };
 
 function timeOfDayKey(t: UtcTimeOfDay): string {
@@ -49,6 +64,18 @@ function normalizeSortedTimes(times: readonly UtcTimeOfDay[]): UtcTimeOfDay[] {
     if (a.minute !== b.minute) return a.minute - b.minute;
     return (a.second ?? 0) - (b.second ?? 0);
   });
+}
+
+function assertUtcDayOfWeek(dayOfWeekUtc: number): void {
+  if (!Number.isInteger(dayOfWeekUtc) || dayOfWeekUtc < 0 || dayOfWeekUtc > 6) {
+    throw new Error(`dayOfWeekUtc must be 0-6 (Sunday-Saturday), got ${String(dayOfWeekUtc)}`);
+  }
+}
+
+function assertUtcDayOfMonth(dayOfMonthUtc: number): void {
+  if (!Number.isInteger(dayOfMonthUtc) || dayOfMonthUtc < 1 || dayOfMonthUtc > 31) {
+    throw new Error(`dayOfMonthUtc must be 1-31, got ${String(dayOfMonthUtc)}`);
+  }
 }
 
 function nextDailyUtc(now: Date, times: readonly UtcTimeOfDay[]): Date {
@@ -71,21 +98,20 @@ function nextDailyUtc(now: Date, times: readonly UtcTimeOfDay[]): Date {
   return new Date(Date.UTC(y, mo, d + 1, t0.hour, t0.minute, t0.second ?? 0, 0));
 }
 
-function nextWeeklyUtc(now: Date, anchor: Date): Date {
+function nextWeeklyUtc(now: Date, dayOfWeekUtc: number, time: UtcTimeOfDay): Date {
+  assertUtcDayOfWeek(dayOfWeekUtc);
   const nowMs = now.getTime();
-  const targetDow = anchor.getUTCDay();
-  const h = anchor.getUTCHours();
-  const m = anchor.getUTCMinutes();
-  const s = anchor.getUTCSeconds();
-  const ms = anchor.getUTCMilliseconds();
+  const h = time.hour;
+  const m = time.minute;
+  const s = time.second ?? 0;
 
   for (let day = 0; day < 14; day++) {
     const base = new Date(nowMs + day * 86_400_000);
     const y = base.getUTCFullYear();
     const mo = base.getUTCMonth();
     const d = base.getUTCDate();
-    const cand = new Date(Date.UTC(y, mo, d, h, m, s, ms));
-    if (cand.getUTCDay() !== targetDow) {
+    const cand = new Date(Date.UTC(y, mo, d, h, m, s, 0));
+    if (cand.getUTCDay() !== dayOfWeekUtc) {
       continue;
     }
     if (cand.getTime() > nowMs) {
@@ -100,20 +126,19 @@ function clampDayOfMonthUtc(year: number, month: number, desiredDom: number): nu
   return Math.min(desiredDom, last);
 }
 
-function nextMonthlyUtc(now: Date, anchor: Date): Date {
+function nextMonthlyUtc(now: Date, dayOfMonthUtc: number, time: UtcTimeOfDay): Date {
+  assertUtcDayOfMonth(dayOfMonthUtc);
   const nowMs = now.getTime();
-  const desiredDom = anchor.getUTCDate();
-  const h = anchor.getUTCHours();
-  const m = anchor.getUTCMinutes();
-  const s = anchor.getUTCSeconds();
-  const ms = anchor.getUTCMilliseconds();
+  const h = time.hour;
+  const m = time.minute;
+  const s = time.second ?? 0;
 
   let y = now.getUTCFullYear();
   let mo = now.getUTCMonth();
 
   for (let i = 0; i < 600; i++) {
-    const dom = clampDayOfMonthUtc(y, mo, desiredDom);
-    const cand = new Date(Date.UTC(y, mo, dom, h, m, s, ms));
+    const dom = clampDayOfMonthUtc(y, mo, dayOfMonthUtc);
+    const cand = new Date(Date.UTC(y, mo, dom, h, m, s, 0));
     if (cand.getTime() > nowMs) {
       return cand;
     }
@@ -132,8 +157,8 @@ export function getNextRunUtc(now: Date, schedule: UtcJobSchedule): Date {
     case ScheduleCadence.Daily:
       return nextDailyUtc(now, schedule.timesUtc);
     case ScheduleCadence.Weekly:
-      return nextWeeklyUtc(now, schedule.anchorUtc);
+      return nextWeeklyUtc(now, schedule.dayOfWeekUtc, schedule.timeUtc);
     case ScheduleCadence.Monthly:
-      return nextMonthlyUtc(now, schedule.anchorUtc);
+      return nextMonthlyUtc(now, schedule.dayOfMonthUtc, schedule.timeUtc);
   }
 }

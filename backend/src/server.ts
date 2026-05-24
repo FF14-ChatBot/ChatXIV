@@ -21,6 +21,18 @@ const server = app.listen(port, () => {
   logger.info({ port }, 'Server listening');
 });
 
+function closeHttpServer(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
 let shuttingDown = false;
 
 const gracefulShutdown = (signal: NodeJS.Signals): void => {
@@ -47,24 +59,23 @@ const gracefulShutdown = (signal: NodeJS.Signals): void => {
 
     const forceExitTimer = setTimeout(() => {
       logger.error({ signal, shutdownTimeoutMs, closeBudgetMs }, 'Forced shutdown after timeout');
+      closeAppDatabase();
       process.exit(1);
     }, closeBudgetMs);
     forceExitTimer.unref();
 
-    server.close((error) => {
-      clearTimeout(forceExitTimer);
-
-      if (error) {
-        logger.error({ error, signal }, 'Failed to close server cleanly');
-        closeAppDatabase();
-        process.exit(1);
-        return;
-      }
-
+    let exitCode = 0;
+    try {
+      await closeHttpServer();
       logger.info({ signal }, 'Server closed cleanly');
+    } catch (error) {
+      logger.error({ error, signal }, 'Failed to close server cleanly');
+      exitCode = 1;
+    } finally {
+      clearTimeout(forceExitTimer);
       closeAppDatabase();
-      process.exit(0);
-    });
+      process.exit(exitCode);
+    }
   })();
 };
 

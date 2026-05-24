@@ -136,6 +136,34 @@ describe('ProcessJobScheduler', () => {
     expect(runs).toBe(1);
   });
 
+  it('waitForInFlightJobs logs remaining job names when drain times out', async () => {
+    const log = createMockLogger();
+    const scheduler = new ProcessJobScheduler(log, { unrefTimers: false });
+    vi.setSystemTime(new Date('2026-06-01T10:00:00.000Z'));
+
+    scheduler.scheduleUtcJob({
+      name: 'stuck-job',
+      schedule: { cadence: ScheduleCadence.Daily, timesUtc: [{ hour: 10, minute: 0, second: 1 }] },
+      task: () => new Promise<void>(() => undefined),
+    });
+
+    await vi.advanceTimersByTimeAsync(2000);
+    scheduler.dispose();
+
+    const waitPromise = scheduler.waitForInFlightJobs(100);
+    await vi.advanceTimersByTimeAsync(100);
+    await waitPromise;
+
+    expect(log.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        remaining: 1,
+        remainingJobs: ['stuck-job'],
+        timeoutMs: 100,
+      }),
+      'Shutdown: in-flight scheduled jobs still running after wait timeout'
+    );
+  });
+
   it('waitForInFlightJobs resolves when a slow scheduled task finishes', async () => {
     const log = createMockLogger();
     const scheduler = new ProcessJobScheduler(log, { unrefTimers: false });
