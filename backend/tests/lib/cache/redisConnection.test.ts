@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { setActiveCacheBackend } from '@src/lib/cache/cacheHealth.js';
+import { cacheBackendHealth } from '@src/lib/cache/cacheBackendHealth.js';
 
 const handlers: Record<string, (arg?: unknown) => void> = {};
 
@@ -21,7 +21,7 @@ vi.mock('redis', () => ({
 
 describe('redisConnection', () => {
   beforeEach(() => {
-    setActiveCacheBackend('redis');
+    cacheBackendHealth.configure('redis');
     mockClient.isOpen = true;
     vi.clearAllMocks();
     handlers.error = undefined as unknown as (arg?: unknown) => void;
@@ -31,7 +31,7 @@ describe('redisConnection', () => {
   afterEach(async () => {
     const { closeRedis } = await import('@src/lib/cache/redisConnection.js');
     await closeRedis();
-    setActiveCacheBackend('memory');
+    cacheBackendHealth.configure('memory');
   });
 
   it('connects and pings successfully', async () => {
@@ -78,16 +78,23 @@ describe('redisConnection', () => {
     expect(mockClient.connect).toHaveBeenCalledTimes(2);
   });
 
+  it('closeRedis propagates errors from quit', async () => {
+    const { connectRedis, closeRedis } = await import('@src/lib/cache/redisConnection.js');
+    await connectRedis('redis://localhost:6379');
+    vi.mocked(mockClient.quit).mockRejectedValueOnce(new Error('quit failed'));
+    await expect(closeRedis()).rejects.toThrow('quit failed');
+  });
+
   it('registers error and ready handlers', async () => {
     const { connectRedis } = await import('@src/lib/cache/redisConnection.js');
-    const { isCacheHealthy, reportCacheFailure } = await import('@src/lib/cache/cacheHealth.js');
+    const { cacheBackendHealth } = await import('@src/lib/cache/cacheBackendHealth.js');
     await connectRedis('redis://localhost:6379');
     expect(handlers.error).toBeTypeOf('function');
     expect(handlers.ready).toBeTypeOf('function');
-    reportCacheFailure(new Error('down'));
+    cacheBackendHealth.recordOperationFailure(new Error('down'));
     handlers.ready?.();
-    expect(isCacheHealthy()).toBe(true);
+    expect(cacheBackendHealth.isHealthy()).toBe(true);
     handlers.error?.(new Error('socket'));
-    expect(isCacheHealthy()).toBe(false);
+    expect(cacheBackendHealth.isHealthy()).toBe(false);
   });
 });

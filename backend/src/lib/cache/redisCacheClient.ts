@@ -1,7 +1,8 @@
 import type { RedisClientType } from 'redis';
 import { logger } from '../observability/logger.js';
 import { cacheHit, cacheMiss, cacheUnavailable } from './cacheGetResult.js';
-import { reportCacheFailure, reportCacheSuccess } from './cacheHealth.js';
+import { cacheBackendHealth } from './cacheBackendHealth.js';
+import { logCacheHit, logCacheMiss, logCacheUnavailable } from './cacheAccessLog.js';
 import { toCacheStorageKey } from './cacheKeys.js';
 import type { CacheClient } from './types.js';
 import { pingRedis } from './redisConnection.js';
@@ -16,52 +17,68 @@ export function createRedisCacheClient(redis: RedisClientType): CacheClient {
       const storageKey = toCacheStorageKey(key);
       try {
         const raw = await redis.get(storageKey);
+        cacheBackendHealth.recordOperationSuccess();
         if (raw === null) {
-          reportCacheSuccess();
+          logCacheMiss(key);
           return cacheMiss<T>();
         }
         try {
           const value = JSON.parse(raw) as T;
-          reportCacheSuccess();
+          logCacheHit(key);
           return cacheHit(value);
         } catch (parseErr) {
           logger.warn({ err: parseErr, key }, 'Cache value JSON parse failed; treating as miss');
+          logCacheMiss(key);
           try {
             await redis.del(storageKey);
+            cacheBackendHealth.recordOperationSuccess();
           } catch (delErr) {
-            reportCacheFailure(delErr);
+            cacheBackendHealth.recordOperationFailure(delErr);
           }
           return cacheMiss<T>();
         }
       } catch (err) {
-        reportCacheFailure(err);
+        cacheBackendHealth.recordOperationFailure(err);
+        logCacheUnavailable(key, err);
         return cacheUnavailable<T>(toError(err));
       }
     },
 
-    async set(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
+    async set(key: string, value: unknown, ttlSeconds: number): Promise<void> {
       const storageKey = toCacheStorageKey(key);
       const payload = JSON.stringify(value);
       try {
-        if (ttlSeconds !== undefined) {
-          await redis.set(storageKey, payload, { EX: ttlSeconds });
-        } else {
-          await redis.set(storageKey, payload);
-        }
-        reportCacheSuccess();
+        await redis.set(storageKey, payload, { EX: ttlSeconds });
+        cacheBackendHealth.recordOperationSuccess();
       } catch (err) {
         logger.warn({ err, key }, 'Cache set failed');
-        reportCacheFailure(err);
+        cacheBackendHealth.recordOperationFailure(err);
+      }
+    },
+
+    async setNx(key: string, value: unknown, ttlSeconds?: number): Promise<boolean> {
+      const storageKey = toCacheStorageKey(key);
+      const payload = JSON.stringify(value);
+      try {
+        const options =
+          ttlSeconds !== undefined ? { NX: true as const, EX: ttlSeconds } : { NX: true as const };
+        const result = await redis.set(storageKey, payload, options);
+        cacheBackendHealth.recordOperationSuccess();
+        return result !== null;
+      } catch (err) {
+        logger.warn({ err, key }, 'Cache setNx failed');
+        cacheBackendHealth.recordOperationFailure(err);
+        return false;
       }
     },
 
     async delete(key: string): Promise<void> {
       try {
         await redis.del(toCacheStorageKey(key));
-        reportCacheSuccess();
+        cacheBackendHealth.recordOperationSuccess();
       } catch (err) {
         logger.warn({ err, key }, 'Cache delete failed');
-        reportCacheFailure(err);
+        cacheBackendHealth.recordOperationFailure(err);
       }
     },
 
@@ -71,10 +88,10 @@ export function createRedisCacheClient(redis: RedisClientType): CacheClient {
         for await (const key of redis.scanIterator({ MATCH: match, COUNT: 100 })) {
           await redis.del(String(key));
         }
-        reportCacheSuccess();
+        cacheBackendHealth.recordOperationSuccess();
       } catch (err) {
         logger.warn({ err, prefix }, 'Cache deleteByPrefix failed');
-        reportCacheFailure(err);
+        cacheBackendHealth.recordOperationFailure(err);
       }
     },
 

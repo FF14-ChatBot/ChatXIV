@@ -1,19 +1,23 @@
 /**
  * Cache backend resolution and startup validation.
  *
- * @see backend/.env.example — CACHE_BACKEND, REDIS_URL, REDIS_REQUIRED
+ * Wire values: `CacheBackend` / `ResolvedCacheBackend` in `constants.ts` (with `ENV_KEYS`).
+ * Parsing pattern matches `RUNTIME_STAGE` in `env.ts` — `as const` object, derived union, env read here.
+ *
+ * @see backend/.env.example — CACHE_BACKEND (default redis), REDIS_URL, REDIS_REQUIRED
  */
-import { ENV_KEYS } from './constants.js';
+import {
+  CacheBackend,
+  ENV_KEYS,
+  ResolvedCacheBackend,
+  type CacheBackendSetting,
+} from './constants.js';
 
-export const CacheBackend = {
-  Auto: 'auto',
-  Memory: 'memory',
-  Redis: 'redis',
-} as const;
+export type { CacheBackendSetting };
 
-export type CacheBackendSetting = (typeof CacheBackend)[keyof typeof CacheBackend];
+const CACHE_BACKEND_SETTING_VALUES: readonly CacheBackendSetting[] = Object.values(CacheBackend);
 
-export type ResolvedCacheBackend = 'memory' | 'redis';
+const DEFAULT_CACHE_BACKEND_SETTING = CacheBackend.Redis;
 
 export interface ResolvedCacheConfig {
   readonly backend: ResolvedCacheBackend;
@@ -36,13 +40,19 @@ function parseBooleanEnv(key: string, defaultValue: boolean): boolean {
   throw new Error(`Invalid ${key}: "${raw}" (expected true, false, 1, or 0)`);
 }
 
+function isCacheBackendSetting(raw: string): raw is CacheBackendSetting {
+  return (CACHE_BACKEND_SETTING_VALUES as readonly string[]).includes(raw);
+}
+
 export function getCacheBackendSetting(): CacheBackendSetting {
   const raw = readTrimmedEnv(ENV_KEYS.CACHE_BACKEND);
-  if (raw === undefined) return CacheBackend.Auto;
-  if (raw === CacheBackend.Auto || raw === CacheBackend.Memory || raw === CacheBackend.Redis) {
+  if (raw === undefined) return DEFAULT_CACHE_BACKEND_SETTING;
+  if (isCacheBackendSetting(raw)) {
     return raw;
   }
-  throw new Error(`Invalid ${ENV_KEYS.CACHE_BACKEND}: "${raw}" (expected auto, memory, or redis)`);
+  throw new Error(
+    `Invalid ${ENV_KEYS.CACHE_BACKEND}: "${raw}" (expected ${CACHE_BACKEND_SETTING_VALUES.join(', ')})`
+  );
 }
 
 export function getRedisUrl(): string | undefined {
@@ -59,18 +69,32 @@ export function resolveCacheConfig(): ResolvedCacheConfig {
   const redisRequired = getRedisRequired();
 
   if (setting === CacheBackend.Memory) {
-    return { backend: 'memory', redisUrl, redisRequired };
+    return { backend: ResolvedCacheBackend.Memory, redisUrl, redisRequired };
   }
 
   if (setting === CacheBackend.Redis) {
-    return { backend: 'redis', redisUrl, redisRequired };
+    if (redisUrl !== undefined) {
+      return { backend: ResolvedCacheBackend.Redis, redisUrl, redisRequired };
+    }
+    if (!redisRequired) {
+      return {
+        backend: ResolvedCacheBackend.Memory,
+        redisUrl: undefined,
+        redisRequired: false,
+      };
+    }
+    return { backend: ResolvedCacheBackend.Redis, redisUrl, redisRequired };
   }
 
   // auto
   if (redisUrl !== undefined) {
-    return { backend: 'redis', redisUrl, redisRequired };
+    return { backend: ResolvedCacheBackend.Redis, redisUrl, redisRequired };
   }
-  return { backend: 'memory', redisUrl: undefined, redisRequired };
+  return {
+    backend: ResolvedCacheBackend.Memory,
+    redisUrl: undefined,
+    redisRequired: false,
+  };
 }
 
 /**
@@ -81,20 +105,23 @@ export function validateCacheConfig(): void {
   const redisUrl = getRedisUrl();
   const redisRequired = getRedisRequired();
 
-  if (setting === CacheBackend.Redis && !redisRequired) {
-    console.error(
-      `Fatal: ${ENV_KEYS.CACHE_BACKEND}=redis requires ${ENV_KEYS.REDIS_REQUIRED}=true`
-    );
-    process.exit(1);
-  }
-
-  if (setting === CacheBackend.Redis && redisUrl === undefined) {
+  if (setting === CacheBackend.Redis && redisUrl === undefined && redisRequired) {
     console.error(`Fatal: ${ENV_KEYS.CACHE_BACKEND}=redis requires ${ENV_KEYS.REDIS_URL}`);
     process.exit(1);
   }
 
+  if (setting === CacheBackend.Redis && redisUrl === undefined && !redisRequired) {
+    console.warn(
+      `[config] ${ENV_KEYS.CACHE_BACKEND}=redis but ${ENV_KEYS.REDIS_URL} is unset; using in-memory cache until Redis is configured`
+    );
+  }
+
   const resolved = resolveCacheConfig();
-  if (resolved.backend === 'redis' && resolved.redisUrl === undefined) {
+  if (
+    resolved.backend === ResolvedCacheBackend.Redis &&
+    resolved.redisUrl === undefined &&
+    redisRequired
+  ) {
     console.error(`Fatal: cache backend is redis but ${ENV_KEYS.REDIS_URL} is not set`);
     process.exit(1);
   }

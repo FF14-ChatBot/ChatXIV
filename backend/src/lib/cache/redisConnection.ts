@@ -1,7 +1,7 @@
 import { createClient, type RedisClientType } from 'redis';
 import { REDIS_COMMAND_TIMEOUT_MS } from '../config/constants.js';
 import { logger } from '../observability/logger.js';
-import { markCacheUnhealthyFromProbe, reportCacheSuccess } from './cacheHealth.js';
+import { cacheBackendHealth } from './cacheBackendHealth.js';
 
 let client: RedisClientType | null = null;
 let redisUrl: string | null = null;
@@ -45,11 +45,11 @@ export async function connectRedis(url: string): Promise<void> {
   });
 
   next.on('error', (err) => {
-    markCacheUnhealthyFromProbe(err);
+    cacheBackendHealth.recordOperationFailure(err);
   });
 
   next.on('ready', () => {
-    reportCacheSuccess();
+    cacheBackendHealth.recordOperationSuccess();
   });
 
   client = next as RedisClientType;
@@ -61,13 +61,15 @@ export async function pingRedis(): Promise<boolean> {
   try {
     const pong = await client.ping();
     if (pong === 'PONG') {
-      reportCacheSuccess();
+      cacheBackendHealth.recordOperationSuccess();
       return true;
     }
-    markCacheUnhealthyFromProbe(new Error(`Unexpected PING response: ${String(pong)}`));
+    cacheBackendHealth.recordOperationFailure(
+      new Error(`Unexpected PING response: ${String(pong)}`)
+    );
     return false;
   } catch (err) {
-    markCacheUnhealthyFromProbe(err);
+    cacheBackendHealth.recordOperationFailure(err);
     return false;
   }
 }
@@ -77,7 +79,11 @@ export async function closeRedis(): Promise<void> {
   const toClose = client;
   client = null;
   redisUrl = null;
-  if (toClose.isOpen) {
+  if (!toClose.isOpen) return;
+  try {
     await toClose.quit();
+  } catch (err) {
+    logger.error({ err }, 'Failed to close Redis connection cleanly');
+    throw err;
   }
 }

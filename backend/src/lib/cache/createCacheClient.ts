@@ -1,5 +1,6 @@
 import type { ResolvedCacheConfig } from '../config/cacheConfig.js';
-import { setActiveCacheBackend } from './cacheHealth.js';
+import { ResolvedCacheBackend } from '../config/constants.js';
+import { cacheBackendHealth } from './cacheBackendHealth.js';
 import { createMemoryCacheClient } from './memoryCacheClient.js';
 import { createRedisCacheClient } from './redisCacheClient.js';
 import { connectRedis, getRedisClient } from './redisConnection.js';
@@ -8,9 +9,9 @@ import type { CacheClient } from './types.js';
 export async function createCacheClientForConfig(
   config: ResolvedCacheConfig
 ): Promise<CacheClient> {
-  setActiveCacheBackend(config.backend);
+  cacheBackendHealth.configure(config.backend);
 
-  if (config.backend === 'memory') {
+  if (config.backend === ResolvedCacheBackend.Memory) {
     return createMemoryCacheClient();
   }
 

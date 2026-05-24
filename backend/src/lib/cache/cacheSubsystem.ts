@@ -1,18 +1,18 @@
-import { CACHE_HEALTH_PROBE_INTERVAL_MS } from '../config/constants.js';
+import { CACHE_HEALTH_PROBE_INTERVAL_MS, ResolvedCacheBackend } from '../config/constants.js';
 import { resolveCacheConfig } from '../config/cacheConfig.js';
 import { container, CacheClientToken } from '../di/container.js';
 import type { CacheClient } from './types.js';
 import { createCacheClientForConfig } from './createCacheClient.js';
 import { closeRedis, pingRedis } from './redisConnection.js';
-import { isRedisCacheBackend, reportCacheFailure } from './cacheHealth.js';
+import { cacheBackendHealth } from './cacheBackendHealth.js';
 import { logger } from '../observability/logger.js';
 
 let probeTimer: ReturnType<typeof setInterval> | null = null;
 let cacheClient: CacheClient | null = null;
 
-export function getCacheSubsystemClient(): CacheClient {
+export function getCacheClient(): CacheClient {
   if (!cacheClient) {
-    throw new Error('Cache subsystem is not initialized');
+    throw new Error('Cache is not initialized');
   }
   return cacheClient;
 }
@@ -26,7 +26,7 @@ export async function initializeCacheSubsystem(): Promise<CacheClient> {
   cacheClient = await createCacheClientForConfig(config);
   container.registerInstance(CacheClientToken, cacheClient);
 
-  if (config.backend === 'redis') {
+  if (config.backend === ResolvedCacheBackend.Redis) {
     const ok = await cacheClient.ping();
     if (!ok && config.redisRequired) {
       console.error('Fatal: REDIS_REQUIRED=true but Redis PING failed at startup');
@@ -45,10 +45,10 @@ function startCacheHealthProbe(): void {
   if (probeTimer) return;
   probeTimer = setInterval(() => {
     void (async () => {
-      if (!isRedisCacheBackend()) return;
+      if (!cacheBackendHealth.isRedisBackend()) return;
       const ok = await pingRedis();
       if (!ok) {
-        reportCacheFailure(new Error('Redis health probe failed'));
+        cacheBackendHealth.recordOperationFailure(new Error('Redis health probe failed'));
       }
     })();
   }, CACHE_HEALTH_PROBE_INTERVAL_MS);

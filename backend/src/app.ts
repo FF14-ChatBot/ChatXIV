@@ -35,7 +35,7 @@ import { HTTP_HEADER_NAMES, HTTP_METHOD } from '@chatxiv/cdm';
 import { getSessionSecret, getBootstrapAdminSubs } from './lib/config/env.js';
 import { getOrOpenAppDatabase } from './lib/persistence/sqlite/appDatabaseSingleton.js';
 import { createUserDao } from './lib/persistence/sqlite/userDao.js';
-import { getCacheReadinessCheck } from './lib/cache/cacheHealth.js';
+import { cacheBackendHealth } from './lib/cache/cacheBackendHealth.js';
 
 export const app = express();
 
@@ -98,16 +98,16 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.get('/health/ready', (_req, res) => {
-  const cache = getCacheReadinessCheck();
+app.get('/health/cache', (_req, res) => {
+  const cache = cacheBackendHealth.readiness();
   if (!cache.ok) {
     res.status(503).json({
       status: 'unavailable',
-      checks: { cache },
+      cache,
     });
     return;
   }
-  res.json({ status: 'ok', checks: { cache } });
+  res.json({ status: 'ok', cache });
 });
 
 // ── Public routes (/v1) ──────────────────────────────────────────────

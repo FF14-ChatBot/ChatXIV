@@ -1,5 +1,6 @@
 import type { CacheClient } from './types.js';
 import { cacheHit, cacheMiss } from './cacheGetResult.js';
+import { logCacheHit, logCacheMiss } from './cacheAccessLog.js';
 import { toCacheStorageKey } from './cacheKeys.js';
 
 interface CacheEntry {
@@ -23,14 +24,27 @@ export function createMemoryCacheClient(): CacheClient {
       const entry = store.get(storageKey(key));
       if (!entry || isExpired(entry)) {
         if (entry) store.delete(storageKey(key));
+        logCacheMiss(key);
         return cacheMiss<T>();
       }
+      logCacheHit(key);
       return cacheHit(entry.value as T);
     },
 
-    async set(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
-      const expiresAt = ttlSeconds !== undefined ? Date.now() + ttlSeconds * 1000 : null;
+    async set(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+      const expiresAt = Date.now() + ttlSeconds * 1000;
       store.set(storageKey(key), { value, expiresAt });
+    },
+
+    async setNx(key: string, value: unknown, ttlSeconds?: number): Promise<boolean> {
+      const k = storageKey(key);
+      const existing = store.get(k);
+      if (existing && !isExpired(existing)) {
+        return false;
+      }
+      const expiresAt = ttlSeconds !== undefined ? Date.now() + ttlSeconds * 1000 : null;
+      store.set(k, { value, expiresAt });
+      return true;
     },
 
     async delete(key: string): Promise<void> {

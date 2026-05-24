@@ -17,6 +17,9 @@ describe('lib/config/validate', () => {
   it('does not exit or warn when no startup-required vars are configured', () => {
     delete process.env.OIDC_ISSUER;
     delete process.env.FRONTEND_ORIGIN;
+    process.env.CACHE_BACKEND = 'memory';
+    delete process.env.REDIS_URL;
+    delete process.env.REDIS_REQUIRED;
     validateStartupConfig();
     expect(exitSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();

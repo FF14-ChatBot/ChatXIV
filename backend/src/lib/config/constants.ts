@@ -80,6 +80,23 @@ export const ENV_KEYS = {
   REDIS_REQUIRED: 'REDIS_REQUIRED',
 } as const;
 
+/** Allowed `CACHE_BACKEND` env values — parsed in `cacheConfig.ts`. */
+export const CacheBackend = {
+  Auto: 'auto',
+  Memory: 'memory',
+  Redis: 'redis',
+} as const;
+
+export type CacheBackendSetting = (typeof CacheBackend)[keyof typeof CacheBackend];
+
+/** Runtime cache store after resolving env (see `resolveCacheConfig()` in `cacheConfig.ts`). */
+export const ResolvedCacheBackend = {
+  Memory: 'memory',
+  Redis: 'redis',
+} as const;
+
+export type ResolvedCacheBackend = (typeof ResolvedCacheBackend)[keyof typeof ResolvedCacheBackend];
+
 /** Prefix for all cache keys in Redis (and logical keys in memory). */
 export const CACHE_KEY_PREFIX = 'chatxiv:cache:' as const;
 
@@ -112,7 +129,7 @@ export const METRICS_SKIP_ROUTE_PREFIXES = [
   '/v1/docs',
   '/v1/admin/docs',
   '/health',
-  '/health/ready',
+  '/health/cache',
 ] as const;
 
 export const XIVAPI_BASE_URL = 'https://v2.xivapi.com/api' as const;

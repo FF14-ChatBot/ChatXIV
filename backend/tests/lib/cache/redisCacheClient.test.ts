@@ -6,16 +6,19 @@ vi.mock('@src/lib/cache/redisConnection.js', () => ({
 
 import { createRedisCacheClient } from '@src/lib/cache/redisCacheClient.js';
 import { CacheGetOutcome } from '@src/lib/cache/cacheGetResult.js';
-import { setActiveCacheBackend } from '@src/lib/cache/cacheHealth.js';
+import { cacheBackendHealth } from '@src/lib/cache/cacheBackendHealth.js';
 import type { RedisClientType } from 'redis';
 
 function createMockRedis(): RedisClientType {
   const store = new Map<string, string>();
   return {
     get: vi.fn(async (key: string) => store.get(key) ?? null),
-    set: vi.fn(async (key: string, value: string, opts?: { EX?: number }) => {
+    set: vi.fn(async (key: string, value: string, opts?: { EX?: number; NX?: boolean }) => {
+      if (opts?.NX && store.has(key)) {
+        return null;
+      }
       store.set(key, value);
-      void opts;
+      return 'OK';
     }),
     del: vi.fn(async (keys: string | string[]) => {
       const list = Array.isArray(keys) ? keys : [keys];
@@ -32,7 +35,7 @@ function createMockRedis(): RedisClientType {
 
 describe('createRedisCacheClient', () => {
   beforeEach(() => {
-    setActiveCacheBackend('redis');
+    cacheBackendHealth.configure('redis');
   });
 
   it('returns hit after set', async () => {
@@ -54,13 +57,31 @@ describe('createRedisCacheClient', () => {
     expect(result.outcome).toBe(CacheGetOutcome.Unavailable);
   });
 
-  it('set without ttl stores value', async () => {
+  it('setNx returns true only when the key is absent', async () => {
     const redis = createMockRedis();
     const client = createRedisCacheClient(redis);
-    await client.set('plain', { x: 1 });
+    await expect(client.setNx('lock', { v: 1 }, 30)).resolves.toBe(true);
+    await expect(client.setNx('lock', { v: 2 }, 30)).resolves.toBe(false);
+    expect(vi.mocked(redis.set)).toHaveBeenLastCalledWith(
+      expect.stringContaining('lock'),
+      JSON.stringify({ v: 2 }),
+      { NX: true, EX: 30 }
+    );
+    const hit = await client.get<{ v: number }>('lock');
+    expect(hit.outcome).toBe(CacheGetOutcome.Hit);
+    if (hit.outcome === CacheGetOutcome.Hit) {
+      expect(hit.value).toEqual({ v: 1 });
+    }
+  });
+
+  it('set always applies EX ttl', async () => {
+    const redis = createMockRedis();
+    const client = createRedisCacheClient(redis);
+    await client.set('plain', { x: 1 }, 300);
     expect(vi.mocked(redis.set)).toHaveBeenCalledWith(
       expect.stringContaining('plain'),
-      JSON.stringify({ x: 1 })
+      JSON.stringify({ x: 1 }),
+      { EX: 300 }
     );
   });
 
@@ -74,15 +95,15 @@ describe('createRedisCacheClient', () => {
     const redis = createMockRedis();
     vi.mocked(redis.set).mockRejectedValueOnce(new Error('write fail'));
     const client = createRedisCacheClient(redis);
-    await expect(client.set('k', 1)).resolves.toBeUndefined();
+    await expect(client.set('k', 1, 60)).resolves.toBeUndefined();
   });
 
   it('deleteByPrefix removes matching keys', async () => {
     const redis = createMockRedis();
     const client = createRedisCacheClient(redis);
-    await client.set('ns:a', 1);
-    await client.set('ns:b', 2);
-    await client.set('other', 3);
+    await client.set('ns:a', 1, 3600);
+    await client.set('ns:b', 2, 3600);
+    await client.set('other', 3, 3600);
     await client.deleteByPrefix('ns:');
     expect((await client.get('ns:a')).outcome).toBe(CacheGetOutcome.Miss);
     expect((await client.get('other')).outcome).toBe(CacheGetOutcome.Hit);

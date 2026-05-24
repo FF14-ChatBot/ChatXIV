@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import { CacheBackend, ResolvedCacheBackend } from '@src/lib/config/constants.js';
 import {
-  CacheBackend,
   getCacheBackendSetting,
   getRedisRequired,
   resolveCacheConfig,
@@ -16,17 +16,18 @@ describe('lib/config/cacheConfig', () => {
     vi.restoreAllMocks();
   });
 
-  it('defaults to auto backend and memory when REDIS_URL is unset', () => {
+  it('defaults to redis backend and in-memory when REDIS_URL is unset', () => {
     delete process.env[ENV_KEYS.CACHE_BACKEND];
     delete process.env[ENV_KEYS.REDIS_URL];
-    expect(getCacheBackendSetting()).toBe(CacheBackend.Auto);
-    expect(resolveCacheConfig().backend).toBe('memory');
+    expect(getCacheBackendSetting()).toBe(CacheBackend.Redis);
+    expect(resolveCacheConfig().backend).toBe(ResolvedCacheBackend.Memory);
   });
 
   it('auto selects redis when REDIS_URL is set', () => {
+    process.env[ENV_KEYS.CACHE_BACKEND] = 'auto';
     process.env[ENV_KEYS.REDIS_URL] = 'redis://localhost:6379';
     expect(resolveCacheConfig()).toEqual({
-      backend: 'redis',
+      backend: ResolvedCacheBackend.Redis,
       redisUrl: 'redis://localhost:6379',
       redisRequired: false,
     });
@@ -39,14 +40,24 @@ describe('lib/config/cacheConfig', () => {
     expect(getRedisRequired()).toBe(false);
   });
 
-  it('exits when CACHE_BACKEND=redis without REDIS_URL', () => {
+  it('exits when CACHE_BACKEND=redis without REDIS_URL and REDIS_REQUIRED=true', () => {
     process.env[ENV_KEYS.CACHE_BACKEND] = 'redis';
+    process.env[ENV_KEYS.REDIS_REQUIRED] = 'true';
     delete process.env[ENV_KEYS.REDIS_URL];
     const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     validateCacheConfig();
     expect(error).toHaveBeenCalled();
     expect(exit).toHaveBeenCalledWith(1);
+  });
+
+  it('warns when CACHE_BACKEND=redis without REDIS_URL and REDIS_REQUIRED=false', () => {
+    process.env[ENV_KEYS.CACHE_BACKEND] = 'redis';
+    process.env[ENV_KEYS.REDIS_REQUIRED] = 'false';
+    delete process.env[ENV_KEYS.REDIS_URL];
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    validateCacheConfig();
+    expect(warn).toHaveBeenCalled();
   });
 
   it('rejects invalid CACHE_BACKEND', () => {
@@ -61,15 +72,15 @@ describe('lib/config/cacheConfig', () => {
 
   it('resolveCacheConfig uses memory backend explicitly', () => {
     process.env[ENV_KEYS.CACHE_BACKEND] = 'memory';
-    expect(resolveCacheConfig().backend).toBe('memory');
+    expect(resolveCacheConfig().backend).toBe(ResolvedCacheBackend.Memory);
   });
 
-  it('exits when CACHE_BACKEND=redis with REDIS_REQUIRED=false', () => {
+  it('allows CACHE_BACKEND=redis with REDIS_REQUIRED=false when REDIS_URL is set', () => {
     process.env[ENV_KEYS.CACHE_BACKEND] = 'redis';
     process.env[ENV_KEYS.REDIS_URL] = 'redis://localhost:6379';
     process.env[ENV_KEYS.REDIS_REQUIRED] = 'false';
     const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
     validateCacheConfig();
-    expect(exit).toHaveBeenCalledWith(1);
+    expect(exit).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { ENV_KEYS } from '@src/lib/config/constants.js';
 import { CacheClientToken, container, register } from '@src/lib/di/container.js';
 import type { CacheClient } from '@src/lib/cache/types.js';
-import { createMemoryCacheClient } from '@src/lib/cache/memoryCacheClient.js';
+import { createMockCacheClient } from '@test/mocks/cacheClient.mock.js';
 import { resetBackendContainerForTests } from '@test/helpers/resetBackendContainer.js';
 
 vi.mock('@src/lib/cache/createCacheClient.js', () => ({
@@ -12,7 +12,7 @@ vi.mock('@src/lib/cache/createCacheClient.js', () => ({
 import { createCacheClientForConfig } from '@src/lib/cache/createCacheClient.js';
 import {
   disposeCacheSubsystem,
-  getCacheSubsystemClient,
+  getCacheClient,
   initializeCacheSubsystem,
 } from '@src/lib/cache/cacheSubsystem.js';
 
@@ -33,31 +33,35 @@ describe('cacheSubsystem', () => {
     register();
   });
 
-  it('getCacheSubsystemClient throws before initialize', () => {
-    expect(() => getCacheSubsystemClient()).toThrow('Cache subsystem is not initialized');
+  it('getCacheClient throws before initialize', () => {
+    expect(() => getCacheClient()).toThrow('Cache is not initialized');
   });
 
-  it('initializeCacheSubsystem registers memory client in DI', async () => {
-    vi.mocked(createCacheClientForConfig).mockResolvedValue(createMemoryCacheClient());
-    const client = await initializeCacheSubsystem();
-    expect(client).toBeDefined();
+  it('resolve CacheClientToken throws before initializeCacheSubsystem', () => {
+    expect(() => container.resolve<CacheClient>(CacheClientToken)).toThrow();
+  });
+
+  it('initializeCacheSubsystem registers the client in DI', async () => {
+    const client = createMockCacheClient();
+    vi.mocked(createCacheClientForConfig).mockResolvedValue(client);
+    const initialized = await initializeCacheSubsystem();
+    expect(initialized).toBe(client);
     expect(container.resolve<CacheClient>(CacheClientToken)).toBe(client);
-    expect(await client.ping()).toBe(true);
   });
 
   it('disposeCacheSubsystem clears client state', async () => {
-    vi.mocked(createCacheClientForConfig).mockResolvedValue(createMemoryCacheClient());
+    vi.mocked(createCacheClientForConfig).mockResolvedValue(createMockCacheClient());
     await initializeCacheSubsystem();
     await disposeCacheSubsystem();
-    expect(() => getCacheSubsystemClient()).toThrow();
+    expect(() => getCacheClient()).toThrow();
   });
 
   it('initializes redis backend and warns when ping fails but not required', async () => {
     process.env[ENV_KEYS.CACHE_BACKEND] = 'redis';
     process.env[ENV_KEYS.REDIS_URL] = 'redis://localhost:6379';
     process.env[ENV_KEYS.REDIS_REQUIRED] = 'false';
-    const client = createMemoryCacheClient();
-    vi.spyOn(client, 'ping').mockResolvedValue(false);
+    const client = createMockCacheClient();
+    client.ping.mockResolvedValue(false);
     vi.mocked(createCacheClientForConfig).mockResolvedValue(client);
     await initializeCacheSubsystem();
     expect(container.resolve<CacheClient>(CacheClientToken)).toBe(client);

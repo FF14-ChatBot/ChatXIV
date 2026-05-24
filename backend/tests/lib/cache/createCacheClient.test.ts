@@ -23,11 +23,11 @@ vi.mock('@src/lib/cache/redisConnection.js', () => ({
 
 import { createCacheClientForConfig } from '@src/lib/cache/createCacheClient.js';
 import { CacheGetOutcome } from '@src/lib/cache/cacheGetResult.js';
-import { setActiveCacheBackend } from '@src/lib/cache/cacheHealth.js';
+import { cacheBackendHealth } from '@src/lib/cache/cacheBackendHealth.js';
 
 describe('createCacheClientForConfig', () => {
   afterEach(() => {
-    setActiveCacheBackend('memory');
+    cacheBackendHealth.configure('memory');
   });
 
   it('returns memory client for memory backend', async () => {
@@ -48,7 +48,7 @@ describe('createCacheClientForConfig', () => {
       redisRequired: true,
     });
     expect(connectRedis).toHaveBeenCalledWith('redis://localhost:6379');
-    await client.set('a', 1);
+    await client.set('a', 1, 3600);
     expect((await client.get<number>('a')).outcome).toBe(CacheGetOutcome.Hit);
   });
 });
