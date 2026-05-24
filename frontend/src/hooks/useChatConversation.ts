@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageRole, type Message } from '../types/chat';
+import { ConversationRole } from '@chatxiv/cdm';
+import type { Message } from '../types/chat';
 import { CHAT_THREAD_GREETING } from '../features/chat/chatThreadGreeting';
 import { ChatSessionLanding } from '../types/chatSession';
 import { createDemoChatAssistantPort, type ChatAssistantPort } from '../lib/chat/chatAssistantPort';
@@ -20,7 +21,7 @@ function makeThreadGreetingMessage(): Message {
   return {
     id: crypto.randomUUID(),
     text: CHAT_THREAD_GREETING,
-    role: MessageRole.Assistant,
+    role: ConversationRole.Assistant,
   };
 }
 
@@ -70,7 +71,7 @@ export function useChatConversation(
       const userMessage: Message = {
         id: crypto.randomUUID(),
         text: trimmed,
-        role: MessageRole.User,
+        role: ConversationRole.User,
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -82,12 +83,13 @@ export function useChatConversation(
 
       void (async () => {
         try {
-          const { text: replyText } = await assistantPort.getReply(trimmed, ac.signal);
+          const reply = await assistantPort.getReply(trimmed, ac.signal);
           if (abortRef.current !== ac) return;
           const botMessage: Message = {
             id: crypto.randomUUID(),
-            text: replyText,
-            role: MessageRole.Assistant,
+            text: reply.text,
+            role: ConversationRole.Assistant,
+            sources: reply.sources,
           };
           setMessages((prev) => [...prev, botMessage]);
         } catch (e) {

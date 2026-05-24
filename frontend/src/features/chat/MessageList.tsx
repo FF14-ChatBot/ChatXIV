@@ -1,5 +1,7 @@
-import { MessageRole, type Message } from '../../types/chat';
+import { ConversationRole } from '@chatxiv/cdm';
+import type { Message } from '../../types/chat';
 import { MessageFeedbackBar } from './MessageFeedbackBar';
+import { SourceDropdown } from './SourceDropdown';
 import styles from './MessageList.module.css';
 
 interface MessageListProps {
@@ -10,7 +12,7 @@ export function MessageList({ messages }: MessageListProps) {
   return (
     <div className={styles.wrapper}>
       {messages.map((message) =>
-        message.role === MessageRole.User ? (
+        message.role === ConversationRole.User ? (
           <div key={message.id} className={styles.user}>
             <p className={styles.bubbleText}>{message.text}</p>
           </div>
@@ -19,7 +21,15 @@ export function MessageList({ messages }: MessageListProps) {
             <div className={styles.assistant}>
               <p className={styles.bubbleText}>{message.text}</p>
             </div>
-            <MessageFeedbackBar messageId={message.id} />
+            <div className={styles.footerRow}>
+              <SourceDropdown sources={message.sources} />
+              {message.sources && message.sources.length > 0 && (
+                <span className={styles.separator} aria-hidden>
+                  |
+                </span>
+              )}
+              <MessageFeedbackBar messageId={message.id} />
+            </div>
           </div>
         )
       )}

@@ -5,7 +5,7 @@ import { CHAT_THREAD_GREETING } from '@/features/chat/chatThreadGreeting';
 import type { ChatAssistantPort } from '@/lib/chat/chatAssistantPort';
 import { DEMO_ASSISTANT_REPLY } from '@/lib/chat/chatAssistantPort';
 import { ChatSessionLanding } from '@/types/chatSession';
-import { MessageRole } from '@/types/chat';
+import { ConversationRole } from '@chatxiv/cdm';
 import { logger } from '@/lib/logger/instance';
 
 describe('useChatConversation', () => {
@@ -20,7 +20,7 @@ describe('useChatConversation', () => {
       result.current.sendMessage('hi');
     });
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0]?.role).toBe(MessageRole.User);
+    expect(result.current.messages[0]?.role).toBe(ConversationRole.User);
 
     await waitFor(
       () => {
@@ -72,7 +72,7 @@ describe('useChatConversation', () => {
 
     rerender({ gen: 1, landing: ChatSessionLanding.Thread });
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0]?.role).toBe(MessageRole.Assistant);
+    expect(result.current.messages[0]?.role).toBe(ConversationRole.Assistant);
     expect(result.current.messages[0]?.text).toBe(CHAT_THREAD_GREETING);
 
     rerender({ gen: 2, landing: ChatSessionLanding.Welcome });

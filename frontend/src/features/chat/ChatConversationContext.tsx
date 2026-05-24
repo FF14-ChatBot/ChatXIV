@@ -1,7 +1,8 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useChatSession } from './ChatSessionContext';
 import { useChatConversation } from '../../hooks/useChatConversation';
-import { MessageRole, type Message } from '../../types/chat';
+import { ConversationRole } from '@chatxiv/cdm';
+import type { Message } from '../../types/chat';
 
 export type ChatConversationContextValue = {
   readonly messages: Message[];
@@ -25,7 +26,7 @@ export function ChatConversationProvider({ children }: { readonly children: Reac
   );
 
   const isEphemeralDirty =
-    messages.some((m) => m.role === MessageRole.User) || inputValue.trim().length > 0;
+    messages.some((m) => m.role === ConversationRole.User) || inputValue.trim().length > 0;
 
   const value = useMemo(
     (): ChatConversationContextValue => ({
