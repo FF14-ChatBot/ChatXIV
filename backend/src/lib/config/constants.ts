@@ -72,7 +72,22 @@ export const ENV_KEYS = {
   LOKI_HOST: 'LOKI_HOST',
   LOKI_USER_ID: 'LOKI_USER_ID',
   LOKI_PASSWORD: 'LOKI_PASSWORD',
+  /** Redis connection URL (e.g. redis://localhost:6379). Used when cache backend is Redis. */
+  REDIS_URL: 'REDIS_URL',
+  /** `auto` | `memory` | `redis` — see `cacheConfig.ts`. */
+  CACHE_BACKEND: 'CACHE_BACKEND',
+  /** When true, startup fails if the resolved backend is Redis but ping fails. */
+  REDIS_REQUIRED: 'REDIS_REQUIRED',
 } as const;
+
+/** Prefix for all cache keys in Redis (and logical keys in memory). */
+export const CACHE_KEY_PREFIX = 'chatxiv:cache:' as const;
+
+/** Interval for background Redis PING when the active cache backend is Redis. */
+export const CACHE_HEALTH_PROBE_INTERVAL_MS = 15_000 as const;
+
+/** Redis command/connect timeout (ms). */
+export const REDIS_COMMAND_TIMEOUT_MS = 5_000 as const;
 
 /** Cookie name for the signed session ID. */
 export const SESSION_COOKIE = 'chatxiv_sid' as const;
@@ -93,7 +108,12 @@ export const REDACT = {
  * Resolved metric routes matching these prefixes are not persisted (Swagger UI mounts, health).
  * Same intent as rate-limit skips for docs, but we still record API traffic under `/v1/admin`.
  */
-export const METRICS_SKIP_ROUTE_PREFIXES = ['/v1/docs', '/v1/admin/docs', '/health'] as const;
+export const METRICS_SKIP_ROUTE_PREFIXES = [
+  '/v1/docs',
+  '/v1/admin/docs',
+  '/health',
+  '/health/ready',
+] as const;
 
 export const XIVAPI_BASE_URL = 'https://v2.xivapi.com/api' as const;
 export const XIVAPI_TIMEOUT_MS = 5_000 as const;

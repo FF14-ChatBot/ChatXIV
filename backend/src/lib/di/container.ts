@@ -118,8 +118,8 @@ export function register(): void {
 
   // ── Chat pipeline ────────────────────────────────────────────────────
 
-  const cacheClient = createMemoryCacheClient();
-  container.registerInstance<CacheClient>(CacheClientToken, cacheClient);
+  // Default in-memory cache for unit tests; production replaces via `initializeCacheSubsystem()`.
+  container.registerInstance<CacheClient>(CacheClientToken, createMemoryCacheClient());
 
   // TODO: Replace with real AnthropicClient once lib/clients/anthropic/ is implemented.
   const stubLlmClient: LlmClient = {

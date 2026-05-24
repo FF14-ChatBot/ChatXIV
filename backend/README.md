@@ -83,6 +83,24 @@ On **Windows PowerShell**, if the `docker run ... sqlite3` one-liner is awkward,
 
 **Env-based bootstrap (no SQL):** set **`BOOTSTRAP_ADMIN_SUBS`** in `backend/.env` to a comma-separated list of **`sub`** values (from the DB or your IdP). On **each process startup**, the backend promotes matching rows (`UPDATE ... WHERE sub = ?`). A user must exist first, so typical flow is: log in once → set `BOOTSTRAP_ADMIN_SUBS` → restart the container → optional: remove the variable after promotion. All env keys: [`.env.example`](.env.example).
 
+## Cache (Redis)
+
+External API responses (XIVAPI, MediaWiki, etc.) will be cached through a **`CacheClient`** abstraction (`backend/src/lib/cache/`). Configuration:
+
+| Variable         | Default | Purpose                                                                      |
+| ---------------- | ------- | ---------------------------------------------------------------------------- |
+| `CACHE_BACKEND`  | `auto`  | `auto` (Redis when `REDIS_URL` is set, else in-memory), `memory`, or `redis` |
+| `REDIS_URL`      | unset   | e.g. `redis://localhost:6379`                                                |
+| `REDIS_REQUIRED` | `false` | When `true`, startup fails if Redis is configured but `PING` fails           |
+
+**Validation:** `CACHE_BACKEND=redis` requires `REDIS_URL` and `REDIS_REQUIRED=true` (forbidden combo otherwise).
+
+**Local Redis (optional):** `docker run --rm -p 6379:6379 redis:7-alpine` then set `REDIS_URL=redis://localhost:6379` in `backend/.env`.
+
+**Health:** `GET /health` is always OK. `GET /health/ready` returns **503** when the active backend is Redis and the store is unhealthy (so load balancers can drain traffic before origin APIs are hammered).
+
+**Consumers:** use `get()` → `hit` / `miss` / `unavailable`. On `unavailable`, call `throwIfCacheUnavailable()` or `requireCacheHealthy()` so the API returns **503** `SOURCE_UNAVAILABLE` instead of calling upstream APIs.
+
 ## API documentation (OpenAPI + Swagger UI)
 
 | What                    | URL                                                                                                                         |
