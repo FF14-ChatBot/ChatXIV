@@ -35,18 +35,16 @@ describe('redisConnection', () => {
   });
 
   it('connects and pings successfully', async () => {
-    const { connectRedis, pingRedis, isRedisClientInitialized } = await import(
-      '@src/lib/cache/redisConnection.js'
-    );
+    const { connectRedis, pingRedis, isRedisClientInitialized } =
+      await import('@src/lib/cache/redisConnection.js');
     await connectRedis('redis://localhost:6379');
     expect(isRedisClientInitialized()).toBe(true);
     await expect(pingRedis()).resolves.toBe(true);
   });
 
   it('returns false from ping when client is closed', async () => {
-    const { connectRedis, pingRedis, closeRedis } = await import(
-      '@src/lib/cache/redisConnection.js'
-    );
+    const { connectRedis, pingRedis, closeRedis } =
+      await import('@src/lib/cache/redisConnection.js');
     await connectRedis('redis://localhost:6379');
     mockClient.isOpen = false;
     await expect(pingRedis()).resolves.toBe(false);
