@@ -6,13 +6,8 @@ export const MAX_REQUEST_METRICS_ROWS = 10_000;
 export const MAX_USAGE_RECORDS_ROWS = 50_000;
 
 /**
- * How often the process runs an observability retention sweep.
- * Weekly is enough for trimming high-volume tables; adjust if ops uses external batch jobs.
- */
-export const OBSERVABILITY_RETENTION_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
-
-/**
- * Trim oldest rows via DAOs when counts exceed caps. Call from a periodic job (not on every record).
+ * Trim oldest rows via DAOs when counts exceed caps. Invoked from the UTC scheduled job in
+ * `lib/scheduler/scheduledJobs.ts` (not on every insert).
  */
 export function sweepObservabilityRetention(
   metricsDao: RequestMetricsDao,

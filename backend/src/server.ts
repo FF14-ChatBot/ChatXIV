@@ -4,19 +4,15 @@ import { logger } from './lib/observability/logger.js';
 import { registerProcessErrorHandlers } from './lib/errors/registerProcessErrorHandlers.js';
 import { validateStartupConfig } from './lib/config/validate.js';
 import { getPort } from './lib/config/env.js';
-import {
-  getOrOpenAppDatabase,
-  closeAppDatabase,
-} from './lib/persistence/sqlite/appDatabaseSingleton.js';
-import { RequestMetricsDao } from './lib/persistence/sqlite/dao/RequestMetricsDao.js';
-import { UsageRecordsDao } from './lib/persistence/sqlite/dao/UsageRecordsDao.js';
-import {
-  sweepObservabilityRetention,
-  OBSERVABILITY_RETENTION_INTERVAL_MS,
-} from './lib/persistence/sqlite/retention.js';
+import { closeAppDatabase } from './lib/persistence/sqlite/appDatabaseSingleton.js';
+import { ProcessJobScheduler } from './lib/scheduler/processJobScheduler.js';
+import { registerProcessScheduledJobs } from './lib/scheduler/scheduledJobs.js';
 import { disposeCache, initializeCache } from './lib/cache/cacheLifecycle.js';
 
 const shutdownTimeoutMs = 10_000;
+
+const jobScheduler = new ProcessJobScheduler(logger);
+registerProcessScheduledJobs(jobScheduler);
 
 function closeHttpServer(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -44,17 +40,6 @@ async function main(): Promise<void> {
 
   const port = getPort();
 
-  // todo: move into cron job framework
-  const retentionTimer = setInterval(() => {
-    try {
-      const db = getOrOpenAppDatabase();
-      sweepObservabilityRetention(new RequestMetricsDao(db), new UsageRecordsDao(db));
-    } catch (error) {
-      logger.warn({ error }, 'Observability retention sweep failed');
-    }
-  }, OBSERVABILITY_RETENTION_INTERVAL_MS);
-  retentionTimer.unref();
-
   const { app } = await import('./app.js');
   await initializeCache();
 
@@ -72,16 +57,27 @@ async function main(): Promise<void> {
 
     shuttingDown = true;
     logger.info({ signal, shutdownTimeoutMs }, 'Received shutdown signal');
-    clearInterval(retentionTimer);
+    jobScheduler.dispose();
+
+    const shutdownStartedAt = Date.now();
 
     void (async () => {
+      try {
+        await jobScheduler.waitForInFlightJobs(shutdownTimeoutMs);
+      } catch (error) {
+        logger.warn({ error, signal }, 'Error while waiting for in-flight scheduled jobs');
+      }
+
+      const elapsed = Date.now() - shutdownStartedAt;
+      const closeBudgetMs = Math.max(1_000, shutdownTimeoutMs - elapsed);
+
       const forceExitTimer = setTimeout(() => {
-        logger.error({ signal, shutdownTimeoutMs }, 'Forced shutdown after timeout');
+        logger.error({ signal, shutdownTimeoutMs, closeBudgetMs }, 'Forced shutdown after timeout');
         void disposeCacheSafe().finally(() => {
           closeAppDatabase();
           process.exit(1);
         });
-      }, shutdownTimeoutMs);
+      }, closeBudgetMs);
       forceExitTimer.unref();
 
       let exitCode = 0;
