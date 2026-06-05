@@ -1,5 +1,6 @@
 import type { ResolvedCacheConfig } from '../config/cacheConfig.js';
 import { ResolvedCacheBackend } from '../config/constants.js';
+import { logger } from '../observability/logger.js';
 import { cacheBackendHealth } from './cacheBackendHealth.js';
 import { createMemoryCacheClient } from './memoryCacheClient.js';
 import { createRedisCacheClient } from './redisCacheClient.js';
@@ -12,7 +13,7 @@ export async function createCacheClientForConfig(
   cacheBackendHealth.configure(config.backend);
 
   if (config.backend === ResolvedCacheBackend.Memory) {
-    return createMemoryCacheClient();
+    return createMemoryCacheClient(logger);
   }
 
   if (config.redisUrl === undefined) {
@@ -20,5 +21,5 @@ export async function createCacheClientForConfig(
   }
 
   await connectRedis(config.redisUrl);
-  return createRedisCacheClient(getRedisClient());
+  return createRedisCacheClient(getRedisClient(), logger);
 }

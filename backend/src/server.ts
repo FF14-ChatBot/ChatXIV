@@ -14,7 +14,7 @@ import {
   sweepObservabilityRetention,
   OBSERVABILITY_RETENTION_INTERVAL_MS,
 } from './lib/persistence/sqlite/retention.js';
-import { disposeCacheSubsystem, initializeCacheSubsystem } from './lib/cache/cacheSubsystem.js';
+import { disposeCache, initializeCache } from './lib/cache/cacheLifecycle.js';
 
 const shutdownTimeoutMs = 10_000;
 
@@ -30,11 +30,11 @@ function closeHttpServer(server: Server): Promise<void> {
   });
 }
 
-async function disposeCacheSubsystemSafe(): Promise<void> {
+async function disposeCacheSafe(): Promise<void> {
   try {
-    await disposeCacheSubsystem();
+    await disposeCache();
   } catch (error) {
-    logger.error({ error }, 'Failed to dispose cache subsystem during shutdown');
+    logger.error({ error }, 'Failed to dispose cache during shutdown');
   }
 }
 
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
   retentionTimer.unref();
 
   const { app } = await import('./app.js');
-  await initializeCacheSubsystem();
+  await initializeCache();
 
   const server = app.listen(port, () => {
     logger.info({ port }, 'Server listening');
@@ -77,7 +77,7 @@ async function main(): Promise<void> {
     void (async () => {
       const forceExitTimer = setTimeout(() => {
         logger.error({ signal, shutdownTimeoutMs }, 'Forced shutdown after timeout');
-        void disposeCacheSubsystemSafe().finally(() => {
+        void disposeCacheSafe().finally(() => {
           closeAppDatabase();
           process.exit(1);
         });
@@ -92,7 +92,7 @@ async function main(): Promise<void> {
         exitCode = 1;
       } finally {
         clearTimeout(forceExitTimer);
-        await disposeCacheSubsystemSafe();
+        await disposeCacheSafe();
         closeAppDatabase();
         if (exitCode === 0) {
           logger.info({ signal }, 'Server closed cleanly');

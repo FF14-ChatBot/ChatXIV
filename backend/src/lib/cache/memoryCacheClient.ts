@@ -1,6 +1,6 @@
+import type pino from 'pino';
 import type { CacheClient } from './types.js';
 import { cacheHit, cacheMiss } from './cacheGetResult.js';
-import { logCacheHit, logCacheMiss } from './cacheAccessLog.js';
 import { toCacheStorageKey } from './cacheKeys.js';
 
 interface CacheEntry {
@@ -8,7 +8,7 @@ interface CacheEntry {
   readonly expiresAt: number | null;
 }
 
-export function createMemoryCacheClient(): CacheClient {
+export function createMemoryCacheClient(log: pino.Logger): CacheClient {
   const store = new Map<string, CacheEntry>();
 
   function isExpired(entry: CacheEntry): boolean {
@@ -24,10 +24,10 @@ export function createMemoryCacheClient(): CacheClient {
       const entry = store.get(storageKey(key));
       if (!entry || isExpired(entry)) {
         if (entry) store.delete(storageKey(key));
-        logCacheMiss(key);
+        log.debug({ key }, 'Cache miss');
         return cacheMiss<T>();
       }
-      logCacheHit(key);
+      log.debug({ key }, 'Cache hit');
       return cacheHit(entry.value as T);
     },
 

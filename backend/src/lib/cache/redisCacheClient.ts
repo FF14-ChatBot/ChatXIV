@@ -1,8 +1,7 @@
+import type pino from 'pino';
 import type { RedisClientType } from 'redis';
-import { logger } from '../observability/logger.js';
 import { cacheHit, cacheMiss, cacheUnavailable } from './cacheGetResult.js';
 import { cacheBackendHealth } from './cacheBackendHealth.js';
-import { logCacheHit, logCacheMiss, logCacheUnavailable } from './cacheAccessLog.js';
 import { toCacheStorageKey } from './cacheKeys.js';
 import type { CacheClient } from './types.js';
 import { pingRedis } from './redisConnection.js';
@@ -11,7 +10,7 @@ function toError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
 }
 
-export function createRedisCacheClient(redis: RedisClientType): CacheClient {
+export function createRedisCacheClient(redis: RedisClientType, log: pino.Logger): CacheClient {
   return {
     async get<T>(key: string) {
       const storageKey = toCacheStorageKey(key);
@@ -19,16 +18,16 @@ export function createRedisCacheClient(redis: RedisClientType): CacheClient {
         const raw = await redis.get(storageKey);
         cacheBackendHealth.recordOperationSuccess();
         if (raw === null) {
-          logCacheMiss(key);
+          log.debug({ key }, 'Cache miss');
           return cacheMiss<T>();
         }
         try {
           const value = JSON.parse(raw) as T;
-          logCacheHit(key);
+          log.debug({ key }, 'Cache hit');
           return cacheHit(value);
         } catch (parseErr) {
-          logger.warn({ err: parseErr, key }, 'Cache value JSON parse failed; treating as miss');
-          logCacheMiss(key);
+          log.warn({ err: parseErr, key }, 'Cache value JSON parse failed; treating as miss');
+          log.debug({ key }, 'Cache miss');
           try {
             await redis.del(storageKey);
             cacheBackendHealth.recordOperationSuccess();
@@ -39,7 +38,7 @@ export function createRedisCacheClient(redis: RedisClientType): CacheClient {
         }
       } catch (err) {
         cacheBackendHealth.recordOperationFailure(err);
-        logCacheUnavailable(key, err);
+        log.debug({ err, key }, 'Cache unavailable');
         return cacheUnavailable<T>(toError(err));
       }
     },
@@ -51,7 +50,7 @@ export function createRedisCacheClient(redis: RedisClientType): CacheClient {
         await redis.set(storageKey, payload, { EX: ttlSeconds });
         cacheBackendHealth.recordOperationSuccess();
       } catch (err) {
-        logger.warn({ err, key }, 'Cache set failed');
+        log.warn({ err, key }, 'Cache set failed');
         cacheBackendHealth.recordOperationFailure(err);
       }
     },
@@ -66,7 +65,7 @@ export function createRedisCacheClient(redis: RedisClientType): CacheClient {
         cacheBackendHealth.recordOperationSuccess();
         return result !== null;
       } catch (err) {
-        logger.warn({ err, key }, 'Cache setNx failed');
+        log.warn({ err, key }, 'Cache setNx failed');
         cacheBackendHealth.recordOperationFailure(err);
         return false;
       }
@@ -77,7 +76,7 @@ export function createRedisCacheClient(redis: RedisClientType): CacheClient {
         await redis.del(toCacheStorageKey(key));
         cacheBackendHealth.recordOperationSuccess();
       } catch (err) {
-        logger.warn({ err, key }, 'Cache delete failed');
+        log.warn({ err, key }, 'Cache delete failed');
         cacheBackendHealth.recordOperationFailure(err);
       }
     },
@@ -90,7 +89,7 @@ export function createRedisCacheClient(redis: RedisClientType): CacheClient {
         }
         cacheBackendHealth.recordOperationSuccess();
       } catch (err) {
-        logger.warn({ err, prefix }, 'Cache deleteByPrefix failed');
+        log.warn({ err, prefix }, 'Cache deleteByPrefix failed');
         cacheBackendHealth.recordOperationFailure(err);
       }
     },

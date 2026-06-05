@@ -85,7 +85,7 @@ On **Windows PowerShell**, if the `docker run ... sqlite3` one-liner is awkward,
 
 ## Cache (Redis)
 
-External API responses (XIVAPI, MediaWiki, etc.) will be cached through a **`CacheClient`** abstraction (`backend/src/lib/cache/`). The server registers the client in DI via `initializeCacheSubsystem()` (not in `register()`). Tests use `tests/mocks/cacheClient.mock.ts`. Configuration:
+External API responses (XIVAPI, MediaWiki, etc.) will be cached through a **`CacheClient`** abstraction (`backend/src/lib/cache/`). The server registers the client in DI via `initializeCache()` (not in `register()`). Tests use `tests/mocks/cacheClient.mock.ts`. Configuration:
 
 | Variable         | Default | Purpose                                                                            |
 | ---------------- | ------- | ---------------------------------------------------------------------------------- |

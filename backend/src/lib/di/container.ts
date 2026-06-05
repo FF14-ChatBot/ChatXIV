@@ -115,7 +115,7 @@ export function register(): void {
   setFeatureFlagService(flagService);
 
   // ── Chat pipeline ────────────────────────────────────────────────────
-  // CacheClientToken is registered by `initializeCacheSubsystem()` at server startup.
+  // CacheClientToken is registered by `initializeCache()` at server startup.
   // Tests register a mock via `createMockCacheClient()` (see tests/mocks/cacheClient.mock.ts).
 
   // TODO: Replace with real AnthropicClient once lib/clients/anthropic/ is implemented.

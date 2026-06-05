@@ -9,7 +9,7 @@ export interface CacheReadinessCheck {
 
 /**
  * Tracks whether the active Redis cache backend is reachable.
- * Updated by {@link redisConnection}, {@link redisCacheClient}, and the subsystem probe — not by API handlers.
+ * Updated by {@link redisConnection}, {@link redisCacheClient}, and the health probe — not by API handlers.
  */
 class CacheBackendHealth {
   private activeBackend: ResolvedCacheBackend = ResolvedCacheBackend.Memory;

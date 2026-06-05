@@ -21,7 +21,7 @@ export function getCacheClient(): CacheClient {
  * Connects Redis when configured, validates required Redis, and starts the health probe.
  * Call once after `validateStartupConfig()` and before accepting traffic.
  */
-export async function initializeCacheSubsystem(): Promise<CacheClient> {
+export async function initializeCache(): Promise<CacheClient> {
   const config = resolveCacheConfig();
   cacheClient = await createCacheClientForConfig(config);
   container.registerInstance(CacheClientToken, cacheClient);
@@ -55,7 +55,7 @@ function startCacheHealthProbe(): void {
   probeTimer.unref();
 }
 
-export async function disposeCacheSubsystem(): Promise<void> {
+export async function disposeCache(): Promise<void> {
   if (probeTimer) {
     clearInterval(probeTimer);
     probeTimer = null;

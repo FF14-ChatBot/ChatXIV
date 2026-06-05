@@ -10,13 +10,9 @@ vi.mock('@src/lib/cache/createCacheClient.js', () => ({
 }));
 
 import { createCacheClientForConfig } from '@src/lib/cache/createCacheClient.js';
-import {
-  disposeCacheSubsystem,
-  getCacheClient,
-  initializeCacheSubsystem,
-} from '@src/lib/cache/cacheSubsystem.js';
+import { disposeCache, getCacheClient, initializeCache } from '@src/lib/cache/cacheLifecycle.js';
 
-describe('cacheSubsystem', () => {
+describe('cacheLifecycle', () => {
   const saved = { ...process.env };
 
   beforeEach(() => {
@@ -27,7 +23,7 @@ describe('cacheSubsystem', () => {
   });
 
   afterEach(async () => {
-    await disposeCacheSubsystem();
+    await disposeCache();
     process.env = { ...saved };
     resetBackendContainerForTests();
     register();
@@ -37,22 +33,22 @@ describe('cacheSubsystem', () => {
     expect(() => getCacheClient()).toThrow('Cache is not initialized');
   });
 
-  it('resolve CacheClientToken throws before initializeCacheSubsystem', () => {
+  it('resolve CacheClientToken throws before initializeCache', () => {
     expect(() => container.resolve<CacheClient>(CacheClientToken)).toThrow();
   });
 
-  it('initializeCacheSubsystem registers the client in DI', async () => {
+  it('initializeCache registers the client in DI', async () => {
     const client = createMockCacheClient();
     vi.mocked(createCacheClientForConfig).mockResolvedValue(client);
-    const initialized = await initializeCacheSubsystem();
+    const initialized = await initializeCache();
     expect(initialized).toBe(client);
     expect(container.resolve<CacheClient>(CacheClientToken)).toBe(client);
   });
 
-  it('disposeCacheSubsystem clears client state', async () => {
+  it('disposeCache clears client state', async () => {
     vi.mocked(createCacheClientForConfig).mockResolvedValue(createMockCacheClient());
-    await initializeCacheSubsystem();
-    await disposeCacheSubsystem();
+    await initializeCache();
+    await disposeCache();
     expect(() => getCacheClient()).toThrow();
   });
 
@@ -63,7 +59,7 @@ describe('cacheSubsystem', () => {
     const client = createMockCacheClient();
     client.ping.mockResolvedValue(false);
     vi.mocked(createCacheClientForConfig).mockResolvedValue(client);
-    await initializeCacheSubsystem();
+    await initializeCache();
     expect(container.resolve<CacheClient>(CacheClientToken)).toBe(client);
   });
 });

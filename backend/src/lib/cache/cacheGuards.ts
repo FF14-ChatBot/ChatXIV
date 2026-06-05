@@ -7,29 +7,20 @@ export type CacheUnavailableContext = Readonly<{
   dataSource: string;
 }>;
 
-function formatCacheFailureReason(cause?: unknown): string {
-  if (cause instanceof Error && cause.message.trim() !== '') {
-    return cause.message;
-  }
-  const lastFailure = cacheBackendHealth.getLastFailure();
-  if (lastFailure !== undefined && lastFailure.message.trim() !== '') {
-    return lastFailure.message;
-  }
-  return 'cache backend is unavailable';
-}
-
-function buildCacheUnavailableMessage(dataSource: string, cause?: unknown): string {
-  const reason = formatCacheFailureReason(cause);
-  return `Unable to load data from ${dataSource}: application cache failed (${reason})`;
-}
-
 /**
  * Throws 503 SOURCE_UNAVAILABLE when the cache store is down (Redis unhealthy).
  * Call before origin fetches that must not run during a cache outage.
  */
 export function requireCacheHealthy(context: CacheUnavailableContext): void {
   if (!cacheBackendHealth.isHealthy()) {
-    throw AppError.sourceUnavailable(buildCacheUnavailableMessage(context.dataSource));
+    const lastFailure = cacheBackendHealth.getLastFailure();
+    const reason =
+      lastFailure !== undefined && lastFailure.message.trim() !== ''
+        ? lastFailure.message
+        : 'cache backend is unavailable';
+    throw AppError.sourceUnavailable(
+      `Unable to load data from ${context.dataSource}: application cache failed (${reason})`
+    );
   }
 }
 
@@ -40,9 +31,24 @@ export function throwIfCacheUnavailable<T>(
   result: CacheGetResult<T>,
   context: CacheUnavailableContext
 ): void {
-  if (result.outcome === CacheGetOutcome.Unavailable) {
+  if (result.outcome !== CacheGetOutcome.Unavailable) {
+    return;
+  }
+
+  if (result.cause instanceof Error && result.cause.message.trim() !== '') {
     throw AppError.sourceUnavailable(
-      buildCacheUnavailableMessage(context.dataSource, result.cause)
+      `Unable to load data from ${context.dataSource}: application cache failed (${result.cause.message})`
     );
   }
+
+  const lastFailure = cacheBackendHealth.getLastFailure();
+  if (lastFailure !== undefined && lastFailure.message.trim() !== '') {
+    throw AppError.sourceUnavailable(
+      `Unable to load data from ${context.dataSource}: application cache failed (${lastFailure.message})`
+    );
+  }
+
+  throw AppError.sourceUnavailable(
+    `Unable to load data from ${context.dataSource}: application cache failed (cache backend is unavailable)`
+  );
 }
