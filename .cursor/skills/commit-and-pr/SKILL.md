@@ -50,6 +50,8 @@ After committing, output a filled-in PR summary as a copyable markdown block usi
 - [ ] (Optional) Screenshots or design notes if UI changes
 ```
 
+**Revision history:** Do **not** rewrite or delete prior `## Revision N` sections when the PR evolves. Keep earlier revisions as-is (they record what shipped in that iteration) and add a new `## Revision 2`, `## Revision 3`, etc., separated by `---`, for each follow-up push or review pass.
+
 Pre-check the Testing items that the agent has already verified. Leave "CI passes on git" unchecked (runs after push).
 
 ## Push Policy

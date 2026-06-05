@@ -172,6 +172,14 @@ JSON error bodies follow the shared shape `ApiErrorResponse` in `@chatxiv/cdm` (
 - **403** on admin routes: logged in but `users.is_admin` is false, or **Swagger Try it out** with `FORBIDDEN` / “Origin not allowed” — fix **`CORS_ORIGIN`** to include the API origin you use in the browser (see [Admin Swagger in the browser](#admin-swagger-in-the-browser)).
 - **400** with `VALIDATION_ERROR`: bad flag name pattern or invalid JSON body (`enabled` must be a boolean).
 
+## Scheduled jobs
+
+In-process maintenance uses UTC wall-clock scheduling in [`src/lib/scheduler/processJobScheduler.ts`](src/lib/scheduler/processJobScheduler.ts) (`scheduleUtcJob` + [`utcSchedule.ts`](src/lib/scheduler/utcSchedule.ts)). Concrete jobs are registered in [`src/lib/scheduler/scheduledJobs.ts`](src/lib/scheduler/scheduledJobs.ts); [`src/server.ts`](src/server.ts) constructs the scheduler, calls `registerProcessScheduledJobs`, clears timers with `dispose()` on shutdown, then **`waitForInFlightJobs`** so any run in progress can finish (within the shutdown budget) before `server.close`. This is for work co-located with the API process, not a separate worker or distributed scheduler.
+
+**Adhoc runs:** call exported task functions (e.g. `runObservabilityRetentionSweepTask`) from a script or REPL, or `await scheduler.runJobNow('observability-retention-sweep')` when you hold the scheduler instance. A future admin route could wrap the same helpers.
+
+**Log correlation:** each scheduler run executes inside `requestContext.run({ requestId })` (same shape as HTTP). The shared `logger` therefore includes `requestId` on every line for that run—including nested services—so you can tie scheduler warnings to other logs in Loki or stdout. Direct calls to exported task functions outside the scheduler do not set context unless you wrap them yourself.
+
 ## BFF + private API (target architecture optional)
 
 The browser can call **`https://www.chatxiv.com/api/...`** (or a Cloudflare **Worker** / **Pages Function** on that host) so requests are **same-origin** with the SPA. That Worker forwards to the real API over **Cloudflare Tunnel** or a **non-public origin**; clients never need your VPS IP. Only Cloudflare’s edge talks to the tunnel / internal URL. See [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) and [Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
