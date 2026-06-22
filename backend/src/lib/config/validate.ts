@@ -2,8 +2,9 @@
  * Fatal startup **validation** only: missing required keys → `console.error` + `process.exit(1)`.
  *
  * Optional env reads, defaults, and `[config]` warnings live in `env.ts` (and related parsers such as
- * `requestConfig.ts` / `cors.ts`) next to the code that consumes each value.
+ * `requestConfig.ts` / `cors.ts` / `cacheConfig.ts`) next to the code that consumes each value.
  */
+import { validateCacheConfig } from './cacheConfig.js';
 
 /**
  * Env var names that must be set for the server to start.
@@ -27,4 +28,5 @@ export function validateRequiredEnvKeys(keys: readonly string[]): void {
 /** Call once at startup before the server begins accepting requests. */
 export function validateStartupConfig(): void {
   validateRequiredEnvKeys(STARTUP_REQUIRED);
+  validateCacheConfig();
 }

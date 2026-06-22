@@ -52,13 +52,11 @@ import type { ClassificationService } from '../classification/types.js';
 import type { KnowledgeService } from '../knowledge/types.js';
 import type { ChatService } from '../chat/types.js';
 import type { LlmClient, LlmFormatResult } from '../llm/types.js';
-import type { CacheClient } from '../cache/types.js';
 import { createKeywordClassifier } from '../classification/keywordClassifier.js';
 import { createRoutingClassifier } from '../classification/routingClassifier.js';
 import { createStubUsageRoutingModel } from '../classification/stubUsageRoutingModel.js';
 import { createKnowledgeService } from '../knowledge/knowledgeService.js';
 import { createChatService } from '../chat/chatService.js';
-import { createMemoryCacheClient } from '../cache/memoryCacheClient.js';
 import { createStubResolver } from '../knowledge/resolvers/stubResolver.js';
 import { UsageCategory } from '@chatxiv/cdm';
 
@@ -117,9 +115,8 @@ export function register(): void {
   setFeatureFlagService(flagService);
 
   // ── Chat pipeline ────────────────────────────────────────────────────
-
-  const cacheClient = createMemoryCacheClient();
-  container.registerInstance<CacheClient>(CacheClientToken, cacheClient);
+  // CacheClientToken is registered by `initializeCache()` at server startup.
+  // Tests register a mock via `createMockCacheClient()` (see tests/mocks/cacheClient.mock.ts).
 
   // TODO: Replace with real AnthropicClient once lib/clients/anthropic/ is implemented.
   const stubLlmClient: LlmClient = {

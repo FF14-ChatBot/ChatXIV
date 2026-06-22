@@ -83,6 +83,24 @@ On **Windows PowerShell**, if the `docker run ... sqlite3` one-liner is awkward,
 
 **Env-based bootstrap (no SQL):** set **`BOOTSTRAP_ADMIN_SUBS`** in `backend/.env` to a comma-separated list of **`sub`** values (from the DB or your IdP). On **each process startup**, the backend promotes matching rows (`UPDATE ... WHERE sub = ?`). A user must exist first, so typical flow is: log in once → set `BOOTSTRAP_ADMIN_SUBS` → restart the container → optional: remove the variable after promotion. All env keys: [`.env.example`](.env.example).
 
+## Cache (Redis)
+
+External API responses (XIVAPI, MediaWiki, etc.) will be cached through a **`CacheClient`** abstraction (`backend/src/lib/cache/`). The server registers the client in DI via `initializeCache()` (not in `register()`). Tests use `tests/mocks/cacheClient.mock.ts`. Configuration:
+
+| Variable         | Default | Purpose                                                                            |
+| ---------------- | ------- | ---------------------------------------------------------------------------------- |
+| `CACHE_BACKEND`  | `redis` | `redis`, `memory`, or `auto` (Redis when `REDIS_URL` is set, else in-memory)       |
+| `REDIS_URL`      | see env | e.g. `redis://localhost:6379` — required for local dev parity (see `.env.example`) |
+| `REDIS_REQUIRED` | `false` | When `true`, startup exits if Redis is configured but `PING` fails at boot         |
+
+**Local dev:** run Redis before the API — `docker run --rm -p 6379:6379 redis:7-alpine` — and copy cache vars from [`.env.example`](.env.example). With `REDIS_REQUIRED=false`, the process still starts if Redis is down; `GET /health/cache` returns **503** until the store is healthy.
+
+**Health:** `GET /health` is always OK. `GET /health/cache` returns **503** when the active backend is Redis and the store is unhealthy (so load balancers can drain traffic before origin APIs are hammered).
+
+**Consumers:** use `get()` → `hit` / `miss` / `unavailable`. On `unavailable`, call `throwIfCacheUnavailable(result, { dataSource: 'XIVAPI' })` or `requireCacheHealthy({ dataSource: '…' })` so the API returns **503** `SOURCE_UNAVAILABLE` with a message naming the origin and the cache failure reason, instead of calling upstream APIs.
+
+**TTL:** `set()` always takes `ttlSeconds` — there is no client default; each upstream (XIVAPI, MediaWiki, etc.) picks cache lifetime for its responses. `setNx()` is for coalescing / in-flight fetch locks: production call sites must pass a short TTL (typically upstream timeout + margin, often 15–60s) so a crashed worker cannot leave a lock forever. Do not omit `setNx` TTL for request-scoped aggregation locks.
+
 ## API documentation (OpenAPI + Swagger UI)
 
 | What                    | URL                                                                                                                         |
