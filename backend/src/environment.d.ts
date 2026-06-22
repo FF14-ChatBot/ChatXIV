@@ -23,6 +23,9 @@ declare global {
       LOKI_HOST?: string;
       LOKI_USER_ID?: string;
       LOKI_PASSWORD?: string;
+      REDIS_URL?: string;
+      CACHE_BACKEND?: string;
+      REDIS_REQUIRED?: string;
       VITEST_WORKER_ID?: string;
     }
   }
