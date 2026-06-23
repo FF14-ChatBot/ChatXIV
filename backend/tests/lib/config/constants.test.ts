@@ -16,6 +16,10 @@ import {
   MEDIAWIKI_DEFAULT_BASE_URLS,
   MEDIAWIKI_DEFAULT_TIMEOUT_MS,
   MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND,
+  CACHE_TTL_XIVAPI_SEARCH_SECONDS,
+  XIVAPI_SEARCH_DEFAULT_LIMIT,
+  XIVAPI_DATA_SOURCE,
+  CACHE_STALE_GRACE_SECONDS,
 } from '@src/lib/config/constants.js';
 
 describe('lib/config/constants', () => {
@@ -55,6 +59,10 @@ describe('lib/config/constants', () => {
     expect(XIVAPI_TIMEOUT_MS).toBe(5_000);
     expect(XIVAPI_RATE_LIMIT_PER_SECOND).toBe(25);
     expect(XIVAPI_RATE_LIMIT_BURST).toBe(50);
+    expect(CACHE_TTL_XIVAPI_SEARCH_SECONDS).toBe(86_400);
+    expect(CACHE_STALE_GRACE_SECONDS).toBe(86_400);
+    expect(XIVAPI_SEARCH_DEFAULT_LIMIT).toBe(8);
+    expect(XIVAPI_DATA_SOURCE).toBe('XIVAPI');
   });
 
   it('exports MediaWiki constants', () => {

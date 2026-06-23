@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   ChatStreamEventType,
+  ERROR_CODES,
   UsageCategory,
   type ChatRequestBody,
   type ChatResponseBody,
@@ -8,6 +9,7 @@ import {
   type SourceCitation,
 } from '@chatxiv/cdm';
 import { logger } from '../observability/logger.js';
+import { AppError } from '../errors/AppError.js';
 import type { ClassificationService } from '../classification/types.js';
 import type { KnowledgeService } from '../knowledge/types.js';
 import type { LlmClient } from '../llm/types.js';
@@ -25,7 +27,7 @@ const PIPELINE_TIMEOUT_MS = 30_000;
  *
  * Error strategy:
  * - Classification failure: fall back to UNCATEGORIZED (query all resolvers).
- * - Retrieval failure: pass empty chunks to LLM (produces "couldn't find" message).
+ * - Retrieval failure: pass empty chunks to LLM unless all sources failed (503).
  * - LLM failure: return/yield an error event with a safe user-facing message.
  * - Pipeline timeout: abort and return an error.
  */
@@ -60,6 +62,9 @@ export function createChatService(
           }
         }
       } catch (err) {
+        if (err instanceof AppError && err.code === ERROR_CODES.SOURCE_UNAVAILABLE) {
+          throw err;
+        }
         logger.error({ err, messageId }, 'Chat pipeline failed during accumulation');
         return {
           messageId,
@@ -121,6 +126,9 @@ export function createChatService(
           chunks = result.chunks;
           logger.info({ messageId, chunkCount: chunks.length, category }, 'Retrieval complete');
         } catch (err) {
+          if (err instanceof AppError && err.code === ERROR_CODES.SOURCE_UNAVAILABLE) {
+            throw err;
+          }
           logger.warn({ err, messageId }, 'Retrieval failed; proceeding with empty context');
           chunks = [];
         }

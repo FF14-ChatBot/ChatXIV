@@ -8,6 +8,7 @@ import { closeAppDatabase } from './lib/persistence/sqlite/appDatabaseSingleton.
 import { ProcessJobScheduler } from './lib/scheduler/processJobScheduler.js';
 import { registerProcessScheduledJobs } from './lib/scheduler/scheduledJobs.js';
 import { disposeCache, initializeCache } from './lib/cache/cacheLifecycle.js';
+import { register, wireChatKnowledgePipeline } from './lib/di/container.js';
 
 const shutdownTimeoutMs = 10_000;
 
@@ -37,11 +38,15 @@ async function disposeCacheSafe(): Promise<void> {
 async function main(): Promise<void> {
   validateStartupConfig();
   registerProcessErrorHandlers(logger);
+  register();
 
   const port = getPort();
 
-  const { app } = await import('./app.js');
   await initializeCache();
+  wireChatKnowledgePipeline();
+
+  const { createApp } = await import('./app.js');
+  const app = createApp();
 
   const server = app.listen(port, () => {
     logger.info({ port }, 'Server listening');

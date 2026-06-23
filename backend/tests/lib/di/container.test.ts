@@ -1,8 +1,9 @@
 import { beforeEach, describe, it, expect } from 'vitest';
-import { USAGE_CATEGORIES, type UsageCategory } from '@chatxiv/cdm';
+import { USAGE_CATEGORIES, UsageCategory } from '@chatxiv/cdm';
 import {
   container,
   register,
+  wireChatKnowledgePipeline,
   MetricsStoreToken,
   UsageStoreToken,
   RateLimitStoreToken,
@@ -11,6 +12,7 @@ import {
   CorsOriginsToken,
   FeatureFlagStoreToken,
   FeatureFlagServiceToken,
+  SourceResolversToken,
 } from '@src/lib/di/container.js';
 import type { MetricsStore } from '@src/lib/observability/metrics/types.js';
 import type { UsageStore } from '@src/lib/observability/usageAnalytics/types.js';
@@ -22,6 +24,7 @@ import { UsageAnalyticsMiddleware } from '@src/middleware/usageAnalytics.js';
 import { RateLimitMiddleware } from '@src/middleware/rateLimit/rateLimitMiddleware.js';
 import { RequestTimeoutMiddleware } from '@src/middleware/requestTimeout.js';
 import { resetBackendContainerForTests } from '@test/helpers/resetBackendContainer.js';
+import { registerTestCacheClient } from '@test/helpers/registerTestCacheClient.js';
 
 function emptyUsageCounts(): Record<UsageCategory, number> {
   return Object.fromEntries(USAGE_CATEGORIES.map((c) => [c, 0])) as Record<UsageCategory, number>;
@@ -101,5 +104,18 @@ describe('container', () => {
     const timeoutMw = container.resolve(RequestTimeoutMiddleware);
     expect(timeoutMw).toBeDefined();
     expect(typeof timeoutMw.handler).toBe('function');
+  });
+
+  it('wireChatKnowledgePipeline throws when cache is not initialized', () => {
+    expect(() => wireChatKnowledgePipeline()).toThrow(/initializeCache/i);
+  });
+
+  it('wireChatKnowledgePipeline registers XIVAPI and wiki stub resolvers', () => {
+    registerTestCacheClient();
+    wireChatKnowledgePipeline();
+    const resolvers = container.resolve(SourceResolversToken);
+    expect(resolvers).toHaveLength(2);
+    expect(resolvers[0]?.supportedCategories).toContain(UsageCategory.ITEMS);
+    expect(resolvers[1]?.supportedCategories).not.toContain(UsageCategory.ITEMS);
   });
 });

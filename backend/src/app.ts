@@ -1,11 +1,10 @@
 import './lib/config/loadDotenv.js';
 
-import express from 'express';
+import express, { type Express } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import {
   container,
-  register,
   RequestConfigToken,
   CorsOriginsToken,
   FeatureFlagServiceToken,
@@ -16,8 +15,6 @@ import type { RequestConfig } from './lib/config/requestConfig.js';
 import type { FeatureFlagService } from './lib/featureFlags/types.js';
 import type { FeedbackService } from './lib/feedback/types.js';
 import type { ChatService } from './lib/chat/types.js';
-
-register();
 
 import { requestContextMiddleware } from './middleware/requestContext.js';
 import { RequestMetricsMiddleware } from './middleware/requestMetrics.js';
@@ -37,91 +34,95 @@ import { getOrOpenAppDatabase } from './lib/persistence/sqlite/appDatabaseSingle
 import { createUserDao } from './lib/persistence/sqlite/userDao.js';
 import { cacheBackendHealth } from './lib/cache/cacheBackendHealth.js';
 
-export const app = express();
+export function createApp(): Express {
+  const app = express();
 
-/** One reverse-proxy hop (e.g. Traefik) so `req.ip` and `X-Forwarded-*` reflect the client. */
-app.set('trust proxy', 1);
+  /** One reverse-proxy hop (e.g. Traefik) so `req.ip` and `X-Forwarded-*` reflect the client. */
+  app.set('trust proxy', 1);
 
-// ── Resolve services ──────────────────────────────────────────────────
+  // ── Resolve services ──────────────────────────────────────────────────
 
-const requestConfig = container.resolve<RequestConfig>(RequestConfigToken);
-const corsOrigins = container.resolve<string[]>(CorsOriginsToken);
-const flagService = container.resolve<FeatureFlagService>(FeatureFlagServiceToken);
-const feedbackService = container.resolve<FeedbackService>(FeedbackServiceToken);
-const chatService = container.resolve<ChatService>(ChatServiceToken);
-const db = getOrOpenAppDatabase();
+  const requestConfig = container.resolve<RequestConfig>(RequestConfigToken);
+  const corsOrigins = container.resolve<string[]>(CorsOriginsToken);
+  const flagService = container.resolve<FeatureFlagService>(FeatureFlagServiceToken);
+  const feedbackService = container.resolve<FeedbackService>(FeedbackServiceToken);
+  const chatService = container.resolve<ChatService>(ChatServiceToken);
+  const db = getOrOpenAppDatabase();
 
-const bootstrapSubs = getBootstrapAdminSubs();
-if (bootstrapSubs.length > 0) {
-  createUserDao(db).bootstrapAdmins(bootstrapSubs);
-}
-
-// ── Global middleware ─────────────────────────────────────────────────
-
-app.use(
-  cors({
-    origin: corsOrigins,
-    methods: [
-      HTTP_METHOD.GET,
-      HTTP_METHOD.POST,
-      HTTP_METHOD.PUT,
-      HTTP_METHOD.DELETE,
-      HTTP_METHOD.OPTIONS,
-    ],
-    allowedHeaders: [
-      HTTP_HEADER_NAMES.CONTENT_TYPE,
-      HTTP_HEADER_NAMES.AUTHORIZATION,
-      HTTP_HEADER_NAMES.IDEMPOTENCY_KEY,
-      HTTP_HEADER_NAMES.X_SESSION_ID,
-      HTTP_HEADER_NAMES.X_REQUEST_ID,
-      HTTP_HEADER_NAMES.CF_TURNSTILE_RESPONSE,
-    ],
-    credentials: true,
-    maxAge: 86400,
-  })
-);
-app.use(securityHeadersMiddleware);
-app.use(express.json({ limit: `${requestConfig.maxBodySizeKb}kb` }));
-// @ts-expect-error -- monorepo type duplication: root vs backend @types/express-serve-static-core
-app.use(cookieParser(getSessionSecret()));
-app.use(requestContextMiddleware);
-app.use(createOptionalUserMiddleware(db));
-app.use(createBrowserMutationOriginGuard(corsOrigins));
-app.use(container.resolve(RequestTimeoutMiddleware).handler);
-app.use(container.resolve(RequestMetricsMiddleware).handler);
-app.use(container.resolve(UsageAnalyticsMiddleware).handler);
-app.use(container.resolve(RateLimitMiddleware).handler);
-
-// ── Health ───────────────────────────────────────────────────────────
-
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.get('/health/cache', (_req, res) => {
-  const cache = cacheBackendHealth.readiness();
-  if (!cache.ok) {
-    res.status(503).json({
-      status: 'unavailable',
-      cache,
-    });
-    return;
+  const bootstrapSubs = getBootstrapAdminSubs();
+  if (bootstrapSubs.length > 0) {
+    createUserDao(db).bootstrapAdmins(bootstrapSubs);
   }
-  res.json({ status: 'ok', cache });
-});
 
-// ── Public routes (/v1) ──────────────────────────────────────────────
+  // ── Global middleware ─────────────────────────────────────────────────
 
-app.use('/v1', createPublicRouter(flagService, feedbackService, chatService));
+  app.use(
+    cors({
+      origin: corsOrigins,
+      methods: [
+        HTTP_METHOD.GET,
+        HTTP_METHOD.POST,
+        HTTP_METHOD.PUT,
+        HTTP_METHOD.DELETE,
+        HTTP_METHOD.OPTIONS,
+      ],
+      allowedHeaders: [
+        HTTP_HEADER_NAMES.CONTENT_TYPE,
+        HTTP_HEADER_NAMES.AUTHORIZATION,
+        HTTP_HEADER_NAMES.IDEMPOTENCY_KEY,
+        HTTP_HEADER_NAMES.X_SESSION_ID,
+        HTTP_HEADER_NAMES.X_REQUEST_ID,
+        HTTP_HEADER_NAMES.CF_TURNSTILE_RESPONSE,
+      ],
+      credentials: true,
+      maxAge: 86400,
+    })
+  );
+  app.use(securityHeadersMiddleware);
+  app.use(express.json({ limit: `${requestConfig.maxBodySizeKb}kb` }));
+  // @ts-expect-error -- monorepo type duplication: root vs backend @types/express-serve-static-core
+  app.use(cookieParser(getSessionSecret()));
+  app.use(requestContextMiddleware);
+  app.use(createOptionalUserMiddleware(db));
+  app.use(createBrowserMutationOriginGuard(corsOrigins));
+  app.use(container.resolve(RequestTimeoutMiddleware).handler);
+  app.use(container.resolve(RequestMetricsMiddleware).handler);
+  app.use(container.resolve(UsageAnalyticsMiddleware).handler);
+  app.use(container.resolve(RateLimitMiddleware).handler);
 
-// ── Auth routes (/v1/auth) ───────────────────────────────────────────
+  // ── Health ───────────────────────────────────────────────────────────
 
-app.use('/v1/auth', createAuthRouter(db));
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
 
-// ── Admin routes (/v1/admin) — auth enforced by admin router ─────────
+  app.get('/health/cache', (_req, res) => {
+    const cache = cacheBackendHealth.readiness();
+    if (!cache.ok) {
+      res.status(503).json({
+        status: 'unavailable',
+        cache,
+      });
+      return;
+    }
+    res.json({ status: 'ok', cache });
+  });
 
-app.use('/v1/admin', createAdminRouter(requireAdminMiddleware, flagService, feedbackService));
+  // ── Public routes (/v1) ──────────────────────────────────────────────
 
-// ── Error handler (must be last) ─────────────────────────────────────
+  app.use('/v1', createPublicRouter(flagService, feedbackService, chatService));
 
-app.use(errorHandler());
+  // ── Auth routes (/v1/auth) ───────────────────────────────────────────
+
+  app.use('/v1/auth', createAuthRouter(db));
+
+  // ── Admin routes (/v1/admin) — auth enforced by admin router ─────────
+
+  app.use('/v1/admin', createAdminRouter(requireAdminMiddleware, flagService, feedbackService));
+
+  // ── Error handler (must be last) ─────────────────────────────────────
+
+  app.use(errorHandler());
+
+  return app;
+}

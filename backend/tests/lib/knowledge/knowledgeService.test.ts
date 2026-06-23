@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { UsageCategory } from '@chatxiv/cdm';
+import { ERROR_CODES, UsageCategory } from '@chatxiv/cdm';
 import { logger } from '@src/lib/observability/logger.js';
+import { AppError } from '@src/lib/errors/AppError.js';
 import { createKnowledgeService } from '@src/lib/knowledge/knowledgeService.js';
 import type { SourceResolver } from '@src/lib/knowledge/types.js';
 
@@ -63,6 +64,19 @@ describe('createKnowledgeService', () => {
     warn.mockRestore();
   });
 
+  it('throws SOURCE_UNAVAILABLE when the only resolver fails synchronously', async () => {
+    const bad: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: () => {
+        throw AppError.sourceUnavailable('sync upstream failure');
+      },
+    };
+    const svc = createKnowledgeService([bad]);
+    await expect(svc.retrieve('q', { category: UsageCategory.RAIDING })).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
+  });
+
   it('falls back to all resolvers when category has no dedicated mapping', async () => {
     const msqOnly: SourceResolver = {
       supportedCategories: [UsageCategory.MSQ],
@@ -74,10 +88,26 @@ describe('createKnowledgeService', () => {
     expect(result.chunks[0].text).toBe('msq');
   });
 
-  it('returns empty chunks when synchronous resolve throws', async () => {
-    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {
-      /* noop */
+  it('throws SOURCE_UNAVAILABLE when all targeted resolvers fail', async () => {
+    const warn = vi.spyOn(logger, 'warn');
+    const bad: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async () => {
+        throw AppError.sourceUnavailable('XIVAPI down');
+      },
+    };
+    const svc = createKnowledgeService([bad]);
+    await expect(svc.retrieve('q', { category: UsageCategory.RAIDING })).rejects.toMatchObject({
+      status: 503,
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+      message: 'XIVAPI down',
     });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('throws SOURCE_UNAVAILABLE when all resolvers fail for uncategorized query', async () => {
+    const warn = vi.spyOn(logger, 'warn');
     const bad: SourceResolver = {
       supportedCategories: [UsageCategory.RAIDING],
       resolve: () => {
@@ -85,10 +115,13 @@ describe('createKnowledgeService', () => {
       },
     };
     const svc = createKnowledgeService([bad]);
-    const result = await svc.retrieve('q', { category: UsageCategory.RAIDING });
-    expect(result.chunks).toEqual([]);
-    expect(errorSpy).toHaveBeenCalled();
-    errorSpy.mockRestore();
+    await expect(
+      svc.retrieve('q', { category: UsageCategory.UNCATEGORIZED })
+    ).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('treats missing scores as zero when sorting', async () => {
@@ -104,7 +137,7 @@ describe('createKnowledgeService', () => {
     expect(result.chunks.map((c) => c.text)).toEqual(['scored', 'no-score']);
   });
 
-  it('drops results when retrieval budget aborts before resolve', async () => {
+  it('throws SOURCE_UNAVAILABLE when retrieval budget aborts before resolve', async () => {
     vi.useFakeTimers();
     const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {
       /* noop */
@@ -118,9 +151,13 @@ describe('createKnowledgeService', () => {
     };
     const svc = createKnowledgeService([slow]);
     const retrievePromise = svc.retrieve('q', { category: UsageCategory.RAIDING });
+    const settled = retrievePromise.catch(() => undefined);
     await vi.advanceTimersByTimeAsync(6_001);
-    const result = await retrievePromise;
-    expect(result.chunks).toEqual([]);
+    await expect(retrievePromise).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
+    await vi.runAllTimersAsync();
+    await settled;
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });

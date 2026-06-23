@@ -93,17 +93,21 @@ async function handleChatStream(
     'Chat stream request received'
   );
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-
   try {
     for await (const event of chatService.handleMessageStream(chatRequest)) {
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders();
+      }
       if (res.destroyed) break;
       res.write(`data: ${JSON.stringify(event)}\n\n`);
     }
   } catch (err) {
+    if (!res.headersSent) {
+      throw err;
+    }
     logger.error({ err, requestId }, 'SSE stream error');
     if (!res.destroyed) {
       const errorEvent = {
@@ -114,7 +118,7 @@ async function handleChatStream(
       res.write(`data: ${JSON.stringify(errorEvent)}\n\n`);
     }
   } finally {
-    if (!res.destroyed) {
+    if (res.headersSent && !res.destroyed) {
       res.end();
     }
   }
