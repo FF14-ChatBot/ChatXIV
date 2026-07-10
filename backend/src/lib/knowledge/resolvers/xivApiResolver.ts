@@ -9,7 +9,7 @@ import {
   createCachedUpstreamPayload,
   type CachedUpstreamPayload,
 } from '../../cache/cachedUpstreamPayload.js';
-import { getOrFetch } from '../../cache/getOrFetch.js';
+import { getOrFetch } from '../../getOrFetch.js';
 import type { CacheClient } from '../../cache/types.js';
 import type { XivApiClient, XivApiSearchResult } from '../../xivapi/types.js';
 import type { ResolveOptions, RetrievedChunk, SourceResolver } from '../types.js';

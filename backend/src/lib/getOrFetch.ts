@@ -1,12 +1,13 @@
-import type { CacheClient } from './types.js';
-import { CacheGetOutcome } from './cacheGetResult.js';
-import { throwIfCacheUnavailable, type CacheUnavailableContext } from './cacheGuards.js';
-import { AppError } from '../errors/AppError.js';
+import type { CacheClient } from './cache/types.js';
+import { CacheGetOutcome, type CacheGetResult } from './cache/cacheGetResult.js';
+import { throwIfCacheUnavailable, type CacheUnavailableContext } from './cache/cacheGuards.js';
+import { AppError } from './errors/AppError.js';
+import { logger } from './observability/logger.js';
 import {
   CACHE_FETCH_LOCK_POLL_ATTEMPTS,
   CACHE_FETCH_LOCK_POLL_INTERVAL_MS,
   CACHE_FETCH_LOCK_TTL_SECONDS,
-} from '../config/constants.js';
+} from './config/constants.js';
 
 export type GetOrFetchResult<T> = Readonly<{
   value: T;
@@ -146,13 +147,36 @@ async function runFetchWithStaleFallback<T>(
   }
 }
 
+/**
+ * Reads the cache entry and, if healthy, refreshes its TTL. Wrapped in try/catch so a
+ * rejected read (or a future CacheClient implementation that throws instead of returning
+ * an `Unavailable` outcome) is normalized into an AppError rather than an unhandled rejection.
+ */
+async function readCacheEntry<T>(
+  params: GetOrFetchParams<T>,
+  context: CacheUnavailableContext
+): Promise<CacheGetResult<T>> {
+  try {
+    const cached = await params.cache.get<T>(params.key);
+    throwIfCacheUnavailable(cached, context);
+    return cached;
+  } catch (err) {
+    if (err instanceof AppError) {
+      throw err;
+    }
+    logger.warn({ err, key: params.key }, 'Cache read failed');
+    throw AppError.sourceUnavailable(
+      `Unable to load data from ${params.dataSource}: application cache failed`
+    );
+  }
+}
+
 async function cacheGet<T>(
   params: GetOrFetchParams<T>,
   context: CacheUnavailableContext,
   retention: number
 ): Promise<Readonly<{ result?: GetOrFetchResult<T>; staleEligible?: T }>> {
-  const cached = await params.cache.get<T>(params.key);
-  throwIfCacheUnavailable(cached, context);
+  const cached = await readCacheEntry(params, context);
 
   if (cached.outcome !== CacheGetOutcome.Hit) {
     return {};
@@ -222,8 +246,12 @@ async function coalescedFetch<T>(
 }
 
 /**
- * Cache-aside with TR-9 stale fallback: healthy cache → get; on miss or soft-expiry fetch upstream;
- * on fetch failure serve a grace-window cached copy when available.
+ * Retrieves data using the cache-aside pattern.
+ *
+ * When the cached value is missing or softly expired, the value is refreshed
+ * from the upstream source. If the upstream fetch fails, this implementation
+ * follows the TR-9 stale-fallback behavior by returning a stale cached value
+ * when possible.
  *
  * TODO(DEV-23): Optional background refresh when entry is near fresh TTL (Cache-Layer-Per-Category.md §3).
  */

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import pino from 'pino';
-import { getOrFetch } from '@src/lib/cache/getOrFetch.js';
+import { getOrFetch } from '@src/lib/getOrFetch.js';
 import { cacheHit, cacheMiss, cacheUnavailable } from '@src/lib/cache/cacheGetResult.js';
 import { createMockCacheClient } from '@test/mocks/cacheClient.mock.js';
 import { createMemoryCacheClient } from '@src/lib/cache/memoryCacheClient.js';
