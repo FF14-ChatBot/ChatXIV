@@ -158,7 +158,7 @@ async function executeWithTimeout(
       } else {
         failures.push(result.reason);
         logger.warn(
-          { err: result.reason },
+          { err: result.reason, failures },
           'Source resolver failed; continuing with other sources'
         );
       }

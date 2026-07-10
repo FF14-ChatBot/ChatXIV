@@ -7,7 +7,6 @@ import type {
 } from '../../xivapi/types.js';
 import { XivApiLanguage as XivApiLanguageValues } from '../../xivapi/types.js';
 import type { RetrievedChunk } from '../types.js';
-import { XIVAPI_DATA_SOURCE } from '../../config/constants.js';
 
 /** Categories served by XIVAPI search in the MVP resolver. */
 // TODO(DEV-23): Reconcile with per-category sources/TTL table — some categories may move to MediaWiki-only keys.
@@ -25,6 +24,7 @@ export const XivApiResolverCategories = [
   UsageCategory.COLLECTIBLES,
 ] as const satisfies readonly UsageCategory[];
 
+const XivApiSourceName = 'XIVAPI';
 const xivApiCategorySet = new Set<UsageCategory>(XivApiResolverCategories);
 
 export function isXivApiResolverCategory(category: UsageCategory): boolean {
@@ -73,7 +73,7 @@ function readStringField(
 
 export function xivApiSearchSourceCitation(version?: string): SourceCitation {
   return {
-    sourceName: XIVAPI_DATA_SOURCE,
+    sourceName: XivApiSourceName,
     sourceUrl: 'https://v2.xivapi.com/',
     ...(version !== undefined ? { patchOrDate: version } : {}),
   };

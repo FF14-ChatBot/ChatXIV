@@ -49,7 +49,7 @@ describe('createXivApiResolver', () => {
 
     expect(chunks).toHaveLength(1);
     expect(search).not.toHaveBeenCalled();
-    expect(cache.set).not.toHaveBeenCalled();
+    expect(cache.set).toHaveBeenCalledOnce();
   });
 
   it('searches XIVAPI and caches on miss', async () => {

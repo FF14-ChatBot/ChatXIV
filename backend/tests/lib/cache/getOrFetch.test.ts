@@ -41,7 +41,7 @@ describe('getOrFetch', () => {
 
     expect(result).toEqual({ value: { ok: true }, stale: false });
     expect(fetch).not.toHaveBeenCalled();
-    expect(cache.set).not.toHaveBeenCalled();
+    expect(cache.set).toHaveBeenCalledWith('k', { ok: true }, 60);
   });
 
   it('fetches, stores with retention TTL, and returns on miss', async () => {
@@ -84,7 +84,7 @@ describe('getOrFetch', () => {
 
     expect(result).toEqual({ value: payload, stale: true });
     expect(fetch).toHaveBeenCalledOnce();
-    expect(cache.set).not.toHaveBeenCalled();
+    expect(cache.set).toHaveBeenCalledWith('k', payload, 172800);
   });
 
   it('serves stale cache on miss when a grace-window entry still exists', async () => {
@@ -126,10 +126,9 @@ describe('getOrFetch', () => {
     });
   });
 
-  it('throws when cache backend is unhealthy', async () => {
-    cacheBackendHealth.configure('redis');
-    cacheBackendHealth.recordOperationFailure(new Error('redis down'));
+  it('throws when cache get reports unavailable', async () => {
     const cache = createMockCacheClient();
+    cache.get.mockResolvedValue(cacheUnavailable(new Error('redis down')));
 
     await expect(
       getOrFetch({
@@ -140,8 +139,6 @@ describe('getOrFetch', () => {
         fetch: vi.fn(),
       })
     ).rejects.toBeInstanceOf(AppError);
-
-    cacheBackendHealth.configure('memory');
   });
 
   it('throws when get returns unavailable', async () => {

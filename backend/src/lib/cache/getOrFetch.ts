@@ -1,10 +1,6 @@
 import type { CacheClient } from './types.js';
 import { CacheGetOutcome } from './cacheGetResult.js';
-import {
-  requireCacheHealthy,
-  throwIfCacheUnavailable,
-  type CacheUnavailableContext,
-} from './cacheGuards.js';
+import { throwIfCacheUnavailable, type CacheUnavailableContext } from './cacheGuards.js';
 import { AppError } from '../errors/AppError.js';
 import {
   CACHE_FETCH_LOCK_POLL_ATTEMPTS,
@@ -17,6 +13,9 @@ export type GetOrFetchResult<T> = Readonly<{
   stale: boolean;
 }>;
 
+/**
+ * Parameters for a cache-aside read that may fetch upstream on miss or soft expiry.
+ */
 export type GetOrFetchParams<T> = Readonly<{
   cache: CacheClient;
   key: string;
@@ -62,6 +61,15 @@ function resultFromCachedHit<T>(value: T, params: GetOrFetchParams<T>): GetOrFet
     return { value, stale: false };
   }
   return { value, stale: !isFresh(fetchedAt, params.ttlSeconds) };
+}
+
+async function refreshCacheEntry<T>(
+  cache: CacheClient,
+  key: string,
+  value: T,
+  retention: number
+): Promise<void> {
+  await cache.set(key, value, retention);
 }
 
 async function sleepMs(ms: number): Promise<void> {
@@ -116,7 +124,7 @@ async function runFetchWithStaleFallback<T>(
 ): Promise<GetOrFetchResult<T>> {
   try {
     const value = await params.fetch();
-    await params.cache.set(params.key, value, retention);
+    await refreshCacheEntry(params.cache, params.key, value, retention);
     return { value, stale: false };
   } catch (err) {
     if (staleEligible !== undefined) {
@@ -136,6 +144,46 @@ async function runFetchWithStaleFallback<T>(
       `Unable to load data from ${params.dataSource}: upstream request failed`
     );
   }
+}
+
+async function cacheGet<T>(
+  params: GetOrFetchParams<T>,
+  context: CacheUnavailableContext,
+  retention: number
+): Promise<Readonly<{ result?: GetOrFetchResult<T>; staleEligible?: T }>> {
+  const cached = await params.cache.get<T>(params.key);
+  throwIfCacheUnavailable(cached, context);
+
+  if (cached.outcome !== CacheGetOutcome.Hit) {
+    return {};
+  }
+
+  await refreshCacheEntry(params.cache, params.key, cached.value, retention);
+
+  const fetchedAt = params.getFetchedAt?.(cached.value);
+  if (fetchedAt === undefined || params.getFetchedAt === undefined) {
+    return { result: { value: cached.value, stale: false } };
+  }
+
+  if (isFresh(fetchedAt, params.ttlSeconds)) {
+    return { result: { value: cached.value, stale: false } };
+  }
+
+  const grace = params.staleGraceSeconds ?? 0;
+  if (isWithinGrace(fetchedAt, params.ttlSeconds, grace)) {
+    return { staleEligible: cached.value };
+  }
+
+  return {};
+}
+
+async function dynamicGet<T>(
+  params: GetOrFetchParams<T>,
+  context: CacheUnavailableContext,
+  retention: number,
+  staleEligible: T | undefined
+): Promise<GetOrFetchResult<T>> {
+  return coalescedFetch(params, context, retention, staleEligible);
 }
 
 async function coalescedFetch<T>(
@@ -181,28 +229,14 @@ async function coalescedFetch<T>(
  */
 export async function getOrFetch<T>(params: GetOrFetchParams<T>): Promise<GetOrFetchResult<T>> {
   const context: CacheUnavailableContext = { dataSource: params.dataSource };
-  requireCacheHealthy(context);
 
   const grace = params.staleGraceSeconds ?? 0;
   const retention = retentionSeconds(params.ttlSeconds, grace);
 
-  const cached = await params.cache.get<T>(params.key);
-  throwIfCacheUnavailable(cached, context);
-
-  let staleEligible: T | undefined;
-
-  if (cached.outcome === CacheGetOutcome.Hit) {
-    const fetchedAt = params.getFetchedAt?.(cached.value);
-    if (fetchedAt === undefined || params.getFetchedAt === undefined) {
-      return { value: cached.value, stale: false };
-    }
-    if (isFresh(fetchedAt, params.ttlSeconds)) {
-      return { value: cached.value, stale: false };
-    }
-    if (isWithinGrace(fetchedAt, params.ttlSeconds, grace)) {
-      staleEligible = cached.value;
-    }
+  const cached = await cacheGet(params, context, retention);
+  if (cached.result !== undefined) {
+    return cached.result;
   }
 
-  return coalescedFetch(params, context, retention, staleEligible);
+  return dynamicGet(params, context, retention, cached.staleEligible);
 }

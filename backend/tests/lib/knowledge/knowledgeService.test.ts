@@ -106,6 +106,33 @@ describe('createKnowledgeService', () => {
     warn.mockRestore();
   });
 
+  it('logs aggregated resolver failures before throwing', async () => {
+    const warn = vi.spyOn(logger, 'warn');
+    const badOne: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async () => {
+        throw AppError.sourceUnavailable('XIVAPI down');
+      },
+    };
+    const badTwo: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async () => {
+        throw new Error('wiki exploded');
+      },
+    };
+    const svc = createKnowledgeService([badOne, badTwo]);
+
+    await expect(svc.retrieve('q', { category: UsageCategory.RAIDING })).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ failures: expect.arrayContaining([expect.any(Error)]) }),
+      expect.stringContaining('Source resolver failed')
+    );
+    warn.mockRestore();
+  });
+
   it('throws SOURCE_UNAVAILABLE when all resolvers fail for uncategorized query', async () => {
     const warn = vi.spyOn(logger, 'warn');
     const bad: SourceResolver = {
