@@ -21,9 +21,6 @@ data/
 .DS_Store
 Thumbs.db
 
-# Claude Code local guidance (not shared via git)
-CLAUDE.md
-
 # Build and logs
 dist/
 dist-node/
