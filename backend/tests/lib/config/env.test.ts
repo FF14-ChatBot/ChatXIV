@@ -21,8 +21,12 @@ import {
   getBootstrapAdminSubs,
   getTurnstileSecretKey,
   getLokiPushConfig,
+  getMediaWikiUserAgent,
+  getMediaWikiTimeoutMs,
+  getMediaWikiRateLimitPerSecond,
+  getMediaWikiBaseUrl,
 } from '@src/lib/config/env.js';
-import { ENV_KEYS } from '@src/lib/config/constants.js';
+import { ENV_KEYS, MediaWikiWikiId } from '@src/lib/config/constants.js';
 
 describe('lib/config/env', () => {
   const saved = { ...process.env };
@@ -445,6 +449,94 @@ describe('lib/config/env', () => {
       process.env[ENV_KEYS.LOKI_USER_ID] = 'u';
       process.env[ENV_KEYS.LOKI_PASSWORD] = 'p';
       expect(getLokiPushConfig()).toBeUndefined();
+    });
+  });
+
+  describe('getMediaWikiUserAgent', () => {
+    it('returns the configured value', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT] = 'ChatXIV/1.0 (ops@chatxiv.example)';
+      expect(getMediaWikiUserAgent()).toBe('ChatXIV/1.0 (ops@chatxiv.example)');
+    });
+
+    it('falls back to a placeholder that never sends a blank header', () => {
+      delete process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT];
+      expect(getMediaWikiUserAgent()).toBe('ChatXIV/1.0 (unconfigured-contact)');
+    });
+  });
+
+  describe('getMediaWikiTimeoutMs', () => {
+    it('returns the default when unset', () => {
+      delete process.env[ENV_KEYS.MEDIAWIKI_TIMEOUT_MS];
+      expect(getMediaWikiTimeoutMs()).toBe(5_000);
+    });
+
+    it('parses a valid value', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_TIMEOUT_MS] = '8000';
+      expect(getMediaWikiTimeoutMs()).toBe(8_000);
+    });
+
+    it('returns the default for a non-numeric or non-positive value', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_TIMEOUT_MS] = 'abc';
+      expect(getMediaWikiTimeoutMs()).toBe(5_000);
+      process.env[ENV_KEYS.MEDIAWIKI_TIMEOUT_MS] = '0';
+      expect(getMediaWikiTimeoutMs()).toBe(5_000);
+    });
+
+    it('returns the default when the value overflows to Infinity', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_TIMEOUT_MS] = '1' + '0'.repeat(400);
+      expect(getMediaWikiTimeoutMs()).toBe(5_000);
+    });
+
+    it('parses scientific notation instead of truncating it (regression: parseInt truncation)', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_TIMEOUT_MS] = '5e3';
+      expect(getMediaWikiTimeoutMs()).toBe(5_000);
+    });
+
+    it('rejects a garbage-suffixed value instead of silently truncating it', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_TIMEOUT_MS] = '5000ms';
+      expect(getMediaWikiTimeoutMs()).toBe(5_000);
+    });
+  });
+
+  describe('getMediaWikiRateLimitPerSecond', () => {
+    it('returns the default when unset', () => {
+      delete process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_PER_SECOND];
+      expect(getMediaWikiRateLimitPerSecond()).toBe(1);
+    });
+
+    it('parses a valid value', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_PER_SECOND] = '2';
+      expect(getMediaWikiRateLimitPerSecond()).toBe(2);
+    });
+
+    it('returns the default for a non-numeric or non-positive value', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_PER_SECOND] = 'abc';
+      expect(getMediaWikiRateLimitPerSecond()).toBe(1);
+      process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_PER_SECOND] = '-1';
+      expect(getMediaWikiRateLimitPerSecond()).toBe(1);
+    });
+  });
+
+  describe('getMediaWikiBaseUrl', () => {
+    it('returns the built-in default when unset', () => {
+      delete process.env[ENV_KEYS.MEDIAWIKI_CGW_URL];
+      expect(getMediaWikiBaseUrl(MediaWikiWikiId.ConsoleGamesWiki)).toBe(
+        'https://ffxiv.consolegameswiki.com/mediawiki/api.php'
+      );
+    });
+
+    it('returns the env override when set', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_CGW_URL] = 'https://staging.example.com/api.php';
+      expect(getMediaWikiBaseUrl(MediaWikiWikiId.ConsoleGamesWiki)).toBe(
+        'https://staging.example.com/api.php'
+      );
+    });
+
+    it('resolves each wikiId independently', () => {
+      delete process.env[ENV_KEYS.MEDIAWIKI_FANDOM_FFXIV_URL];
+      expect(getMediaWikiBaseUrl(MediaWikiWikiId.FandomFfxiv)).toBe(
+        'https://finalfantasy.fandom.com/api.php'
+      );
     });
   });
 });

@@ -101,6 +101,20 @@ External API responses (XIVAPI, MediaWiki, etc.) will be cached through a **`Cac
 
 **TTL:** `set()` always takes `ttlSeconds` — there is no client default; each upstream (XIVAPI, MediaWiki, etc.) picks cache lifetime for its responses. `setNx()` is for coalescing / in-flight fetch locks: production call sites must pass a short TTL (typically upstream timeout + margin, often 15–60s) so a crashed worker cannot leave a lock forever. Do not omit `setNx` TTL for request-scoped aggregation locks.
 
+## MediaWiki client
+
+`backend/src/lib/mediawiki/` (`MediaWikiHttpClient`) queries the MediaWiki Action API (`action=query`, `action=parse`) for ConsoleGamesWiki and the Fandom FFXIV wiki. One client instance serves both wikis — `wikiId` (`consolegameswiki` | `fandom_ffxiv`) selects the base URL and rate limiter. Retry/backoff on 429/5xx is inherited from `RetryingHttpClient` (same as XIVAPI); caching is a separate layer above this client. Configuration:
+
+| Variable                          | Default                                                | Purpose                                                                                                                                   |
+| --------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `MEDIAWIKI_USER_AGENT`            | placeholder (`ChatXIV/1.0 (unconfigured-contact)`)     | Required by wiki policy; set to `AppName/Version (contact)` — an unconfigured value may get requests blocked or rate-limited by the wiki. |
+| `MEDIAWIKI_TIMEOUT_MS`            | `5000`                                                 | Per-attempt abort timeout.                                                                                                                |
+| `MEDIAWIKI_RATE_LIMIT_PER_SECOND` | `1`                                                    | Token-bucket rate, applied **per wiki** (not global), so one slow wiki can't starve requests to the other.                                |
+| `MEDIAWIKI_CGW_URL`               | `https://ffxiv.consolegameswiki.com/mediawiki/api.php` | Override for testing or an alternate endpoint.                                                                                            |
+| `MEDIAWIKI_FANDOM_FFXIV_URL`      | `https://finalfantasy.fandom.com/api.php`              | Override for testing or an alternate endpoint.                                                                                            |
+
+All five are optional — unset values fall back to the defaults above (see `MEDIAWIKI_DEFAULT_*` in `backend/src/lib/config/constants.ts`). Copy from [`.env.example`](.env.example) to set them locally.
+
 ## API documentation (OpenAPI + Swagger UI)
 
 | What                    | URL                                                                                                                         |

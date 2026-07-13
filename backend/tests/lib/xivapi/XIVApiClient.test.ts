@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createXivApiClient, type XivApiClientConfig } from '@src/lib/xivapi/XIVApiClient.js';
 import { XivApiSchemaFormat } from '@src/lib/xivapi/types.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
-import type { TokenBucket } from '@src/lib/xivapi/throttle.js';
+import type { TokenBucket } from '@src/lib/http/tokenBucket.js';
 import type pino from 'pino';
 
 function createMockLogger(): pino.Logger {
