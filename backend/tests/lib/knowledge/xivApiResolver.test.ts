@@ -20,7 +20,7 @@ describe('createXivApiResolver', () => {
 
   it('returns empty chunks for blank queries', async () => {
     const resolver = createXivApiResolver({ client, cache });
-    await expect(resolver.resolve('   ')).resolves.toEqual([]);
+    await expect(resolver.resolve('   ', {})).resolves.toEqual([]);
     expect(search).not.toHaveBeenCalled();
   });
 
@@ -98,7 +98,7 @@ describe('createXivApiResolver', () => {
     search.mockRejectedValue(new Error('XIVAPI unavailable'));
 
     const resolver = createXivApiResolver({ client, cache });
-    const chunks = await resolver.resolve('potion');
+    const chunks = await resolver.resolve('potion', {});
 
     expect(chunks[0]?.source.stale).toBe(true);
     expect(search).toHaveBeenCalledOnce();
@@ -115,7 +115,7 @@ describe('createXivApiResolver', () => {
     search.mockRejectedValue(new Error('XIVAPI unavailable'));
 
     const resolver = createXivApiResolver({ client, cache });
-    await expect(resolver.resolve('potion')).rejects.toMatchObject({
+    await expect(resolver.resolve('potion', {})).rejects.toMatchObject({
       status: 503,
       code: ERROR_CODES.SOURCE_UNAVAILABLE,
     });
@@ -126,7 +126,7 @@ describe('createXivApiResolver', () => {
     search.mockRejectedValue(AppError.sourceUnavailable('XIVAPI timeout'));
 
     const resolver = createXivApiResolver({ client, cache });
-    await expect(resolver.resolve('potion')).rejects.toMatchObject({
+    await expect(resolver.resolve('potion', {})).rejects.toMatchObject({
       message: 'XIVAPI timeout',
       code: ERROR_CODES.SOURCE_UNAVAILABLE,
     });
@@ -149,7 +149,7 @@ describe('createXivApiResolver', () => {
     );
 
     const resolver = createXivApiResolver({ client, cache });
-    const chunks = await resolver.resolve('potion');
+    const chunks = await resolver.resolve('potion', {});
 
     expect(chunks[0]?.source).toMatchObject({
       sourceName: 'XIVAPI',

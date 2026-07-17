@@ -63,7 +63,7 @@ import {
 } from '../knowledge/knowledgePipelineState.js';
 import { createXivApiResolver } from '../knowledge/resolvers/xivApiResolver.js';
 import { createXivApiClient } from '../xivapi/XIVApiClient.js';
-import { createTokenBucket } from '../xivapi/throttle.js';
+import { createTokenBucket } from '../http/tokenBucket.js';
 import {
   XIVAPI_BASE_URL,
   XIVAPI_RATE_LIMIT_BURST,

@@ -14,6 +14,7 @@ import {
   FeatureFlagServiceToken,
   SourceResolversToken,
 } from '@src/lib/di/container.js';
+import type { SourceResolver } from '@src/lib/knowledge/types.js';
 import type { MetricsStore } from '@src/lib/observability/metrics/types.js';
 import type { UsageStore } from '@src/lib/observability/usageAnalytics/types.js';
 import type { RateLimitConfig, RateLimitStore } from '@src/middleware/rateLimit/types.js';
@@ -113,7 +114,7 @@ describe('container', () => {
   it('wireChatKnowledgePipeline registers XIVAPI and wiki stub resolvers', () => {
     registerTestCacheClient();
     wireChatKnowledgePipeline();
-    const resolvers = container.resolve(SourceResolversToken);
+    const resolvers = container.resolve<readonly SourceResolver[]>(SourceResolversToken);
     expect(resolvers).toHaveLength(2);
     expect(resolvers[0]?.supportedCategories).toContain(UsageCategory.ITEMS);
     expect(resolvers[1]?.supportedCategories).not.toContain(UsageCategory.ITEMS);

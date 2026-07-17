@@ -37,7 +37,7 @@ describe('xivApiResolverSupport', () => {
 
   it('isXivApiResolverCategory identifies XIVAPI-backed categories', () => {
     expect(isXivApiResolverCategory(UsageCategory.ITEMS)).toBe(true);
-    expect(isXivApiResolverCategory(UsageCategory.OTHER)).toBe(false);
+    expect(isXivApiResolverCategory(UsageCategory.UNCATEGORIZED)).toBe(false);
   });
 
   it('mapXivApiSearchToChunks formats row text and citation metadata', () => {
