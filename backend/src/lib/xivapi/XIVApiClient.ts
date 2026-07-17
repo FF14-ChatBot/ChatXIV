@@ -12,7 +12,7 @@
 
 import type pino from 'pino';
 import { RetryingHttpClient } from '../http/fetchWithRetry.js';
-import type { TokenBucket } from './throttle.js';
+import type { TokenBucket } from '../http/tokenBucket.js';
 import type {
   XivApiAssetBody,
   XivApiAssetParams,

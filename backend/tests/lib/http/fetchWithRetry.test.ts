@@ -92,6 +92,39 @@ describe('RetryingHttpClient', () => {
     });
   });
 
+  // ── custom headers ─────────────────────────────────────────────────
+
+  describe('headers', () => {
+    it('sends configured headers on every request, including retries', async () => {
+      fetchMock.mockResolvedValueOnce(errorResponse(503)).mockResolvedValueOnce(okJson({ id: 1 }));
+
+      const opts: RetryingHttpClientConfig = {
+        ...defaultOptions,
+        backoffBaseMs: 0,
+        headers: { 'User-Agent': 'TestAPI/1.0 (test@example.com)' },
+      };
+
+      await createTestHttpClient(opts).fetchJson('https://api.example.com/data', log);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      for (const call of fetchMock.mock.calls) {
+        const init = call[1] as RequestInit;
+        expect((init.headers as Record<string, string>)['User-Agent']).toBe(
+          'TestAPI/1.0 (test@example.com)'
+        );
+      }
+    });
+
+    it('omits the headers option entirely when not configured', async () => {
+      fetchMock.mockResolvedValue(okJson({ id: 1 }));
+
+      await createTestHttpClient(defaultOptions).fetchJson('https://api.example.com/data', log);
+
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(init.headers).toBeUndefined();
+    });
+  });
+
   // ── beforeAttempt hook ────────────────────────────────────────────
 
   describe('beforeAttempt', () => {
