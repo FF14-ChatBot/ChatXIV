@@ -50,6 +50,7 @@ export function createRedisCacheClient(redis: RedisClientType, log: pino.Logger)
         await redis.set(storageKey, payload, { EX: ttlSeconds });
         cacheBackendHealth.recordOperationSuccess();
       } catch (err) {
+        // TODO(DEV-23): Surface set failure to callers (or return boolean) so getOrFetch can metric/retry.
         log.warn({ err, key }, 'Cache set failed');
         cacheBackendHealth.recordOperationFailure(err);
       }

@@ -97,7 +97,7 @@ External API responses (XIVAPI, MediaWiki, etc.) will be cached through a **`Cac
 
 **Health:** `GET /health` is always OK. `GET /health/cache` returns **503** when the active backend is Redis and the store is unhealthy (so load balancers can drain traffic before origin APIs are hammered).
 
-**Consumers:** use `get()` → `hit` / `miss` / `unavailable`. On `unavailable`, call `throwIfCacheUnavailable(result, { dataSource: 'XIVAPI' })` or `requireCacheHealthy({ dataSource: '…' })` so the API returns **503** `SOURCE_UNAVAILABLE` with a message naming the origin and the cache failure reason, instead of calling upstream APIs.
+**Consumers:** use `get()` → `hit` / `miss` / `unavailable`. On `unavailable`, call `throwIfCacheUnavailable(result, { dataSource: 'XIVAPI' })` so the API returns **503** `SOURCE_UNAVAILABLE` with a message naming the origin and the cache failure reason, instead of calling upstream APIs. Cache-store health itself is monitored by canary (`GET /health/cache`), not per-request checks.
 
 **TTL:** `set()` always takes `ttlSeconds` — there is no client default; each upstream (XIVAPI, MediaWiki, etc.) picks cache lifetime for its responses. `setNx()` is for coalescing / in-flight fetch locks: production call sites must pass a short TTL (typically upstream timeout + margin, often 15–60s) so a crashed worker cannot leave a lock forever. Do not omit `setNx` TTL for request-scoped aggregation locks.
 

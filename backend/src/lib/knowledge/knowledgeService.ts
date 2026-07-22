@@ -1,5 +1,6 @@
-import { UsageCategory } from '@chatxiv/cdm';
+import { ERROR_CODES, UsageCategory } from '@chatxiv/cdm';
 import { logger } from '../observability/logger.js';
+import { AppError } from '../errors/AppError.js';
 import type {
   KnowledgeService,
   ResolveOptions,
@@ -73,10 +74,6 @@ function pickResolvers(
   return categoryMap.get(category) ?? allResolvers;
 }
 
-/**
- * Links a promise to an {@link AbortSignal}: rejects when the signal aborts
- * (e.g. retrieval budget exceeded) without leaving dangling listeners.
- */
 function wrapWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     // Already-aborted signals never fire `abort`; current retrieve() path sets this up before mapping.
@@ -99,6 +96,46 @@ function wrapWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> 
   });
 }
 
+/** Ensures synchronous throws inside `resolve` become promise rejections for `allSettled`. */
+function invokeResolver(
+  resolver: SourceResolver,
+  query: string,
+  options: ResolveOptions,
+  signal: AbortSignal
+): Promise<readonly RetrievedChunk[]> {
+  return wrapWithAbort(
+    Promise.resolve().then(() => resolver.resolve(query, options)),
+    signal
+  );
+}
+
+function pickSourceUnavailableFailure(failures: readonly unknown[]): AppError | undefined {
+  for (const failure of failures) {
+    if (failure instanceof AppError && failure.code === ERROR_CODES.SOURCE_UNAVAILABLE) {
+      return failure;
+    }
+  }
+  return undefined;
+}
+
+function throwWhenAllResolversFailed(
+  failures: readonly unknown[],
+  resolvers: readonly SourceResolver[]
+): void {
+  if (failures.length !== resolvers.length || failures.length === 0) {
+    return;
+  }
+
+  const sourceUnavailable = pickSourceUnavailableFailure(failures);
+  if (sourceUnavailable !== undefined) {
+    throw sourceUnavailable;
+  }
+
+  throw AppError.sourceUnavailable(
+    'Unable to load data: all configured sources failed for this query'
+  );
+}
+
 async function executeWithTimeout(
   resolvers: readonly SourceResolver[],
   query: string,
@@ -110,26 +147,29 @@ async function executeWithTimeout(
 
   try {
     const settled = await Promise.allSettled(
-      resolvers.map((r) => wrapWithAbort(r.resolve(query, options), controller.signal))
+      resolvers.map((r) => invokeResolver(r, query, options, controller.signal))
     );
 
     const allChunks: RetrievedChunk[] = [];
+    const failures: unknown[] = [];
     for (const result of settled) {
       if (result.status === 'fulfilled') {
         allChunks.push(...result.value);
       } else {
+        failures.push(result.reason);
         logger.warn(
-          { err: result.reason },
+          { err: result.reason, failures },
           'Source resolver failed; continuing with other sources'
         );
       }
     }
 
+    if (allChunks.length === 0) {
+      throwWhenAllResolversFailed(failures, resolvers);
+    }
+
     allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     return allChunks.slice(0, topK);
-  } catch (err) {
-    logger.error({ err }, 'Retrieval timed out or failed; returning empty chunks');
-    return [];
   } finally {
     clearTimeout(timer);
   }
