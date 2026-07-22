@@ -123,6 +123,28 @@ export const mediaWikiParseResponseWithNestedTableFixture: MediaWikiApiResponse 
   },
 };
 
+/**
+ * `action=parse` for a page whose markup includes a self-closing `<table/>` tag (a malformed or
+ * unusually-generated template) between two prose sections — exercises `stripTables`' handling of
+ * an "open" tag with no matching close: treated as an unmatched open rather than depth-neutral, it
+ * would silently drop everything after the self-closing tag, including the real content below.
+ */
+export const mediaWikiParseResponseWithSelfClosingTableFixture: MediaWikiApiResponse = {
+  parse: {
+    title: 'Eureka Orthos',
+    pageid: 7040,
+    text: {
+      '*':
+        '<div class="mw-parser-output">' +
+        '<p>Eureka Orthos is a deep dungeon accessible from Idyllshire.</p>' +
+        '<table/>' +
+        '<p>Players unlock it by completing the quest "Handful of Casualties" after reaching ' +
+        'level 71, then queueing via the Duty Finder under the Deep Dungeon category.</p>' +
+        '</div>',
+    },
+  },
+};
+
 /** `action=parse` for a stub/very short page — below `MIN_CONTENT_CHARS` once cleaned. */
 export const mediaWikiParseResponseThinFixture: MediaWikiApiResponse = {
   parse: {

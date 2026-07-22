@@ -120,6 +120,14 @@ export abstract class RetryingHttpClient {
         ...(headers !== undefined ? { headers } : {}),
       });
     } catch (err: unknown) {
+      // Check the caller's own signal first: `isTimeoutError` can't tell attemptSignal's
+      // timeout apart from callerSignal's cancellation once combined via `AbortSignal.any` --
+      // both surface as the same AbortError/TimeoutError shape. Misattributing a caller's
+      // cancellation (e.g. knowledgeService's overall retrieval budget expiring) as "this
+      // request timed out after Xms" is actively misleading during incident triage.
+      if (callerSignal?.aborted) {
+        throw AppError.sourceUnavailable(`${sourceName} request cancelled`);
+      }
       if (isTimeoutError(err)) {
         throw AppError.sourceUnavailable(`${sourceName} request timed out after ${timeoutMs}ms`);
       }

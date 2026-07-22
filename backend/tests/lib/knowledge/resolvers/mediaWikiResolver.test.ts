@@ -1,13 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
-import { UsageCategory } from '@chatxiv/cdm';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ERROR_CODES, UsageCategory } from '@chatxiv/cdm';
 import { createMediaWikiResolver } from '@src/lib/knowledge/resolvers/mediaWikiResolver.js';
 import { MediaWikiWikiId } from '@src/lib/config/constants.js';
 import type { MediaWikiSearchResultEntry } from '@src/lib/mediawiki/types.js';
 import { createMockMediaWikiClient } from '@test/mocks/mediaWikiClient.mock.js';
+import { createMockCacheClient } from '@test/mocks/cacheClient.mock.js';
+import { cacheHit } from '@src/lib/cache/cacheGetResult.js';
+import { cacheBackendHealth } from '@src/lib/cache/cacheBackendHealth.js';
 import {
   mediaWikiParseResponseThinFixture,
   mediaWikiParseResponseWithInfoboxFixture,
   mediaWikiParseResponseWithNestedTableFixture,
+  mediaWikiParseResponseWithSelfClosingTableFixture,
 } from '@test/fixtures/mediawiki.fixtures.js';
 import type pino from 'pino';
 
@@ -40,11 +44,16 @@ function searchResponse(entries: MediaWikiSearchResultEntry[]) {
 }
 
 describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
+  beforeEach(() => {
+    cacheBackendHealth.configure('memory');
+  });
+
   function setup() {
     const client = createMockMediaWikiClient();
+    const cache = createMockCacheClient();
     const log = createMockLogger();
-    const resolver = createMediaWikiResolver(client, baseUrls, [UsageCategory.UNLOCKS], log);
-    return { client, log, resolver };
+    const resolver = createMediaWikiResolver(client, cache, baseUrls, [UsageCategory.UNLOCKS], log);
+    return { client, cache, log, resolver };
   }
 
   it('exposes the categories it was constructed with', () => {
@@ -160,6 +169,7 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
 
   it('builds a correct article URL even when the configured base URL has a trailing slash', async () => {
     const client = createMockMediaWikiClient();
+    const cache = createMockCacheClient();
     const log = createMockLogger();
     const trailingSlashBaseUrls = {
       [MediaWikiWikiId.ConsoleGamesWiki]: 'https://ffxiv.consolegameswiki.com/mediawiki/api.php/',
@@ -167,6 +177,7 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
     };
     const resolver = createMediaWikiResolver(
       client,
+      cache,
       trailingSlashBaseUrls,
       [UsageCategory.UNLOCKS],
       log
@@ -331,5 +342,110 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       8,
       undefined
     );
+  });
+
+  it('does not drop content after a self-closing <table/> tag', async () => {
+    const { client, resolver } = setup();
+    client.search.mockResolvedValue(searchResponse([searchEntry({ title: 'Eureka Orthos' })]));
+    client.parse.mockResolvedValue(mediaWikiParseResponseWithSelfClosingTableFixture);
+
+    const chunks = await resolver.resolve('unlock Eureka Orthos', { topK: 8 });
+
+    expect(chunks[0]?.text).toContain('Eureka Orthos is a deep dungeon accessible from Idyllshire');
+    expect(chunks[0]?.text).toContain('Handful of Casualties');
+  });
+
+  it('throws SOURCE_UNAVAILABLE when every wiki attempt errors outright', async () => {
+    const { client, resolver } = setup();
+    client.search.mockRejectedValue(new Error('network error'));
+
+    await expect(
+      resolver.resolve('unlock during a full outage', { topK: 8 })
+    ).rejects.toMatchObject({ code: ERROR_CODES.SOURCE_UNAVAILABLE });
+  });
+
+  it('does not throw SOURCE_UNAVAILABLE when wikis succeed but legitimately have no matches', async () => {
+    const { client, resolver } = setup();
+    client.search.mockResolvedValue(searchResponse([]));
+
+    await expect(resolver.resolve('nothing findable anywhere', { topK: 8 })).resolves.toEqual([]);
+    expect(client.search).toHaveBeenCalledTimes(2); // both wikis genuinely queried, neither errored
+  });
+
+  it('stops after the wiki in flight when the caller aborts, without trying the fallback wiki', async () => {
+    const { client, resolver } = setup();
+    const controller = new AbortController();
+    client.search.mockImplementation((wikiId: MediaWikiWikiId) => {
+      if (wikiId === MediaWikiWikiId.ConsoleGamesWiki) {
+        controller.abort();
+        return Promise.reject(new Error('cancelled mid-flight'));
+      }
+      return Promise.resolve(searchResponse([searchEntry({ title: 'Should not be reached' })]));
+    });
+
+    const chunks = await resolver.resolve('unlock something', {
+      topK: 8,
+      signal: controller.signal,
+    });
+
+    expect(chunks).toEqual([]);
+    expect(client.search).toHaveBeenCalledTimes(1);
+  });
+
+  describe('caching', () => {
+    it('serves a cache hit without querying the wiki', async () => {
+      const { client, cache, resolver } = setup();
+      cache.get.mockResolvedValue(
+        cacheHit({
+          chunks: [
+            {
+              text: 'Cached unlock info.',
+              source: { sourceName: 'Cached Page', sourceUrl: 'https://example.com/Cached_Page' },
+              score: 1,
+            },
+          ],
+          fetchedAt: new Date().toISOString(),
+        })
+      );
+
+      const chunks = await resolver.resolve('unlock the palace of the dead', { topK: 8 });
+
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0]?.source.sourceName).toBe('Cached Page');
+      expect(client.search).not.toHaveBeenCalled();
+      expect(client.parse).not.toHaveBeenCalled();
+    });
+
+    it('caches a freshly fetched result for next time', async () => {
+      const { client, cache, resolver } = setup();
+      client.search.mockResolvedValue(searchResponse([searchEntry()]));
+      client.parse.mockResolvedValue(mediaWikiParseResponseWithInfoboxFixture);
+
+      await resolver.resolve('unlock the palace of the dead', { topK: 8 });
+
+      expect(cache.set).toHaveBeenCalled();
+    });
+
+    it('marks chunks stale when re-fetch fails after the fresh TTL has elapsed', async () => {
+      const staleFetchedAt = new Date(Date.now() - 60 * 60 * 60 * 1_000).toISOString(); // 60h old
+      const { client, cache, resolver } = setup();
+      cache.get.mockResolvedValue(
+        cacheHit({
+          chunks: [
+            {
+              text: 'Slightly stale unlock info.',
+              source: { sourceName: 'Stale Page', sourceUrl: 'https://example.com/Stale_Page' },
+              score: 1,
+            },
+          ],
+          fetchedAt: staleFetchedAt,
+        })
+      );
+      client.search.mockRejectedValue(new Error('wiki unavailable'));
+
+      const chunks = await resolver.resolve('unlock the palace of the dead', { topK: 8 });
+
+      expect(chunks[0]?.source.stale).toBe(true);
+    });
   });
 });

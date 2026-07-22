@@ -42,13 +42,19 @@ export function mapXivApiSearchToChunks(
   searchResult: XivApiSearchResult,
   attribution: SourceCitation
 ): readonly RetrievedChunk[] {
-  return searchResult.results.map((entry) => ({
+  // Rank-based, not XIVAPI's raw (unbounded) relevance score: knowledgeService merges chunks
+  // from multiple resolvers sharing a category (e.g. UNLOCKS, also served by MediaWikiResolver)
+  // into one sorted list. XIVAPI's engine score and MediaWikiResolver's rank-based score
+  // (1 / (rank + 1)) aren't on the same scale -- using the raw score here would let XIVAPI
+  // results always outrank MediaWiki's regardless of actual relevance. `results` is already
+  // returned in the API's own relevance order, so rank works the same way it does for MediaWiki.
+  return searchResult.results.map((entry, rank) => ({
     text: formatSearchEntryText(entry),
     source: {
       ...attribution,
       patchOrDate: searchResult.version,
     },
-    score: entry.score,
+    score: 1 / (rank + 1),
   }));
 }
 

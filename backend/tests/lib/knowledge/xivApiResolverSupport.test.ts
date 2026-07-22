@@ -64,7 +64,27 @@ describe('xivApiResolverSupport', () => {
     expect(chunks[0].text).toContain('Restores HP.');
     expect(chunks[0].source.sourceName).toBe('XIVAPI');
     expect(chunks[0].source.patchOrDate).toBe('2025.01.01');
-    expect(chunks[0].score).toBe(9);
+    // Rank-based (1 / (rank + 1)), not the raw engine score (9) -- knowledgeService merges
+    // chunks from multiple resolvers sharing a category onto one sorted list, and XIVAPI's raw
+    // score isn't on the same scale as MediaWikiResolver's rank-based score.
+    expect(chunks[0].score).toBe(1);
+  });
+
+  it('mapXivApiSearchToChunks scores by result rank, not the raw engine score', () => {
+    const chunks = mapXivApiSearchToChunks(
+      {
+        results: [
+          { score: 8.5, sheet: 'Item', row_id: 1, fields: { Name: 'Top Match' } },
+          { score: 6.2, sheet: 'Item', row_id: 2, fields: { Name: 'Second Match' } },
+        ],
+        schema: 's',
+        version: 'v1',
+      },
+      xivApiSearchSourceCitation()
+    );
+
+    expect(chunks[0]?.score).toBe(1);
+    expect(chunks[1]?.score).toBe(0.5);
   });
 
   it('mapXivApiSearchToChunks omits blank field values', () => {

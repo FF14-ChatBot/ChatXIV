@@ -8,7 +8,16 @@
  */
 import type pino from 'pino';
 import type { UsageCategory } from '@chatxiv/cdm';
-import { MediaWikiWikiId } from '../../config/constants.js';
+import {
+  CACHE_STALE_GRACE_SECONDS,
+  CACHE_TTL_MEDIAWIKI_SEARCH_SECONDS,
+  MEDIAWIKI_DATA_SOURCE,
+  MediaWikiWikiId,
+} from '../../config/constants.js';
+import { AppError } from '../../errors/AppError.js';
+import { mediaWikiSearchCacheKey } from '../../cache/cacheCategoryKeys.js';
+import { getOrFetch } from '../../getOrFetch.js';
+import type { CacheClient } from '../../cache/types.js';
 import type {
   MediaWikiApiResponse,
   MediaWikiClient,
@@ -64,6 +73,13 @@ const TABLE_TAG_PATTERN = /<table\b[^>]*>|<\/table\s*>/gi;
  * inside another table is the inner table's close, not the outer one -- leaking the outer
  * table's own label/value text (exactly the infobox content this is meant to drop) into the
  * output. Depth-tracking only emits content while outside of any table, regardless of nesting.
+ *
+ * A self-closing `<table/>` doesn't open a scope (there's no content to strip), so it's treated
+ * as depth-neutral rather than an unmatched open -- otherwise `depth` would never return to 0 and
+ * every real chunk of the article after that tag would be silently discarded. If the markup is
+ * still unbalanced when the scan ends (a genuinely unclosed table, e.g. from truncated/malformed
+ * parse output), the remaining text is appended anyway: leaking some table markup for `stripTags`
+ * to clean up next is a far smaller cost than dropping the rest of a real article.
  */
 function stripTables(html: string): string {
   let depth = 0;
@@ -76,12 +92,14 @@ function stripTables(html: string): string {
     if (depth === 0) {
       result += html.slice(lastIndex, match.index);
     }
-    depth = match[0].startsWith('</') ? Math.max(0, depth - 1) : depth + 1;
+    const isClosingTag = match[0].startsWith('</');
+    const isSelfClosing = !isClosingTag && match[0].endsWith('/>');
+    if (!isSelfClosing) {
+      depth = isClosingTag ? Math.max(0, depth - 1) : depth + 1;
+    }
     lastIndex = TABLE_TAG_PATTERN.lastIndex;
   }
-  if (depth === 0) {
-    result += html.slice(lastIndex);
-  }
+  result += html.slice(lastIndex);
   return result;
 }
 
@@ -167,7 +185,8 @@ async function parseCandidate(
   };
 }
 
-async function resolveForWiki(
+/** Search + parse + clean, uncached. Wrapped by {@link resolveForWiki} below. */
+async function fetchWikiChunks(
   client: MediaWikiClient,
   wikiId: MediaWikiWikiId,
   baseUrl: string,
@@ -195,9 +214,51 @@ async function resolveForWiki(
   return chunks;
 }
 
+/** Cached payload shape: unlike XIVAPI's single shared citation, each MediaWiki chunk carries
+ * its own per-page citation already, so the cache just wraps the chunk array with a fetch
+ * timestamp for TR-9 stale-grace bookkeeping. */
+type CachedWikiChunks = Readonly<{
+  chunks: readonly RetrievedChunk[];
+  fetchedAt: string;
+}>;
+
+/**
+ * Cache-aside wrapper around {@link fetchWikiChunks}, keyed per (wiki, query). Wiki guide content
+ * changes far less often than XIVAPI's structured data, so without this every repeated question
+ * re-issues a live search + up to `MAX_PAGES_TO_PARSE` parse calls against a 1 req/s-throttled
+ * wiki, even for the exact same query moments apart.
+ */
+async function resolveForWiki(
+  client: MediaWikiClient,
+  cache: CacheClient,
+  wikiId: MediaWikiWikiId,
+  baseUrl: string,
+  query: string,
+  topK: number,
+  log: pino.Logger,
+  signal: AbortSignal | undefined
+): Promise<readonly RetrievedChunk[]> {
+  const { value, stale } = await getOrFetch<CachedWikiChunks>({
+    cache,
+    key: mediaWikiSearchCacheKey({ wikiId, query }),
+    ttlSeconds: CACHE_TTL_MEDIAWIKI_SEARCH_SECONDS,
+    staleGraceSeconds: CACHE_STALE_GRACE_SECONDS,
+    dataSource: MEDIAWIKI_DATA_SOURCE,
+    getFetchedAt: (payload) => payload.fetchedAt,
+    fetch: async () => ({
+      chunks: await fetchWikiChunks(client, wikiId, baseUrl, query, topK, log, signal),
+      fetchedAt: new Date().toISOString(),
+    }),
+  });
+
+  if (!stale) return value.chunks;
+  return value.chunks.map((chunk) => ({ ...chunk, source: { ...chunk.source, stale: true } }));
+}
+
 /** Creates a `SourceResolver` backed by MediaWiki: ConsoleGamesWiki first, Fandom FFXIV as a fallback. */
 export function createMediaWikiResolver(
   client: MediaWikiClient,
+  cache: CacheClient,
   baseUrls: Readonly<Record<MediaWikiWikiId, string>>,
   categories: readonly UsageCategory[],
   log: pino.Logger
@@ -224,10 +285,21 @@ export function createMediaWikiResolver(
         MediaWikiWikiId.FandomFfxiv,
       ];
 
+      // Tracks whether every wiki attempt errored outright (network/timeout/rate-limit) as
+      // opposed to succeeding with zero matches -- the two look the same to the caller ("no
+      // chunks") unless distinguished here, but only the former means MediaWiki itself is
+      // unavailable. knowledgeService only reports SOURCE_UNAVAILABLE for a category when every
+      // resolver serving it fails; a resolver that silently returns [] on a real outage (instead
+      // of throwing) hides that outage whenever another resolver sharing the category (e.g.
+      // XivApiResolver on UNLOCKS) also comes back empty rather than rejecting.
+      let allWikisFailed = true;
+
       for (const wikiId of wikiOrder) {
+        if (options.signal?.aborted) return [];
         try {
           const chunks = await resolveForWiki(
             client,
+            cache,
             wikiId,
             baseUrls[wikiId],
             searchQuery,
@@ -235,12 +307,18 @@ export function createMediaWikiResolver(
             log,
             options.signal
           );
+          allWikisFailed = false;
           if (chunks.length > 0) return chunks;
         } catch (err) {
           log.warn({ err, query: searchQuery, wikiId }, 'MediaWiki lookup failed for this wiki');
         }
       }
 
+      if (allWikisFailed) {
+        throw AppError.sourceUnavailable(
+          'Unable to load data from MediaWiki: all configured wikis failed'
+        );
+      }
       return [];
     },
   };

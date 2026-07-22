@@ -226,7 +226,7 @@ export interface XivApiClient {
     path: XivApiMapPathParams,
     params?: XivApiVersionQueryParams
   ): Promise<XivApiAssetBody>;
-  search(params: XivApiSearchParams): Promise<XivApiSearchResult>;
+  search(params: XivApiSearchParams, signal?: AbortSignal): Promise<XivApiSearchResult>;
   listSheets(params?: XivApiListSheetsParams): Promise<XivApiListSheetsResponse>;
   listSheetRows(sheet: string, params?: XivApiSheetRowsParams): Promise<XivApiSheetResponse>;
   /** `row` may be a main id or a `main:subrow` specifier per `RowSpecifier`. */

@@ -18,3 +18,12 @@ export function xivApiSearchCacheKey(params: {
     .digest('hex');
   return `xivapi:search:${params.language}:${digest}`;
 }
+
+export function mediaWikiSearchCacheKey(params: {
+  readonly wikiId: string;
+  readonly query: string;
+}): string {
+  const normalizedQuery = params.query.trim().toLowerCase();
+  const digest = createHash('sha256').update(normalizedQuery).digest('hex');
+  return `mediawiki:search:${params.wikiId}:${digest}`;
+}

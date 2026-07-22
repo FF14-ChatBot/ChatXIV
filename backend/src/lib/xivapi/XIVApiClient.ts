@@ -87,7 +87,7 @@ export class XivApiHttpClient extends RetryingHttpClient implements XivApiClient
     return this.fetchBlob(url.toString(), this.log);
   }
 
-  async search(params: XivApiSearchParams): Promise<XivApiSearchResult> {
+  async search(params: XivApiSearchParams, signal?: AbortSignal): Promise<XivApiSearchResult> {
     const url = this.buildUrl('search');
     this.setOptionalParam(url, 'version', params.version);
     this.setOptionalParam(url, 'query', params.query);
@@ -99,7 +99,7 @@ export class XivApiHttpClient extends RetryingHttpClient implements XivApiClient
     this.setOptionalParam(url, 'fields', params.fields);
     this.setOptionalParam(url, 'transient', params.transient);
 
-    return (await this.fetchJson(url.toString(), this.log)) as XivApiSearchResult;
+    return (await this.fetchJson(url.toString(), this.log, signal)) as XivApiSearchResult;
   }
 
   async listSheets(params?: XivApiListSheetsParams): Promise<XivApiListSheetsResponse> {

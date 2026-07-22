@@ -202,11 +202,11 @@ export function wireChatKnowledgePipeline(): void {
   // MediaWikiResolver covers UNLOCKS (ConsoleGamesWiki first, Fandom FFXIV fallback), alongside
   // XivApiResolver which already claims UNLOCKS among its structured-data categories -- both get
   // queried and merged for that category. wikiStubResolver still covers everything neither owns.
-  // TODO(DEV-23): Per-category cache keys/TTLs for MediaWiki results (currently uncached).
   const { client: mediaWikiClient, baseUrls: mediaWikiBaseUrls } =
     createMediaWikiClientFromEnv(logger);
   const mediaWikiResolver = createMediaWikiResolver(
     mediaWikiClient,
+    cache,
     mediaWikiBaseUrls,
     [UsageCategory.UNLOCKS],
     logger

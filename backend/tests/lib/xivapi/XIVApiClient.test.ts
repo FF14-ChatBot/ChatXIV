@@ -116,6 +116,19 @@ describe('lib/xivapi/XIVApiClient', () => {
       expect(url.searchParams.get('version')).toBe('latest');
       expect(url.searchParams.get('schema')).toBe('source@7.0');
     });
+
+    it('threads an optional caller signal into the underlying fetch so it can be cancelled', async () => {
+      fetchMock.mockResolvedValue(okJson({ results: [], schema: 's', version: 'v' }));
+      const controller = new AbortController();
+
+      const client = createXivApiClient(defaultConfig, throttle, log);
+      await client.search({}, controller.signal);
+
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(init.signal?.aborted).toBe(false);
+      controller.abort();
+      expect(init.signal?.aborted).toBe(true);
+    });
   });
 
   // ── getRow URL building ───────────────────────────────────────────

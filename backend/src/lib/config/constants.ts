@@ -135,6 +135,12 @@ export const XIVAPI_SEARCH_DEFAULT_LIMIT = 8 as const;
 /** Human-readable upstream name for XIVAPI (cache guards, citations, HTTP client). */
 export const XIVAPI_DATA_SOURCE = 'XIVAPI' as const;
 
+/** Human-readable upstream name for MediaWiki (cache guards, citations, HTTP client). */
+export const MEDIAWIKI_DATA_SOURCE = 'MediaWiki' as const;
+
+/** TTL for cached MediaWiki search+parse results (48 hours) -- wiki guide content is far more stable than XIVAPI's structured data, per Cache-Layer-Per-Category.md §2's "wiki 24-48h" guidance. */
+export const CACHE_TTL_MEDIAWIKI_SEARCH_SECONDS = 48 * 60 * 60;
+
 /** Redis command/connect timeout (ms). */
 export const REDIS_COMMAND_TIMEOUT_MS = 5_000 as const;
 

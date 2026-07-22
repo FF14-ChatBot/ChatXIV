@@ -243,6 +243,38 @@ describe('RetryingHttpClient', () => {
       await expect(promise).rejects.toBeInstanceOf(AppError);
       expect(capturedSignal?.aborted).toBe(true);
     });
+
+    it('attributes a caller-cancelled request to cancellation, not a misleading "timed out" message', async () => {
+      const controller = new AbortController();
+      fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+        const signal = init.signal as AbortSignal;
+        return new Promise((_resolve, reject) => {
+          signal.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        });
+      });
+
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log,
+        controller.signal
+      );
+
+      controller.abort();
+
+      try {
+        await promise;
+        expect.unreachable('should have thrown');
+      } catch (err) {
+        expectSourceUnavailable(err);
+        // The per-attempt timeout (defaultOptions.timeoutMs) never actually elapsed here --
+        // only the caller's own signal fired. Asserting the message doesn't blame the attempt's
+        // own budget for what was really an external cancellation.
+        expect((err as AppError).message).not.toMatch(/timed out/);
+        expect((err as AppError).message).toMatch(/cancelled/);
+      }
+    });
   });
 
   // ── Retry on 429 / 5xx ────────────────────────────────────────────
