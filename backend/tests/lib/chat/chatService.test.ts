@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChatStreamEventType, ConversationRole, UsageCategory } from '@chatxiv/cdm';
+import { ChatStreamEventType, ConversationRole, ERROR_CODES, UsageCategory } from '@chatxiv/cdm';
 import { createChatService } from '@src/lib/chat/chatService.js';
+import { AppError } from '@src/lib/errors/AppError.js';
 import type { ClassificationService } from '@src/lib/classification/types.js';
 import type { KnowledgeService } from '@src/lib/knowledge/types.js';
 import type { LlmClient } from '@src/lib/llm/types.js';
@@ -75,7 +76,7 @@ describe('createChatService', () => {
     );
   });
 
-  it('continues with empty chunks when retrieve throws', async () => {
+  it('continues with empty chunks when retrieve throws a non-source error', async () => {
     knowledge.retrieve = vi.fn().mockRejectedValue(new Error('net'));
     const svc = createChatService(classification, knowledge, llm);
     const events: unknown[] = [];
@@ -85,6 +86,32 @@ describe('createChatService', () => {
     expect(events.some((e) => (e as { type: string }).type === ChatStreamEventType.Done)).toBe(
       true
     );
+  });
+
+  it('propagates SOURCE_UNAVAILABLE when retrieve fails closed', async () => {
+    knowledge.retrieve = vi
+      .fn()
+      .mockRejectedValue(AppError.sourceUnavailable('XIVAPI unavailable'));
+    const svc = createChatService(classification, knowledge, llm);
+    await expect(
+      (async () => {
+        for await (const event of svc.handleMessageStream({ message: 'q' })) {
+          void event;
+        }
+      })()
+    ).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
+  });
+
+  it('rejects handleMessage with SOURCE_UNAVAILABLE instead of a safe 200 body', async () => {
+    knowledge.retrieve = vi
+      .fn()
+      .mockRejectedValue(AppError.sourceUnavailable('XIVAPI unavailable'));
+    const svc = createChatService(classification, knowledge, llm);
+    await expect(svc.handleMessage({ message: 'q' })).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
   });
 
   it('yields error event when LLM stream throws', async () => {

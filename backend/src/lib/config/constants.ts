@@ -112,6 +112,29 @@ export const CACHE_KEY_PREFIX = 'chatxiv:cache:' as const;
 /** Interval for background Redis PING when the active cache backend is Redis. */
 export const CACHE_HEALTH_PROBE_INTERVAL_MS = 15_000 as const;
 
+/** TTL for XIVAPI search responses (24 hours). */
+// TODO(DEV-23): Per-category TTL constants (BiS 7–14d, wiki 24–48h, etc.) — Cache-Layer-Per-Category.md §2.
+export const CACHE_TTL_XIVAPI_SEARCH_SECONDS = 86_400 as const;
+
+/** TR-9 stale grace beyond {@link CACHE_TTL_XIVAPI_SEARCH_SECONDS} (24 hours). */
+// TODO(DEV-23): Tune stale grace per category when per-category TTL lands.
+export const CACHE_STALE_GRACE_SECONDS = 86_400 as const;
+
+/** Short TTL for in-flight fetch locks (coalescing concurrent cache misses). */
+export const CACHE_FETCH_LOCK_TTL_SECONDS = 30 as const;
+
+/** Poll interval while waiting for another caller to populate the cache after a lock miss. */
+export const CACHE_FETCH_LOCK_POLL_INTERVAL_MS = 50 as const;
+
+/** Max poll attempts while waiting for a coalesced fetch to complete. */
+export const CACHE_FETCH_LOCK_POLL_ATTEMPTS = 10 as const;
+
+/** Default XIVAPI search limit when resolver `topK` is unset. */
+export const XIVAPI_SEARCH_DEFAULT_LIMIT = 8 as const;
+
+/** Human-readable upstream name for XIVAPI (cache guards, citations, HTTP client). */
+export const XIVAPI_DATA_SOURCE = 'XIVAPI' as const;
+
 /** Redis command/connect timeout (ms). */
 export const REDIS_COMMAND_TIMEOUT_MS = 5_000 as const;
 

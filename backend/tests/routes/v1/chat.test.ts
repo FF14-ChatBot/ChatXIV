@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, type Mocked } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { ChatRoute, ChatStreamEventType, UsageCategory } from '@chatxiv/cdm';
+import { ChatRoute, ChatStreamEventType, ERROR_CODES, UsageCategory } from '@chatxiv/cdm';
 import { createChatRouter } from '@src/routes/v1/chat.js';
 import { createMockChatService } from '@test/mocks/chatService.mock.js';
 import { errorHandler } from '@src/middleware/errorHandler.js';
 import type { ChatService } from '@src/lib/chat/types.js';
+import { AppError } from '@src/lib/errors/AppError.js';
 import { CHAT_MAX_USER_MESSAGE_CHARS } from '@src/lib/config/constants.js';
 
 function buildApp(service: Mocked<ChatService>, opts?: { jsonStrict?: boolean }) {
@@ -143,6 +144,17 @@ describe('chat routes', () => {
         .send({ message: 'hi', conversationHistory: {} });
       expect(res.status).toBe(400);
     });
+
+    it('returns 503 SOURCE_UNAVAILABLE when handleMessage rejects', async () => {
+      chatService.handleMessage.mockRejectedValue(AppError.sourceUnavailable('XIVAPI unavailable'));
+
+      const res = await request(buildApp(chatService))
+        .post(`/v1${ChatRoute.Segment}`)
+        .send({ message: 'What is savage?' });
+
+      expect(res.status).toBe(503);
+      expect(res.body.code).toBe(ERROR_CODES.SOURCE_UNAVAILABLE);
+    });
   });
 
   describe(`POST /v1${ChatRoute.StreamSegment}`, () => {
@@ -178,7 +190,7 @@ describe('chat routes', () => {
       expect(res.text).toContain('"type":"done"');
     });
 
-    it('writes error SSE frame when handleMessageStream throws', async () => {
+    it('writes error SSE frame when handleMessageStream throws mid-stream', async () => {
       chatService.handleMessageStream.mockImplementation(async function* () {
         yield {
           type: ChatStreamEventType.Token,
@@ -195,6 +207,25 @@ describe('chat routes', () => {
       expect(res.status).toBe(200);
       expect(res.text).toContain('"type":"error"');
       expect(res.text).toContain('unexpected error occurred during streaming');
+    });
+
+    it('returns 503 JSON when handleMessageStream throws before any SSE event', async () => {
+      chatService.handleMessageStream.mockImplementation(() => ({
+        [Symbol.asyncIterator]() {
+          return {
+            next: async () => {
+              throw AppError.sourceUnavailable('XIVAPI unavailable');
+            },
+          };
+        },
+      }));
+
+      const res = await request(buildApp(chatService))
+        .post(`/v1${ChatRoute.StreamSegment}`)
+        .send({ message: 'hi' });
+
+      expect(res.status).toBe(503);
+      expect(res.body.code).toBe(ERROR_CODES.SOURCE_UNAVAILABLE);
     });
 
     it('stops streaming when the response is already destroyed', async () => {
