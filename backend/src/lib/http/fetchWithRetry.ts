@@ -66,8 +66,22 @@ function computeRetryDelay(
   return backoffBaseMs * 2 ** attempt;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason as Error);
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(signal.reason as Error);
+      },
+      { once: true }
+    );
+  });
 }
 
 function isTimeoutError(err: unknown): boolean {
@@ -91,12 +105,18 @@ export abstract class RetryingHttpClient {
    * the client (e.g. a required `User-Agent`), pass `retryConfig.headers` instead of
    * overriding this method. Override in subclasses for POST, per-attempt/dynamic headers,
    * or non-JSON pipelines while keeping `fetchJson` retry behavior.
+   *
+   * `callerSignal` (e.g. a caller's overall retrieval-timeout budget) is combined with this
+   * attempt's own `timeoutMs` deadline so an external cancellation actually stops the in-flight
+   * request instead of it running to completion after the caller has moved on.
    */
-  protected async connect(url: string): Promise<Response> {
+  protected async connect(url: string, callerSignal?: AbortSignal): Promise<Response> {
     const { timeoutMs, sourceName, headers } = this.retryConfig;
+    const attemptSignal = AbortSignal.timeout(timeoutMs);
+    const signal = callerSignal ? AbortSignal.any([attemptSignal, callerSignal]) : attemptSignal;
     try {
       return await fetch(url, {
-        signal: AbortSignal.timeout(timeoutMs),
+        signal,
         ...(headers !== undefined ? { headers } : {}),
       });
     } catch (err: unknown) {
@@ -111,8 +131,10 @@ export abstract class RetryingHttpClient {
 
   /**
    * GET JSON with retries on 429/5xx. The `@Retryable` runner invokes `connect` per attempt.
+   * `signal`, when provided, cancels the in-flight request (and any pending retry backoff) if
+   * the caller's own time budget expires before this call would otherwise finish.
    */
-  fetchJson(url: string, log: pino.Logger): Promise<unknown> {
+  fetchJson(url: string, log: pino.Logger, signal?: AbortSignal): Promise<unknown> {
     const {
       maxRetries = DEFAULT_MAX_RETRIES,
       backoffBaseMs = DEFAULT_BACKOFF_BASE_MS,
@@ -120,7 +142,7 @@ export abstract class RetryingHttpClient {
       beforeAttempt,
     } = this.retryConfig;
 
-    const runConnect = (): Promise<Response> => this.connect(url);
+    const runConnect = (): Promise<Response> => this.connect(url, signal);
 
     class JsonRetryRunner {
       private attempt = 0;
@@ -168,7 +190,7 @@ export abstract class RetryingHttpClient {
           `${sourceName} retryable error; backing off`
         );
         this.attempt += 1;
-        await sleep(delay);
+        await sleep(delay, signal);
         throw new RetryableHttpStatusError();
       }
     }

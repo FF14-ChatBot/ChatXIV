@@ -5,6 +5,11 @@ import { requestContext } from '@src/lib/request/requestContext.js';
 import type { MediaWikiRateLimiter } from '@src/lib/mediawiki/rateLimit.js';
 import type { TokenBucket } from '@src/lib/http/tokenBucket.js';
 import type pino from 'pino';
+import {
+  mediaWikiParseResponseFixture,
+  mediaWikiQueryRevisionsResponseFixture,
+  mediaWikiSearchResponseFixture,
+} from '@test/fixtures/mediawiki.fixtures.js';
 
 function createMockLogger(): pino.Logger {
   return { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as pino.Logger;
@@ -150,6 +155,47 @@ describe('lib/mediawiki/client', () => {
 
       const url = new URL(fetchMock.mock.calls[0][0] as string);
       expect(url.searchParams.get('srlimit')).toBe('5');
+    });
+  });
+
+  // ── Realistic API response shapes ─────────────────────────────────
+
+  describe('realistic fixture responses', () => {
+    it('returns a full search response (list=search) unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(mediaWikiSearchResponseFixture));
+      const { limiter } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      const result = await client.search(MediaWikiWikiId.ConsoleGamesWiki, 'Potion');
+
+      expect(result).toEqual(mediaWikiSearchResponseFixture);
+      expect(result.query.search).toHaveLength(2);
+      expect(result.continue).toEqual({ sroffset: 2, continue: '-||' });
+    });
+
+    it('returns a full query response (prop=revisions) unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(mediaWikiQueryRevisionsResponseFixture));
+      const { limiter } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      const result = await client.query(MediaWikiWikiId.ConsoleGamesWiki, {
+        prop: 'revisions',
+        titles: 'Potion',
+        rvslots: 'main',
+        rvprop: 'content',
+      });
+
+      expect(result).toEqual(mediaWikiQueryRevisionsResponseFixture);
+    });
+
+    it('returns a full parse response unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(mediaWikiParseResponseFixture));
+      const { limiter } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      const result = await client.parse(MediaWikiWikiId.ConsoleGamesWiki, { page: 'Potion' });
+
+      expect(result).toEqual(mediaWikiParseResponseFixture);
     });
   });
 

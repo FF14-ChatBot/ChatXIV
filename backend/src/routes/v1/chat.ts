@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
-import { ChatRoute } from '@chatxiv/cdm';
-import type { ChatRequestBody } from '@chatxiv/cdm';
+import { ChatRoute, ConversationRole } from '@chatxiv/cdm';
+import type { ChatRequestBody, ConversationTurn } from '@chatxiv/cdm';
 import type { ChatService } from '../../lib/chat/types.js';
 import { AppError } from '../../lib/errors/AppError.js';
 import { requestContext } from '../../lib/request/requestContext.js';
@@ -19,6 +19,16 @@ export function createChatRouter(chatService: ChatService): Router {
   });
 
   return router;
+}
+
+/** Matches the `ConversationTurn` shape the public OpenAPI spec documents for `conversationHistory`. */
+function isValidConversationTurn(value: unknown): value is ConversationTurn {
+  if (typeof value !== 'object' || value === null) return false;
+  const { role, content } = value as Record<string, unknown>;
+  return (
+    (role === ConversationRole.User || role === ConversationRole.Assistant) &&
+    typeof content === 'string'
+  );
 }
 
 function validateChatBody(body: unknown, requestId?: string): ChatRequestBody {
@@ -42,15 +52,23 @@ function validateChatBody(body: unknown, requestId?: string): ChatRequestBody {
     throw AppError.validation('language must be a string', requestId);
   }
 
-  if (conversationHistory !== undefined && !Array.isArray(conversationHistory)) {
-    throw AppError.validation('conversationHistory must be an array', requestId);
+  if (conversationHistory !== undefined) {
+    if (!Array.isArray(conversationHistory)) {
+      throw AppError.validation('conversationHistory must be an array', requestId);
+    }
+    if (!conversationHistory.every(isValidConversationTurn)) {
+      throw AppError.validation(
+        'conversationHistory items must have role ("user" or "assistant") and string content',
+        requestId
+      );
+    }
   }
 
   return {
     message: message.trim(),
     sessionId: sessionId as string | undefined,
     language: language as string | undefined,
-    conversationHistory: conversationHistory as ChatRequestBody['conversationHistory'],
+    conversationHistory,
   };
 }
 

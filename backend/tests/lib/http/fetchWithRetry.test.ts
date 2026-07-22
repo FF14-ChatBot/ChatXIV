@@ -219,6 +219,30 @@ describe('RetryingHttpClient', () => {
         expect((err as AppError).message).toBe('TestAPI network error');
       }
     });
+
+    it('combines a caller-provided signal with the per-attempt timeout so an external abort actually cancels the in-flight fetch', async () => {
+      const controller = new AbortController();
+      let capturedSignal: AbortSignal | undefined;
+      fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+        capturedSignal = init.signal as AbortSignal;
+        return new Promise((_resolve, reject) => {
+          capturedSignal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        });
+      });
+
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log,
+        controller.signal
+      );
+
+      controller.abort();
+
+      await expect(promise).rejects.toBeInstanceOf(AppError);
+      expect(capturedSignal?.aborted).toBe(true);
+    });
   });
 
   // ── Retry on 429 / 5xx ────────────────────────────────────────────

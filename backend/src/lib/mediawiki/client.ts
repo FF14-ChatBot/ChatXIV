@@ -10,8 +10,14 @@
 
 import type pino from 'pino';
 import { RetryingHttpClient, type BeforeAttemptContext } from '../http/fetchWithRetry.js';
-import type { MediaWikiWikiId } from '../config/constants.js';
-import type { MediaWikiRateLimiter } from './rateLimit.js';
+import { MediaWikiWikiId } from '../config/constants.js';
+import {
+  getMediaWikiUserAgent,
+  getMediaWikiTimeoutMs,
+  getMediaWikiRateLimitPerSecond,
+  getMediaWikiBaseUrl,
+} from '../config/env.js';
+import { createMediaWikiRateLimiter, type MediaWikiRateLimiter } from './rateLimit.js';
 import type {
   MediaWikiApiResponse,
   MediaWikiClient,
@@ -98,36 +104,40 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
   private async request<T>(
     wikiId: MediaWikiWikiId,
     action: string,
-    params: Readonly<Record<string, string>>
+    params: Readonly<Record<string, string>>,
+    signal?: AbortSignal
   ): Promise<T> {
     const url = this.buildUrl(wikiId, action, params);
-    return (await this.fetchJson(url.toString(), this.log)) as T;
+    return (await this.fetchJson(url.toString(), this.log, signal)) as T;
   }
 
   async query(
     wikiId: MediaWikiWikiId,
-    params: MediaWikiQueryParams
+    params: MediaWikiQueryParams,
+    signal?: AbortSignal
   ): Promise<MediaWikiApiResponse> {
-    return this.request<MediaWikiApiResponse>(wikiId, 'query', params);
+    return this.request<MediaWikiApiResponse>(wikiId, 'query', params, signal);
   }
 
   async parse(
     wikiId: MediaWikiWikiId,
-    params: MediaWikiParseParams
+    params: MediaWikiParseParams,
+    signal?: AbortSignal
   ): Promise<MediaWikiApiResponse> {
-    return this.request<MediaWikiApiResponse>(wikiId, 'parse', params);
+    return this.request<MediaWikiApiResponse>(wikiId, 'parse', params, signal);
   }
 
   async search(
     wikiId: MediaWikiWikiId,
     srsearch: string,
-    limit?: number
+    limit?: number,
+    signal?: AbortSignal
   ): Promise<MediaWikiSearchResponse> {
     const params: Record<string, string> = { list: 'search', srsearch };
     if (limit !== undefined) {
       params.srlimit = String(limit);
     }
-    return this.request<MediaWikiSearchResponse>(wikiId, 'query', params);
+    return this.request<MediaWikiSearchResponse>(wikiId, 'query', params, signal);
   }
 }
 
@@ -138,4 +148,31 @@ export function createMediaWikiClient(
   log: pino.Logger
 ): MediaWikiClient {
   return new MediaWikiHttpClient(config, rateLimiter, log);
+}
+
+export interface MediaWikiClientFromEnv {
+  readonly client: MediaWikiClient;
+  /** Resolved base URLs (env override or default), for callers that also need to build article URLs. */
+  readonly baseUrls: Readonly<Record<MediaWikiWikiId, string>>;
+}
+
+/**
+ * Builds a real `MediaWikiClient` (and its resolved base URLs) from env, via the same
+ * `getMediaWiki*` getters either way -- shared by the DI container and the standalone
+ * `scripts/manual/mediawikiSmoke.ts` so both are guaranteed to construct the client identically
+ * instead of two hand-maintained copies of the same wiring drifting apart.
+ */
+export function createMediaWikiClientFromEnv(log: pino.Logger): MediaWikiClientFromEnv {
+  const baseUrls: Readonly<Record<MediaWikiWikiId, string>> = {
+    [MediaWikiWikiId.ConsoleGamesWiki]: getMediaWikiBaseUrl(MediaWikiWikiId.ConsoleGamesWiki),
+    [MediaWikiWikiId.FandomFfxiv]: getMediaWikiBaseUrl(MediaWikiWikiId.FandomFfxiv),
+  };
+  const config: MediaWikiClientConfig = {
+    baseUrls,
+    timeoutMs: getMediaWikiTimeoutMs(),
+    userAgent: getMediaWikiUserAgent(),
+  };
+  const rateLimiter = createMediaWikiRateLimiter(getMediaWikiRateLimitPerSecond(), log);
+  const client = createMediaWikiClient(config, rateLimiter, log);
+  return { client, baseUrls };
 }
