@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type pino from 'pino';
-import { createTokenBucket } from '@src/lib/xivapi/throttle.js';
+import { createTokenBucket } from '@src/lib/http/tokenBucket.js';
 
 function createMockLogger(): pino.Logger {
   return { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as pino.Logger;
 }
 
-describe('lib/xivapi/throttle', () => {
+describe('lib/http/tokenBucket', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -87,6 +87,56 @@ describe('lib/xivapi/throttle', () => {
     await pending;
 
     expect(resolved).toBe(true);
+  });
+
+  it('spaces out concurrent waiters instead of releasing them all at the same wake-up', async () => {
+    const bucket = createTokenBucket(1, 1);
+
+    await bucket.consume(); // takes the only token immediately
+
+    let secondResolved = false;
+    let thirdResolved = false;
+    const second = bucket.consume().then(() => {
+      secondResolved = true;
+    });
+    const third = bucket.consume().then(() => {
+      thirdResolved = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(999);
+    expect(secondResolved).toBe(false);
+    expect(thirdResolved).toBe(false);
+
+    // Both waiters' timers fire around t=1000ms; only one token is available.
+    await vi.advanceTimersByTimeAsync(1);
+    expect(secondResolved).toBe(true);
+    expect(thirdResolved).toBe(false); // must reschedule, not force through with the rest
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await third;
+    expect(thirdResolved).toBe(true);
+
+    await second;
+  });
+
+  it('schedules only one drain timer for many concurrent waiters (regression: thundering herd)', async () => {
+    const bucket = createTokenBucket(1, 1);
+
+    await bucket.consume(); // takes the only token immediately
+
+    const resolutions: number[] = [];
+    const waiters = Array.from({ length: 5 }, (_, i) =>
+      bucket.consume().then(() => resolutions.push(i))
+    );
+
+    // All 5 waiters are queued behind a single token bucket refilling at 1/s — only one
+    // timer should be scheduled at a time, not one per waiter.
+    expect(vi.getTimerCount()).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    await Promise.all(waiters);
+
+    expect(resolutions).toEqual([0, 1, 2, 3, 4]);
   });
 
   it('warns when empty and a logger is configured', async () => {

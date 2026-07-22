@@ -78,6 +78,15 @@ export const ENV_KEYS = {
   CACHE_BACKEND: 'CACHE_BACKEND',
   /** When true, startup fails if the resolved backend is Redis but ping fails. */
   REDIS_REQUIRED: 'REDIS_REQUIRED',
+  /** Required by wiki policy; identifies app + contact, e.g. `ChatXIV/1.0 (contact@example.com)`. */
+  MEDIAWIKI_USER_AGENT: 'MEDIAWIKI_USER_AGENT',
+  MEDIAWIKI_TIMEOUT_MS: 'MEDIAWIKI_TIMEOUT_MS',
+  /** Requests per second, applied per wiki (not global). */
+  MEDIAWIKI_RATE_LIMIT_PER_SECOND: 'MEDIAWIKI_RATE_LIMIT_PER_SECOND',
+  /** Overrides the default ConsoleGamesWiki base URL (testing or alternate endpoints). */
+  MEDIAWIKI_CGW_URL: 'MEDIAWIKI_CGW_URL',
+  /** Overrides the default Fandom FFXIV wiki base URL (testing or alternate endpoints). */
+  MEDIAWIKI_FANDOM_FFXIV_URL: 'MEDIAWIKI_FANDOM_FFXIV_URL',
 } as const;
 
 /** Allowed `CACHE_BACKEND` env values — parsed in `cacheConfig.ts`. */
@@ -102,6 +111,29 @@ export const CACHE_KEY_PREFIX = 'chatxiv:cache:' as const;
 
 /** Interval for background Redis PING when the active cache backend is Redis. */
 export const CACHE_HEALTH_PROBE_INTERVAL_MS = 15_000 as const;
+
+/** TTL for XIVAPI search responses (24 hours). */
+// TODO(DEV-23): Per-category TTL constants (BiS 7–14d, wiki 24–48h, etc.) — Cache-Layer-Per-Category.md §2.
+export const CACHE_TTL_XIVAPI_SEARCH_SECONDS = 86_400 as const;
+
+/** TR-9 stale grace beyond {@link CACHE_TTL_XIVAPI_SEARCH_SECONDS} (24 hours). */
+// TODO(DEV-23): Tune stale grace per category when per-category TTL lands.
+export const CACHE_STALE_GRACE_SECONDS = 86_400 as const;
+
+/** Short TTL for in-flight fetch locks (coalescing concurrent cache misses). */
+export const CACHE_FETCH_LOCK_TTL_SECONDS = 30 as const;
+
+/** Poll interval while waiting for another caller to populate the cache after a lock miss. */
+export const CACHE_FETCH_LOCK_POLL_INTERVAL_MS = 50 as const;
+
+/** Max poll attempts while waiting for a coalesced fetch to complete. */
+export const CACHE_FETCH_LOCK_POLL_ATTEMPTS = 10 as const;
+
+/** Default XIVAPI search limit when resolver `topK` is unset. */
+export const XIVAPI_SEARCH_DEFAULT_LIMIT = 8 as const;
+
+/** Human-readable upstream name for XIVAPI (cache guards, citations, HTTP client). */
+export const XIVAPI_DATA_SOURCE = 'XIVAPI' as const;
 
 /** Redis command/connect timeout (ms). */
 export const REDIS_COMMAND_TIMEOUT_MS = 5_000 as const;
@@ -137,3 +169,23 @@ export const XIVAPI_TIMEOUT_MS = 5_000 as const;
 // Universalis API: https://docs.universalis.app/ — 25 req/s sustained, 50 req/s burst
 export const XIVAPI_RATE_LIMIT_PER_SECOND = 25 as const;
 export const XIVAPI_RATE_LIMIT_BURST = 50 as const;
+
+/** Wikis the MediaWiki client supports (TR-8). */
+export const MediaWikiWikiId = {
+  ConsoleGamesWiki: 'consolegameswiki',
+  FandomFfxiv: 'fandom_ffxiv',
+} as const;
+
+export type MediaWikiWikiId = (typeof MediaWikiWikiId)[keyof typeof MediaWikiWikiId];
+
+/** Default per-wiki base URLs; override via {@link ENV_KEYS.MEDIAWIKI_CGW_URL} / {@link ENV_KEYS.MEDIAWIKI_FANDOM_FFXIV_URL}. */
+export const MEDIAWIKI_DEFAULT_BASE_URLS: Readonly<Record<MediaWikiWikiId, string>> = {
+  [MediaWikiWikiId.ConsoleGamesWiki]: 'https://ffxiv.consolegameswiki.com/mediawiki/api.php',
+  [MediaWikiWikiId.FandomFfxiv]: 'https://finalfantasy.fandom.com/api.php',
+} as const;
+
+/** Default per-request timeout when {@link ENV_KEYS.MEDIAWIKI_TIMEOUT_MS} is unset. */
+export const MEDIAWIKI_DEFAULT_TIMEOUT_MS = 5_000 as const;
+
+/** Conservative default; applied per wiki, not globally (TR-8). */
+export const MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND = 1 as const;

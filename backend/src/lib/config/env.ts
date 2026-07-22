@@ -9,7 +9,14 @@
  */
 import path from 'node:path';
 import os from 'node:os';
-import { APP_DATA_DIRECTORY, ENV_KEYS } from './constants.js';
+import {
+  APP_DATA_DIRECTORY,
+  ENV_KEYS,
+  MEDIAWIKI_DEFAULT_BASE_URLS,
+  MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND,
+  MEDIAWIKI_DEFAULT_TIMEOUT_MS,
+  MediaWikiWikiId,
+} from './constants.js';
 
 const DEFAULT_PORT = 3000;
 
@@ -318,4 +325,71 @@ export function getLokiPushConfig(): LokiPushConfig | undefined {
     {}
   );
   return undefined;
+}
+
+// ── MediaWiki client ───────────────────────────────────────────────
+
+/**
+ * Required by wiki policy (TR-8). Falls back to a placeholder that identifies
+ * the misconfiguration in wiki-side logs rather than sending a blank header.
+ */
+export function getMediaWikiUserAgent(): string {
+  const trimmed = readOptionalTrimmedEnv(
+    ENV_KEYS.MEDIAWIKI_USER_AGENT,
+    `${ENV_KEYS.MEDIAWIKI_USER_AGENT} is not set; using a placeholder (wikis may block or rate-limit this)`
+  );
+  return trimmed ?? 'ChatXIV/1.0 (unconfigured-contact)';
+}
+
+/**
+ * Reads a positive numeric env var: unset/blank/non-finite/non-positive all fall back to
+ * `defaultValue` (with a warning). Uses `Number(...)` — not `parseInt`, which silently
+ * truncates at the first non-digit (e.g. `parseInt('5e3', 10) === 5`, not `5000`) and would
+ * accept garbage-suffixed input as a wildly wrong value instead of rejecting it. `!Number.isFinite`
+ * (not `isNaN`) rejects `Infinity` too — `Number` silently overflows to `Infinity` on an
+ * overlong numeric string.
+ */
+function readPositiveNumberEnv(envKey: string, defaultValue: number): number {
+  const trimmed = readOptionalTrimmedEnv(envKey, `${envKey} is not set; using default`, {
+    defaultUsed: defaultValue,
+  });
+  if (trimmed === undefined) return defaultValue;
+
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n <= 0) {
+    warnConfigEnvDefault(`${envKey}:invalid`, `${envKey} is invalid; using default`, {
+      defaultUsed: defaultValue,
+      raw: trimmed,
+    });
+    return defaultValue;
+  }
+  return n;
+}
+
+export function getMediaWikiTimeoutMs(): number {
+  return readPositiveNumberEnv(ENV_KEYS.MEDIAWIKI_TIMEOUT_MS, MEDIAWIKI_DEFAULT_TIMEOUT_MS);
+}
+
+/** Requests per second, applied per wiki (not global) — see `mediawiki/rateLimit.ts`. */
+export function getMediaWikiRateLimitPerSecond(): number {
+  return readPositiveNumberEnv(
+    ENV_KEYS.MEDIAWIKI_RATE_LIMIT_PER_SECOND,
+    MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND
+  );
+}
+
+const MEDIAWIKI_BASE_URL_ENV_KEYS: Readonly<Record<MediaWikiWikiId, string>> = {
+  [MediaWikiWikiId.ConsoleGamesWiki]: ENV_KEYS.MEDIAWIKI_CGW_URL,
+  [MediaWikiWikiId.FandomFfxiv]: ENV_KEYS.MEDIAWIKI_FANDOM_FFXIV_URL,
+};
+
+/** Base URL for `wikiId`; env override falls back to the built-in default (never unset). */
+export function getMediaWikiBaseUrl(wikiId: MediaWikiWikiId): string {
+  const envKey = MEDIAWIKI_BASE_URL_ENV_KEYS[wikiId];
+  const trimmed = readOptionalTrimmedEnv(
+    envKey,
+    `${envKey} is not set; using default base URL for ${wikiId}`,
+    { defaultUsed: MEDIAWIKI_DEFAULT_BASE_URLS[wikiId] }
+  );
+  return trimmed ?? MEDIAWIKI_DEFAULT_BASE_URLS[wikiId];
 }

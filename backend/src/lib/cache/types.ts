@@ -18,6 +18,10 @@ export interface CacheClient {
    */
   setNx(key: string, value: unknown, ttlSeconds?: number): Promise<boolean>;
   delete(key: string): Promise<void>;
+  /**
+   * TODO(DEV-23): Wire patch-day / manual invalidation (admin route or cron) calling this per
+   * category prefix — Cache-Layer-Per-Category.md §2 and §7 item 5.
+   */
   deleteByPrefix(prefix: string): Promise<void>;
   /** No-op for memory; PING for Redis. Used by health probes. */
   ping(): Promise<boolean>;

@@ -7,6 +7,9 @@ export interface SourceCitation {
   readonly sourceUrl?: string;
   readonly patchOrDate?: string;
   readonly lastUpdated?: string;
+  /** TR-9: true when served from cache after upstream failure or past fresh TTL. */
+  // TODO(DEV-23): Document `stale` on citation schemas in backend/openapi (public + admin).
+  readonly stale?: boolean;
 }
 
 export const ConversationRole = {

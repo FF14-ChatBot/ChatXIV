@@ -34,6 +34,8 @@ export interface RetryingHttpClientConfig {
   readonly sourceName: string;
   /** Optional hook called before each fetch attempt (e.g. token-bucket throttle). */
   readonly beforeAttempt?: (ctx: BeforeAttemptContext) => Promise<void>;
+  /** Sent on every request (e.g. a required `User-Agent` per upstream policy). */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 const DEFAULT_MAX_RETRIES = 3;
@@ -85,13 +87,18 @@ export abstract class RetryingHttpClient {
   protected constructor(protected readonly retryConfig: RetryingHttpClientConfig) {}
 
   /**
-   * Single HTTP GET with timeout (one attempt). Override in subclasses for POST,
-   * custom headers, or non-JSON pipelines while keeping `fetchJson` retry behavior.
+   * Single HTTP GET with timeout (one attempt). For headers that are fixed for the life of
+   * the client (e.g. a required `User-Agent`), pass `retryConfig.headers` instead of
+   * overriding this method. Override in subclasses for POST, per-attempt/dynamic headers,
+   * or non-JSON pipelines while keeping `fetchJson` retry behavior.
    */
   protected async connect(url: string): Promise<Response> {
-    const { timeoutMs, sourceName } = this.retryConfig;
+    const { timeoutMs, sourceName, headers } = this.retryConfig;
     try {
-      return await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      return await fetch(url, {
+        signal: AbortSignal.timeout(timeoutMs),
+        ...(headers !== undefined ? { headers } : {}),
+      });
     } catch (err: unknown) {
       if (isTimeoutError(err)) {
         throw AppError.sourceUnavailable(`${sourceName} request timed out after ${timeoutMs}ms`);

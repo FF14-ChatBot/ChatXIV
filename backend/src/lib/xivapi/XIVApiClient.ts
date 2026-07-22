@@ -12,7 +12,8 @@
 
 import type pino from 'pino';
 import { RetryingHttpClient } from '../http/fetchWithRetry.js';
-import type { TokenBucket } from './throttle.js';
+import type { TokenBucket } from '../http/tokenBucket.js';
+import { XIVAPI_DATA_SOURCE } from '../config/constants.js';
 import type {
   XivApiAssetBody,
   XivApiAssetParams,
@@ -36,7 +37,7 @@ export interface XivApiClientConfig {
   readonly timeoutMs: number;
 }
 
-const SOURCE_NAME = 'XIVAPI';
+const SOURCE_NAME = XIVAPI_DATA_SOURCE;
 
 export class XivApiHttpClient extends RetryingHttpClient implements XivApiClient {
   private readonly log: pino.Logger;
