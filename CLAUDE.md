@@ -125,6 +125,8 @@ Security > reliability > maintainability > extensibility, in that priority order
 
 DRY when logic is non-trivial or repeats 3+ times; YAGNI on features, but do design abstractions/interfaces that leave room for what's clearly coming; keep routing/validation/business-logic/data-access as separate layers; compose rather than build deep class hierarchies; talk to direct dependencies only (Law of Demeter); validate and fail fast at boundaries; a function either does something or returns something, not both. Type safety: no `any`, prefer `unknown`, avoid type assertions unless unavoidable. Suggest new dependencies but always ask before adding one — check existing deps first, weigh maintenance/bundle/license.
 
+- **Tangible constants:** a named constant fixes the "what does this number mean" problem but not the "is this number right" problem — `86_400 as const` is still opaque at the call site. Prefer expressing the value in terms a reader can verify at a glance: `24 * 60 * 60` (or a small `SECONDS_PER_DAY` helper) over a raw literal, `RATE_LIMIT_BURST * 2` over a second unrelated magic number, etc. Applies most to time/duration and size constants, where the unit conversion is exactly what's easy to get wrong.
+
 ## Workflow
 
 - **Critical thinking first:** before implementing, check that existing docs/specs/conventions actually match the current code — flag contradictions rather than building on a stale assumption, and raise it if a convention looks wrong given current code or practice rather than blindly following it. Prefer asking one good question over making one bad assumption, especially when starting from a `docs/tasks/` spec.
