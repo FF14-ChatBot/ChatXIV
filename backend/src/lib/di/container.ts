@@ -57,8 +57,22 @@ import { createRoutingClassifier } from '../classification/routingClassifier.js'
 import { createStubUsageRoutingModel } from '../classification/stubUsageRoutingModel.js';
 import { createKnowledgeService } from '../knowledge/knowledgeService.js';
 import { createChatService } from '../chat/chatService.js';
-import { createStubResolver } from '../knowledge/resolvers/stubResolver.js';
-import { UsageCategory } from '@chatxiv/cdm';
+import {
+  createDefaultKnowledgeResolvers,
+  createWikiStubResolver,
+} from '../knowledge/knowledgePipelineState.js';
+import { createXivApiResolver } from '../knowledge/resolvers/xivApiResolver.js';
+import { createXivApiClient } from '../xivapi/XIVApiClient.js';
+import { createTokenBucket } from '../http/tokenBucket.js';
+import {
+  XIVAPI_BASE_URL,
+  XIVAPI_RATE_LIMIT_BURST,
+  XIVAPI_RATE_LIMIT_PER_SECOND,
+  XIVAPI_TIMEOUT_MS,
+} from '../config/constants.js';
+import { logger } from '../observability/logger.js';
+import type { CacheClient } from '../cache/types.js';
+import type { SourceResolver } from '../knowledge/types.js';
 
 export const MetricsStoreToken = Symbol('MetricsStore');
 export const UsageStoreToken = Symbol('UsageStore');
@@ -74,6 +88,7 @@ export const KnowledgeServiceToken = Symbol('KnowledgeService');
 export const ChatServiceToken = Symbol('ChatService');
 export const LlmClientToken = Symbol('LlmClient');
 export const CacheClientToken = Symbol('CacheClient');
+export const SourceResolversToken = Symbol('SourceResolvers');
 
 /** The DI container. Call register() once at startup before resolving any dependencies. */
 export const container = tsyringeContainer as DependencyContainer;
@@ -134,14 +149,6 @@ export function register(): void {
   };
   container.registerInstance<LlmClient>(LlmClientToken, stubLlmClient);
 
-  // TODO: Replace stub resolver with real SourceResolver implementations
-  //       (XivApiResolver, MediaWikiResolver, CuratedDataResolver) once
-  //       lib/clients/xivapi/ and lib/clients/mediawiki/ are implemented.
-  //       Register each resolver and pass the array to createKnowledgeService.
-  const stubResolver = createStubResolver(Object.values(UsageCategory) as UsageCategory[]);
-  const knowledgeService = createKnowledgeService([stubResolver]);
-  container.registerInstance<KnowledgeService>(KnowledgeServiceToken, knowledgeService);
-
   // TODO: Replace createStubUsageRoutingModel with an LLM JSON classifier that maps to UsageCategory.
   const classificationService = createRoutingClassifier(
     createKeywordClassifier(),
@@ -152,6 +159,46 @@ export function register(): void {
     classificationService
   );
 
-  const chatService = createChatService(classificationService, knowledgeService, stubLlmClient);
-  container.registerInstance<ChatService>(ChatServiceToken, chatService);
+  container.registerInstance<readonly SourceResolver[]>(
+    SourceResolversToken,
+    createDefaultKnowledgeResolvers()
+  );
+
+  container.register<KnowledgeService>(KnowledgeServiceToken, {
+    useFactory: (c) => createKnowledgeService(c.resolve(SourceResolversToken)),
+  });
+
+  container.register<ChatService>(ChatServiceToken, {
+    useFactory: (c) =>
+      createChatService(
+        c.resolve(ClassificationServiceToken),
+        c.resolve(KnowledgeServiceToken),
+        c.resolve(LlmClientToken)
+      ),
+  });
+}
+
+/**
+ * After `initializeCache()` registers {@link CacheClientToken}, wire XIVAPI resolver + cache.
+ * Must run before the Express app resolves {@link ChatServiceToken}.
+ */
+export function wireChatKnowledgePipeline(): void {
+  if (!container.isRegistered(CacheClientToken)) {
+    throw new Error(
+      'wireChatKnowledgePipeline() requires initializeCache() to register CacheClientToken first'
+    );
+  }
+
+  const cache = container.resolve<CacheClient>(CacheClientToken);
+  const xivApiClient = createXivApiClient(
+    { baseUrl: XIVAPI_BASE_URL, timeoutMs: XIVAPI_TIMEOUT_MS },
+    createTokenBucket(XIVAPI_RATE_LIMIT_PER_SECOND, XIVAPI_RATE_LIMIT_BURST, logger),
+    logger
+  );
+
+  container.registerInstance<readonly SourceResolver[]>(SourceResolversToken, [
+    createXivApiResolver({ client: xivApiClient, cache }),
+    // TODO(DEV-23): Swap for MediaWiki resolver with per-category cache keys and TTLs.
+    createWikiStubResolver(),
+  ]);
 }

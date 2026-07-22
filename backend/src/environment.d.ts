@@ -26,6 +26,11 @@ declare global {
       REDIS_URL?: string;
       CACHE_BACKEND?: string;
       REDIS_REQUIRED?: string;
+      MEDIAWIKI_USER_AGENT?: string;
+      MEDIAWIKI_TIMEOUT_MS?: string;
+      MEDIAWIKI_RATE_LIMIT_PER_SECOND?: string;
+      MEDIAWIKI_CGW_URL?: string;
+      MEDIAWIKI_FANDOM_FFXIV_URL?: string;
       VITEST_WORKER_ID?: string;
     }
   }

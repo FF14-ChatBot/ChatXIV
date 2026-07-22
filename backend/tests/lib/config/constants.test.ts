@@ -12,6 +12,14 @@ import {
   XIVAPI_TIMEOUT_MS,
   XIVAPI_RATE_LIMIT_PER_SECOND,
   XIVAPI_RATE_LIMIT_BURST,
+  MediaWikiWikiId,
+  MEDIAWIKI_DEFAULT_BASE_URLS,
+  MEDIAWIKI_DEFAULT_TIMEOUT_MS,
+  MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND,
+  CACHE_TTL_XIVAPI_SEARCH_SECONDS,
+  XIVAPI_SEARCH_DEFAULT_LIMIT,
+  XIVAPI_DATA_SOURCE,
+  CACHE_STALE_GRACE_SECONDS,
 } from '@src/lib/config/constants.js';
 
 describe('lib/config/constants', () => {
@@ -51,5 +59,30 @@ describe('lib/config/constants', () => {
     expect(XIVAPI_TIMEOUT_MS).toBe(5_000);
     expect(XIVAPI_RATE_LIMIT_PER_SECOND).toBe(25);
     expect(XIVAPI_RATE_LIMIT_BURST).toBe(50);
+    expect(CACHE_TTL_XIVAPI_SEARCH_SECONDS).toBe(86_400);
+    expect(CACHE_STALE_GRACE_SECONDS).toBe(86_400);
+    expect(XIVAPI_SEARCH_DEFAULT_LIMIT).toBe(8);
+    expect(XIVAPI_DATA_SOURCE).toBe('XIVAPI');
+  });
+
+  it('exports MediaWiki constants', () => {
+    expect(MediaWikiWikiId.ConsoleGamesWiki).toBe('consolegameswiki');
+    expect(MediaWikiWikiId.FandomFfxiv).toBe('fandom_ffxiv');
+    expect(MEDIAWIKI_DEFAULT_BASE_URLS[MediaWikiWikiId.ConsoleGamesWiki]).toBe(
+      'https://ffxiv.consolegameswiki.com/mediawiki/api.php'
+    );
+    expect(MEDIAWIKI_DEFAULT_BASE_URLS[MediaWikiWikiId.FandomFfxiv]).toBe(
+      'https://finalfantasy.fandom.com/api.php'
+    );
+    expect(MEDIAWIKI_DEFAULT_TIMEOUT_MS).toBe(5_000);
+    expect(MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND).toBe(1);
+  });
+
+  it('exports MediaWiki env var keys', () => {
+    expect(ENV_KEYS.MEDIAWIKI_USER_AGENT).toBe('MEDIAWIKI_USER_AGENT');
+    expect(ENV_KEYS.MEDIAWIKI_TIMEOUT_MS).toBe('MEDIAWIKI_TIMEOUT_MS');
+    expect(ENV_KEYS.MEDIAWIKI_RATE_LIMIT_PER_SECOND).toBe('MEDIAWIKI_RATE_LIMIT_PER_SECOND');
+    expect(ENV_KEYS.MEDIAWIKI_CGW_URL).toBe('MEDIAWIKI_CGW_URL');
+    expect(ENV_KEYS.MEDIAWIKI_FANDOM_FFXIV_URL).toBe('MEDIAWIKI_FANDOM_FFXIV_URL');
   });
 });
