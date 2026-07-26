@@ -61,6 +61,8 @@ export const ENV_KEYS = {
   TURNSTILE_SECRET_KEY: 'TURNSTILE_SECRET_KEY',
   ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
   ANTHROPIC_MODEL: 'ANTHROPIC_MODEL',
+  ANTHROPIC_MAX_TOKENS: 'ANTHROPIC_MAX_TOKENS',
+  ANTHROPIC_TIMEOUT_MS: 'ANTHROPIC_TIMEOUT_MS',
   OIDC_ISSUER: 'OIDC_ISSUER',
   OIDC_CLIENT_ID: 'OIDC_CLIENT_ID',
   OIDC_CLIENT_SECRET: 'OIDC_CLIENT_SECRET',
@@ -195,3 +197,19 @@ export const MEDIAWIKI_DEFAULT_TIMEOUT_MS = 5_000 as const;
 
 /** Conservative default; applied per wiki, not globally (TR-8). */
 export const MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND = 1 as const;
+
+/**
+ * Cheapest tier sufficient for the narrow format+cite task (context-grounded answer, no
+ * open-ended reasoning) — see docs/tasks/backend/Anthropic-RAG-Client-Setup.md §3.1.2.
+ * Override via {@link ENV_KEYS.ANTHROPIC_MODEL}.
+ */
+export const ANTHROPIC_DEFAULT_MODEL = 'claude-haiku-4-5-20251001' as const;
+
+/** Default max output tokens for one chat answer; override via {@link ENV_KEYS.ANTHROPIC_MAX_TOKENS}. */
+export const ANTHROPIC_DEFAULT_MAX_TOKENS = 1_024 as const;
+
+/**
+ * Default per-request timeout (ms); keeps the pipeline within the 15s NFR-3 budget alongside
+ * retrieval. Override via {@link ENV_KEYS.ANTHROPIC_TIMEOUT_MS}.
+ */
+export const ANTHROPIC_DEFAULT_TIMEOUT_MS = 12_000 as const;

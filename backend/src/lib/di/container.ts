@@ -51,7 +51,14 @@ import type { FeedbackService } from '../feedback/types.js';
 import type { ClassificationService } from '../classification/types.js';
 import type { KnowledgeService } from '../knowledge/types.js';
 import type { ChatService } from '../chat/types.js';
-import type { LlmClient, LlmFormatResult } from '../llm/types.js';
+import type { LlmClient } from '../llm/types.js';
+import { createAnthropicClient } from '../llm/anthropicClient.js';
+import {
+  getAnthropicApiKey,
+  getAnthropicMaxTokens,
+  getAnthropicModel,
+  getAnthropicTimeoutMs,
+} from '../config/env.js';
 import { createKeywordClassifier } from '../classification/keywordClassifier.js';
 import { createRoutingClassifier } from '../classification/routingClassifier.js';
 import { createStubUsageRoutingModel } from '../classification/stubUsageRoutingModel.js';
@@ -136,21 +143,16 @@ export function register(): void {
   // CacheClientToken is registered by `initializeCache()` at server startup.
   // Tests register a mock via `createMockCacheClient()` (see tests/mocks/cacheClient.mock.ts).
 
-  // TODO: Replace with real AnthropicClient once lib/clients/anthropic/ is implemented.
-  const stubLlmClient: LlmClient = {
-    async *formatWithCitationsStream(): AsyncIterable<string> {
-      yield 'Chat is not yet available. The LLM client has not been configured.';
+  const llmClient: LlmClient = createAnthropicClient(
+    {
+      apiKey: getAnthropicApiKey(),
+      model: getAnthropicModel(),
+      maxTokens: getAnthropicMaxTokens(),
+      timeoutMs: getAnthropicTimeoutMs(),
     },
-    async formatWithCitations(): Promise<LlmFormatResult> {
-      return {
-        content: 'Chat is not yet available.',
-        sources: [],
-        inputTokens: 0,
-        outputTokens: 0,
-      };
-    },
-  };
-  container.registerInstance<LlmClient>(LlmClientToken, stubLlmClient);
+    logger
+  );
+  container.registerInstance<LlmClient>(LlmClientToken, llmClient);
 
   // TODO: Replace createStubUsageRoutingModel with an LLM JSON classifier that maps to UsageCategory.
   const classificationService = createRoutingClassifier(
