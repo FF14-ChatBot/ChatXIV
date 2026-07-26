@@ -1,0 +1,16 @@
+[
+  {
+    "id": "GHSA-qwww-vcr4-c8h2",
+    "package": "react-router",
+    "reason": "React Router RSC (React Server Components) mode CSRF bypass. This app runs react-router in classic declarative SPA mode (BrowserRouter + <Route>) -- confirmed no RSC/framework-mode usage anywhere in frontend/ (no react-server imports, no @react-router/dev dependency), so this exploit path does not apply. The real fix (react-router v8) requires React >=19.2.7; this app is on React 18.3.1. Bumping react-router alone is not possible: react-router-dom has no v8 release (v8 folded its exports into the core react-router package), and @grafana/faro-react's router integration also needs updating. A React 18->19 upgrade is a real, separate migration (MUI v7 + Radix UI + Emotion compatibility, ref-as-prop changes, act() semantics) that should be scoped and tested deliberately, not forced through as a security patch. See PR #124 (closed, superseded by this allowlist) and its review comment for the full investigation.",
+    "addedDate": "2026-07-24",
+    "revisit": "When a React 19 upgrade is planned, remove this entry as part of that work and take the react-router v8 bump for real (react-router-dom -> react-router import migration is mechanical; see PR #124's comment for the exact file list)."
+  },
+  {
+    "id": "GHSA-mh99-v99m-4gvg",
+    "package": "brace-expansion",
+    "reason": "DoS via unbounded glob-expansion length. Reached here only through eslint's own dependency on minimatch@3.x, which requires brace-expansion@^1.1.7 -- 1.1.16 is the newest 1.x release, no patched 1.x exists. Forcing a major-version override (2.x-5.x) would violate minimatch@3.x's own semver contract and risks breaking eslint's glob matching (lint would silently mismatch files, or crash) across CI and local dev. Pure devDependency: this code path only matches local file paths supplied by our own eslint config during lint runs -- no untrusted/network input ever reaches it, so real exploitability here is effectively nil despite the 'high' severity label (which reflects the advisory's worst-case, not this usage).",
+    "addedDate": "2026-07-25",
+    "revisit": "Re-check when bumping eslint to a major version that depends on a fixed minimatch (or on brace-expansion >=1.1.17 if one is ever released). Run `npm ls brace-expansion` after any eslint/typescript-eslint upgrade to see if this entry can be removed."
+  }
+]

@@ -35,7 +35,7 @@
     "precommit:check": "node scripts/precommit-checks.mjs",
     "prepare": "node scripts/husky-prepare.mjs",
     "webhook:listen": "node --env-file=.env scripts/github-webhook-listener.mjs",
-    "test:scripts": "node --test scripts/lib/githubWebhookVerify.test.mjs"
+    "test:scripts": "node --test scripts/lib/*.test.mjs"
   },
   "engines": {
     "node": ">=24"
@@ -52,7 +52,9 @@
     "@types/react-dom": "18.3.7",
     "picomatch": "4.0.4",
     "flatted": "3.4.2",
+    "postcss": "8.5.23",
     "brace-expansion@1.1.12": "1.1.13",
-    "brace-expansion@5.0.4": "5.0.5"
+    "brace-expansion@5.0.4": "5.0.5",
+    "brace-expansion@5.0.7": "5.0.8"
   }
 }

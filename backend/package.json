@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "audit": "npm audit --audit-level=high",
+    "audit": "npm audit --audit-level=high --json | node ../scripts/auditAllowlist.mjs ../audit-allowlist.json",
     "smoke:mediawiki": "tsx scripts/manual/mediawikiSmoke.ts",
     "smoke:xivapi": "tsx scripts/manual/xivapiSmoke.ts"
   },
