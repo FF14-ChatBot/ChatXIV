@@ -115,7 +115,7 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
-      8,
+      2, // clamped to MAX_PAGES_TO_PARSE, not the raw topK (8) -- see MAX_PAGES_TO_PARSE test below
       undefined
     );
     expect(client.parse).toHaveBeenCalledWith(
@@ -225,7 +225,7 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.FandomFfxiv,
       expect.any(String),
-      8,
+      2,
       undefined
     );
     expect(client.parse).toHaveBeenCalledWith(
@@ -268,13 +268,13 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
-      8,
+      2,
       undefined
     );
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.FandomFfxiv,
       expect.any(String),
-      8,
+      2,
       undefined
     );
   });
@@ -336,10 +336,42 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
 
     await resolver.resolve('unlock without an explicit topK', {});
 
+    // Default (DEFAULT_SEARCH_LIMIT=8) still applies internally, but the wire-level request is
+    // clamped the same way an explicit topK would be -- see the two clamping tests below.
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
-      8,
+      2,
+      undefined
+    );
+  });
+
+  it('requests only MAX_PAGES_TO_PARSE search results even when topK asks for more', async () => {
+    const { client, resolver } = setup();
+    client.search.mockResolvedValue(searchResponse([]));
+
+    await resolver.resolve('unlock with a large topK', { topK: 8 });
+
+    // Only the first 2 candidates are ever parsed, so requesting more than that from the wiki
+    // would be wasted work -- the search itself should ask for at most MAX_PAGES_TO_PARSE.
+    expect(client.search).toHaveBeenCalledWith(
+      MediaWikiWikiId.ConsoleGamesWiki,
+      expect.any(String),
+      2,
+      undefined
+    );
+  });
+
+  it('requests exactly topK search results when topK is below MAX_PAGES_TO_PARSE', async () => {
+    const { client, resolver } = setup();
+    client.search.mockResolvedValue(searchResponse([]));
+
+    await resolver.resolve('unlock with a small topK', { topK: 1 });
+
+    expect(client.search).toHaveBeenCalledWith(
+      MediaWikiWikiId.ConsoleGamesWiki,
+      expect.any(String),
+      1,
       undefined
     );
   });
@@ -424,6 +456,21 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       await resolver.resolve('unlock the palace of the dead', { topK: 8 });
 
       expect(cache.set).toHaveBeenCalled();
+    });
+
+    it('uses different cache keys for the same query at different search limits', async () => {
+      const { client, cache, resolver } = setup();
+      client.search.mockResolvedValue(searchResponse([searchEntry()]));
+      client.parse.mockResolvedValue(mediaWikiParseResponseWithInfoboxFixture);
+
+      await resolver.resolve('unlock the palace of the dead', { topK: 1 });
+      await resolver.resolve('unlock the palace of the dead', { topK: 8 });
+
+      // topK:1 and topK:8 clamp to different effective search limits (1 vs MAX_PAGES_TO_PARSE=2),
+      // so they must not collide on one cache entry -- otherwise whichever ran first would
+      // silently serve its (possibly narrower) result set to the other for the full TTL.
+      const keysUsed = cache.get.mock.calls.map(([key]) => key);
+      expect(new Set(keysUsed).size).toBe(2);
     });
 
     it('marks chunks stale when re-fetch fails after the fresh TTL has elapsed', async () => {

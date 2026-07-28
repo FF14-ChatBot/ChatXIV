@@ -120,15 +120,20 @@ export abstract class RetryingHttpClient {
         ...(headers !== undefined ? { headers } : {}),
       });
     } catch (err: unknown) {
-      // Check the caller's own signal first: `isTimeoutError` can't tell attemptSignal's
-      // timeout apart from callerSignal's cancellation once combined via `AbortSignal.any` --
-      // both surface as the same AbortError/TimeoutError shape. Misattributing a caller's
-      // cancellation (e.g. knowledgeService's overall retrieval budget expiring) as "this
-      // request timed out after Xms" is actively misleading during incident triage.
-      if (callerSignal?.aborted) {
-        throw AppError.sourceUnavailable(`${sourceName} request cancelled`);
-      }
+      // Only an abort-shaped error can mean either signal fired -- a genuine non-abort failure
+      // (DNS failure, connection reset) that happens to coincide with the caller's timeout
+      // separately expiring must not be mislabeled as "cancelled", which would discard the real
+      // error message during incident triage.
       if (isTimeoutError(err)) {
+        // `isTimeoutError` can't tell attemptSignal's own timeout apart from callerSignal's
+        // cancellation once combined via `AbortSignal.any` -- both surface as the same
+        // AbortError/TimeoutError shape. Misattributing a caller's cancellation (e.g.
+        // knowledgeService's overall retrieval budget expiring) as "this request timed out
+        // after Xms" is actively misleading during incident triage, so check the caller's own
+        // signal to disambiguate which one actually fired.
+        if (callerSignal?.aborted) {
+          throw AppError.sourceUnavailable(`${sourceName} request cancelled`);
+        }
         throw AppError.sourceUnavailable(`${sourceName} request timed out after ${timeoutMs}ms`);
       }
       throw AppError.sourceUnavailable(
@@ -198,7 +203,17 @@ export abstract class RetryingHttpClient {
           `${sourceName} retryable error; backing off`
         );
         this.attempt += 1;
-        await sleep(delay, signal);
+        try {
+          await sleep(delay, signal);
+        } catch {
+          // sleep() only ever rejects because `signal` (the caller's own budget, not a
+          // per-attempt timeout) aborted -- normalize to AppError like `connect()` does, so a
+          // caller cancelling during retry backoff isn't distinguishable from any other
+          // caller-cancellation only by accident (a raw AbortError/DOMException here would
+          // bypass every `err instanceof AppError` check downstream, e.g. knowledgeService's
+          // `pickSourceUnavailableFailure`).
+          throw AppError.sourceUnavailable(`${sourceName} request cancelled`);
+        }
         throw new RetryableHttpStatusError();
       }
     }

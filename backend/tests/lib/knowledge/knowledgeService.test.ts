@@ -30,6 +30,29 @@ describe('createKnowledgeService', () => {
     expect(result.chunks.map((c) => c.text)).toEqual(['high', 'low']);
   });
 
+  it('breaks exact score ties by content length, not resolver registration order', async () => {
+    // Both resolvers return their best (rank-0) result, which rank-based scoring caps at the
+    // same 1.0 -- without a secondary key, `Array.sort`'s stability would let whichever resolver
+    // is registered first (r1 here) win every tie regardless of which chunk is more substantive.
+    const r1: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async () => [{ text: 'short', source: { sourceName: 'A' }, score: 1 }],
+    };
+    const r2: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async () => [
+        {
+          text: 'a much longer and more substantive chunk of text',
+          source: { sourceName: 'B' },
+          score: 1,
+        },
+      ],
+    };
+    const svc = createKnowledgeService([r1, r2]);
+    const result = await svc.retrieve('fight', { category: UsageCategory.RAIDING, topK: 8 });
+    expect(result.chunks[0]?.source.sourceName).toBe('B');
+  });
+
   it('uses all resolvers when category is uncategorized', async () => {
     const r1: SourceResolver = {
       supportedCategories: [UsageCategory.RAIDING],

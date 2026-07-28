@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createMediaWikiClient, type MediaWikiClientConfig } from '@src/lib/mediawiki/client.js';
+import {
+  createMediaWikiClient,
+  MediaWikiHttpClient,
+  type MediaWikiClientConfig,
+} from '@src/lib/mediawiki/client.js';
 import { MediaWikiWikiId } from '@src/lib/config/constants.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
 import type { MediaWikiRateLimiter } from '@src/lib/mediawiki/rateLimit.js';
@@ -266,6 +270,27 @@ describe('lib/mediawiki/client', () => {
       await client.query(MediaWikiWikiId.ConsoleGamesWiki, {});
 
       expect(limiter.forWiki).toHaveBeenCalledWith(MediaWikiWikiId.ConsoleGamesWiki);
+    });
+
+    it('exposes the same normalized base URLs it actually requests against, not the raw config', () => {
+      const { limiter } = createMockRateLimiter();
+      const config: MediaWikiClientConfig = {
+        ...defaultConfig,
+        baseUrls: {
+          [MediaWikiWikiId.ConsoleGamesWiki]:
+            'https://FFXIV.consolegameswiki.com:443/mediawiki/api.php',
+          [MediaWikiWikiId.FandomFfxiv]: 'https://finalfantasy.fandom.com/api.php',
+        },
+      };
+
+      const client = new MediaWikiHttpClient(config, limiter, log);
+
+      // Callers building their own URLs from `client.baseUrls` (e.g. MediaWikiResolver's
+      // citation links) must see the exact same representation the client uses for requests
+      // and rate-limiter attribution -- not the raw, possibly-non-canonical config value.
+      expect(client.baseUrls[MediaWikiWikiId.ConsoleGamesWiki]).toBe(
+        new URL('https://FFXIV.consolegameswiki.com:443/mediawiki/api.php').toString()
+      );
     });
 
     it('forwards requestId into throttle.consume when requestContext is active', async () => {

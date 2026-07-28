@@ -275,6 +275,27 @@ describe('RetryingHttpClient', () => {
         expect((err as AppError).message).toMatch(/cancelled/);
       }
     });
+
+    it('does not mislabel a genuine non-abort error as "cancelled" just because the caller signal happens to be aborted', async () => {
+      const controller = new AbortController();
+      controller.abort(); // already aborted before the request even starts -- coincidental, not causal
+      fetchMock.mockRejectedValue(new TypeError('getaddrinfo ENOTFOUND api.example.com'));
+
+      try {
+        await createTestHttpClient(defaultOptions).fetchJson(
+          'https://api.example.com/data',
+          log,
+          controller.signal
+        );
+        expect.unreachable('should have thrown');
+      } catch (err) {
+        expectSourceUnavailable(err);
+        // The real network-failure message must survive -- the caller signal being aborted at
+        // the same moment doesn't mean it's why this particular fetch() call failed.
+        expect((err as AppError).message).toBe('getaddrinfo ENOTFOUND api.example.com');
+        expect((err as AppError).message).not.toMatch(/cancelled/);
+      }
+    });
   });
 
   // ── Retry on 429 / 5xx ────────────────────────────────────────────
@@ -295,6 +316,36 @@ describe('RetryingHttpClient', () => {
 
       expect(result).toEqual({ id: 1 });
       expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
+
+    it('normalizes an abort during retry backoff to AppError instead of a raw signal rejection', async () => {
+      vi.useFakeTimers();
+      const controller = new AbortController();
+      fetchMock.mockResolvedValue(errorResponse(429)); // always retryable
+
+      const promise = createTestHttpClient(defaultOptions).fetchJson(
+        'https://api.example.com/data',
+        log,
+        controller.signal
+      );
+
+      // Let the first attempt resolve (429) and enter its backoff `sleep()`, then abort mid-wait
+      // -- before the backoff delay would otherwise elapse.
+      await vi.advanceTimersByTimeAsync(0);
+      controller.abort();
+
+      try {
+        await promise;
+        expect.unreachable('should have thrown');
+      } catch (err) {
+        // Must be the same AppError.sourceUnavailable normalization `connect()` uses, not a raw
+        // AbortError/DOMException that would bypass every `err instanceof AppError` check
+        // downstream (e.g. knowledgeService's `pickSourceUnavailableFailure`).
+        expectSourceUnavailable(err);
+        expect((err as AppError).message).toMatch(/cancelled/);
+      }
 
       vi.useRealTimers();
     });

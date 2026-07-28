@@ -24,6 +24,7 @@ import type {
   MediaWikiSearchResultEntry,
 } from '../../mediawiki/types.js';
 import type { ResolveOptions, RetrievedChunk, SourceResolver } from '../types.js';
+import { rankScore } from '../resolverScoring.js';
 
 /**
  * Cap on how many search hits get a follow-up `parse()` call (bounds latency + rate-limit use).
@@ -181,7 +182,7 @@ async function parseCandidate(
     // MediaWiki's Action API doesn't return a numeric relevance score, but search results are
     // already returned in the wiki's own relevance order -- use that rank so these chunks don't
     // silently sort to the bottom (behind score: 0) once merged with a resolver that does score.
-    score: 1 / (rank + 1),
+    score: rankScore(rank),
   };
 }
 
@@ -238,15 +239,22 @@ async function resolveForWiki(
   log: pino.Logger,
   signal: AbortSignal | undefined
 ): Promise<readonly RetrievedChunk[]> {
+  // At most MAX_PAGES_TO_PARSE candidates are ever parsed regardless of topK (see
+  // fetchWikiChunks), so that's the search limit that actually determines the result -- both
+  // the outbound search request and the cache key use this clamped value, not the raw topK, so
+  // two callers that only differ in an unused portion of topK share one cache entry instead of
+  // one silently overwriting the other's differently-sized result for the full TTL.
+  const searchLimit = Math.min(topK, MAX_PAGES_TO_PARSE);
+
   const { value, stale } = await getOrFetch<CachedWikiChunks>({
     cache,
-    key: mediaWikiSearchCacheKey({ wikiId, query }),
+    key: mediaWikiSearchCacheKey({ wikiId, query, limit: searchLimit }),
     ttlSeconds: CACHE_TTL_MEDIAWIKI_SEARCH_SECONDS,
     staleGraceSeconds: CACHE_STALE_GRACE_SECONDS,
     dataSource: MEDIAWIKI_DATA_SOURCE,
     getFetchedAt: (payload) => payload.fetchedAt,
     fetch: async () => ({
-      chunks: await fetchWikiChunks(client, wikiId, baseUrl, query, topK, log, signal),
+      chunks: await fetchWikiChunks(client, wikiId, baseUrl, query, searchLimit, log, signal),
       fetchedAt: new Date().toISOString(),
     }),
   });

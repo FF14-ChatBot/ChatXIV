@@ -63,7 +63,13 @@ function normalizeBaseUrls(
 
 export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWikiClient {
   private readonly log: pino.Logger;
-  private readonly baseUrls: Readonly<Record<MediaWikiWikiId, string>>;
+  /**
+   * Normalized (via the WHATWG URL parser) base URLs actually used for requests and rate-limiter
+   * attribution -- public so callers that also build URLs from these (e.g. MediaWikiResolver's
+   * citation links) use the exact same representation the client itself requests against,
+   * instead of maintaining a second, possibly-divergent copy from raw env/config values.
+   */
+  readonly baseUrls: Readonly<Record<MediaWikiWikiId, string>>;
 
   constructor(config: MediaWikiClientConfig, rateLimiter: MediaWikiRateLimiter, log: pino.Logger) {
     const baseUrls = normalizeBaseUrls(config.baseUrls);
@@ -163,16 +169,18 @@ export interface MediaWikiClientFromEnv {
  * instead of two hand-maintained copies of the same wiring drifting apart.
  */
 export function createMediaWikiClientFromEnv(log: pino.Logger): MediaWikiClientFromEnv {
-  const baseUrls: Readonly<Record<MediaWikiWikiId, string>> = {
-    [MediaWikiWikiId.ConsoleGamesWiki]: getMediaWikiBaseUrl(MediaWikiWikiId.ConsoleGamesWiki),
-    [MediaWikiWikiId.FandomFfxiv]: getMediaWikiBaseUrl(MediaWikiWikiId.FandomFfxiv),
-  };
   const config: MediaWikiClientConfig = {
-    baseUrls,
+    baseUrls: {
+      [MediaWikiWikiId.ConsoleGamesWiki]: getMediaWikiBaseUrl(MediaWikiWikiId.ConsoleGamesWiki),
+      [MediaWikiWikiId.FandomFfxiv]: getMediaWikiBaseUrl(MediaWikiWikiId.FandomFfxiv),
+    },
     timeoutMs: getMediaWikiTimeoutMs(),
     userAgent: getMediaWikiUserAgent(),
   };
   const rateLimiter = createMediaWikiRateLimiter(getMediaWikiRateLimitPerSecond(), log);
-  const client = createMediaWikiClient(config, rateLimiter, log);
-  return { client, baseUrls };
+  const client = new MediaWikiHttpClient(config, rateLimiter, log);
+  // `client.baseUrls` is the normalized form the client actually requests against -- return that
+  // (not `config.baseUrls`) so callers building their own URLs from this (e.g. MediaWikiResolver's
+  // citation links) can never diverge from what the client itself uses.
+  return { client, baseUrls: client.baseUrls };
 }

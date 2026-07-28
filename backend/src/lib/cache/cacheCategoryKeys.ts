@@ -22,8 +22,9 @@ export function xivApiSearchCacheKey(params: {
 export function mediaWikiSearchCacheKey(params: {
   readonly wikiId: string;
   readonly query: string;
+  readonly limit: number;
 }): string {
   const normalizedQuery = params.query.trim().toLowerCase();
-  const digest = createHash('sha256').update(normalizedQuery).digest('hex');
+  const digest = createHash('sha256').update(`${normalizedQuery}|${params.limit}`).digest('hex');
   return `mediawiki:search:${params.wikiId}:${digest}`;
 }

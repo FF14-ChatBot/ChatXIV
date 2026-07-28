@@ -68,11 +68,12 @@ paths:
       summary: Send a chat message (single JSON response)
       description: |
         Runs the full classify → retrieve → generate pipeline and returns one JSON body once
-        generation completes. Retrieval currently covers the `UNLOCKS` category via MediaWiki
-        (ConsoleGamesWiki, falling back to Fandom FFXIV); other categories return empty `sources`.
-        `answer` reflects a placeholder until the real LLM client is wired in — treat `sources`
-        as the meaningful field for now. Prefer `POST /v1/chat/stream` for lower time-to-first-token
-        in an interactive UI.
+        generation completes. Retrieval covers `ITEMS`, `CRAFTING`, `GATHERING`, `VENDORS`, `MSQ`,
+        `UNLOCKS`, `BIS`, `RAIDING`, `EXPLORATION`, `RELIC_WEAPONS`, and `COLLECTIBLES` via XIVAPI,
+        plus `UNLOCKS` additionally via MediaWiki (ConsoleGamesWiki, falling back to Fandom FFXIV);
+        other categories return empty `sources`. `answer` reflects a placeholder until the real
+        LLM client is wired in — treat `sources` as the meaningful field for now. Prefer
+        `POST /v1/chat/stream` for lower time-to-first-token in an interactive UI.
       operationId: postChat
       requestBody:
         required: true

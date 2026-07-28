@@ -176,7 +176,13 @@ async function executeWithTimeout(
       throwWhenAllResolversFailed(failures, resolvers);
     }
 
-    allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    // Secondary key (chunk text length) breaks exact score ties -- without it, `Array.sort`'s
+    // stability means ties silently fall back to resolver registration order in `container.ts`,
+    // so whichever resolver happens to be registered first always wins its own best-vs-best tie
+    // against another resolver sharing the category, regardless of actual content quality. Rank-
+    // based scoring (see `resolverScoring.ts`) caps every resolver's top result at the same 1.0,
+    // making a best-vs-best tie the single most common merge case, not a rare edge case.
+    allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || b.text.length - a.text.length);
     return allChunks.slice(0, topK);
   } finally {
     clearTimeout(timer);
