@@ -8,6 +8,7 @@ import type {
 import { XivApiLanguage as XivApiLanguageValues } from '../../xivapi/types.js';
 import type { RetrievedChunk } from '../types.js';
 import { XIVAPI_DATA_SOURCE } from '../../config/constants.js';
+import { rankScore } from '../resolverScoring.js';
 
 /** Categories served by XIVAPI search in the MVP resolver. */
 // TODO(DEV-23): Reconcile with per-category sources/TTL table — some categories may move to MediaWiki-only keys.
@@ -42,13 +43,19 @@ export function mapXivApiSearchToChunks(
   searchResult: XivApiSearchResult,
   attribution: SourceCitation
 ): readonly RetrievedChunk[] {
-  return searchResult.results.map((entry) => ({
+  // Rank-based (see `rankScore`), not XIVAPI's raw (unbounded) relevance score: knowledgeService
+  // merges chunks from multiple resolvers sharing a category (e.g. UNLOCKS, also served by
+  // MediaWikiResolver) into one sorted list, and XIVAPI's engine score isn't on the same scale as
+  // another resolver's rank-based score -- using the raw score here would let XIVAPI results
+  // always outrank the other resolver's regardless of actual relevance. `results` is already
+  // returned in the API's own relevance order, so rank works the same way it does for MediaWiki.
+  return searchResult.results.map((entry, rank) => ({
     text: formatSearchEntryText(entry),
     source: {
       ...attribution,
       patchOrDate: searchResult.version,
     },
-    score: entry.score,
+    score: rankScore(rank),
   }));
 }
 

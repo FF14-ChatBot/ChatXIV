@@ -75,6 +75,17 @@ describe('createXivApiResolver', () => {
     expect(chunks[0]?.text).toContain('Hi-Potion');
   });
 
+  it('threads options.signal through to the XIVAPI client so retrieval-timeout cancellation actually cancels the outbound call', async () => {
+    cache.get.mockResolvedValue(cacheMiss());
+    search.mockResolvedValue({ results: [], schema: 's', version: 'v1' });
+    const controller = new AbortController();
+
+    const resolver = createXivApiResolver({ client, cache });
+    await resolver.resolve('potion', { signal: controller.signal });
+
+    expect(search).toHaveBeenCalledWith(expect.anything(), controller.signal);
+  });
+
   it('marks chunks stale when upstream fails after soft expiry', async () => {
     const staleFetchedAt = new Date(Date.now() - 25 * 60 * 60 * 1_000).toISOString();
     cache.get.mockResolvedValue(

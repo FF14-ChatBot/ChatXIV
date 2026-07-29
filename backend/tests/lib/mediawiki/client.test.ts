@@ -1,10 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createMediaWikiClient, type MediaWikiClientConfig } from '@src/lib/mediawiki/client.js';
+import {
+  createMediaWikiClient,
+  MediaWikiHttpClient,
+  type MediaWikiClientConfig,
+} from '@src/lib/mediawiki/client.js';
 import { MediaWikiWikiId } from '@src/lib/config/constants.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
 import type { MediaWikiRateLimiter } from '@src/lib/mediawiki/rateLimit.js';
 import type { TokenBucket } from '@src/lib/http/tokenBucket.js';
 import type pino from 'pino';
+import {
+  mediaWikiParseResponseFixture,
+  mediaWikiQueryRevisionsResponseFixture,
+  mediaWikiSearchResponseFixture,
+} from '@test/fixtures/mediawiki.fixtures.js';
 
 function createMockLogger(): pino.Logger {
   return { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as pino.Logger;
@@ -153,6 +162,47 @@ describe('lib/mediawiki/client', () => {
     });
   });
 
+  // ── Realistic API response shapes ─────────────────────────────────
+
+  describe('realistic fixture responses', () => {
+    it('returns a full search response (list=search) unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(mediaWikiSearchResponseFixture));
+      const { limiter } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      const result = await client.search(MediaWikiWikiId.ConsoleGamesWiki, 'Potion');
+
+      expect(result).toEqual(mediaWikiSearchResponseFixture);
+      expect(result.query.search).toHaveLength(2);
+      expect(result.continue).toEqual({ sroffset: 2, continue: '-||' });
+    });
+
+    it('returns a full query response (prop=revisions) unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(mediaWikiQueryRevisionsResponseFixture));
+      const { limiter } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      const result = await client.query(MediaWikiWikiId.ConsoleGamesWiki, {
+        prop: 'revisions',
+        titles: 'Potion',
+        rvslots: 'main',
+        rvprop: 'content',
+      });
+
+      expect(result).toEqual(mediaWikiQueryRevisionsResponseFixture);
+    });
+
+    it('returns a full parse response unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(mediaWikiParseResponseFixture));
+      const { limiter } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      const result = await client.parse(MediaWikiWikiId.ConsoleGamesWiki, { page: 'Potion' });
+
+      expect(result).toEqual(mediaWikiParseResponseFixture);
+    });
+  });
+
   // ── User-Agent ─────────────────────────────────────────────────────
 
   describe('User-Agent', () => {
@@ -220,6 +270,27 @@ describe('lib/mediawiki/client', () => {
       await client.query(MediaWikiWikiId.ConsoleGamesWiki, {});
 
       expect(limiter.forWiki).toHaveBeenCalledWith(MediaWikiWikiId.ConsoleGamesWiki);
+    });
+
+    it('exposes the same normalized base URLs it actually requests against, not the raw config', () => {
+      const { limiter } = createMockRateLimiter();
+      const config: MediaWikiClientConfig = {
+        ...defaultConfig,
+        baseUrls: {
+          [MediaWikiWikiId.ConsoleGamesWiki]:
+            'https://FFXIV.consolegameswiki.com:443/mediawiki/api.php',
+          [MediaWikiWikiId.FandomFfxiv]: 'https://finalfantasy.fandom.com/api.php',
+        },
+      };
+
+      const client = new MediaWikiHttpClient(config, limiter, log);
+
+      // Callers building their own URLs from `client.baseUrls` (e.g. MediaWikiResolver's
+      // citation links) must see the exact same representation the client uses for requests
+      // and rate-limiter attribution -- not the raw, possibly-non-canonical config value.
+      expect(client.baseUrls[MediaWikiWikiId.ConsoleGamesWiki]).toBe(
+        new URL('https://FFXIV.consolegameswiki.com:443/mediawiki/api.php').toString()
+      );
     });
 
     it('forwards requestId into throttle.consume when requestContext is active', async () => {

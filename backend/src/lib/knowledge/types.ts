@@ -47,9 +47,22 @@ export interface SourceResolver {
 }
 
 export interface ResolveOptions {
+  /**
+   * The category `retrieve()` was called with. Set even when this resolver is only running
+   * because `KnowledgeService` fanned out to every resolver for an UNCATEGORIZED/unknown query --
+   * resolvers that only want to act on categories they actually declare in `supportedCategories`
+   * should check this and return `[]` rather than treating every fan-out call as relevant.
+   */
+  readonly category?: UsageCategory;
   readonly language?: string;
   readonly entities?: ExtractedEntities;
   readonly topK?: number;
+  /**
+   * Aborts when the retrieval time budget expires. Resolvers making outbound HTTP calls should
+   * thread this through so cancelled work actually stops instead of continuing in the background
+   * after `KnowledgeService.retrieve()` has already returned.
+   */
+  readonly signal?: AbortSignal;
 }
 
 /**

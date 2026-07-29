@@ -31,11 +31,20 @@ export interface MediaWikiSearchResponse {
 }
 
 export interface MediaWikiClient {
-  query(wikiId: MediaWikiWikiId, params: MediaWikiQueryParams): Promise<MediaWikiApiResponse>;
-  parse(wikiId: MediaWikiWikiId, params: MediaWikiParseParams): Promise<MediaWikiApiResponse>;
+  query(
+    wikiId: MediaWikiWikiId,
+    params: MediaWikiQueryParams,
+    signal?: AbortSignal
+  ): Promise<MediaWikiApiResponse>;
+  parse(
+    wikiId: MediaWikiWikiId,
+    params: MediaWikiParseParams,
+    signal?: AbortSignal
+  ): Promise<MediaWikiApiResponse>;
   search(
     wikiId: MediaWikiWikiId,
     srsearch: string,
-    limit?: number
+    limit?: number,
+    signal?: AbortSignal
   ): Promise<MediaWikiSearchResponse>;
 }

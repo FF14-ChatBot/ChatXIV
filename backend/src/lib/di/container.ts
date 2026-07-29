@@ -62,7 +62,9 @@ import {
   createWikiStubResolver,
 } from '../knowledge/knowledgePipelineState.js';
 import { createXivApiResolver } from '../knowledge/resolvers/xivApiResolver.js';
+import { createMediaWikiResolver } from '../knowledge/resolvers/mediaWikiResolver.js';
 import { createXivApiClient } from '../xivapi/XIVApiClient.js';
+import { createMediaWikiClientFromEnv } from '../mediawiki/client.js';
 import { createTokenBucket } from '../http/tokenBucket.js';
 import {
   XIVAPI_BASE_URL,
@@ -73,6 +75,7 @@ import {
 import { logger } from '../observability/logger.js';
 import type { CacheClient } from '../cache/types.js';
 import type { SourceResolver } from '../knowledge/types.js';
+import { UsageCategory } from '@chatxiv/cdm';
 
 export const MetricsStoreToken = Symbol('MetricsStore');
 export const UsageStoreToken = Symbol('UsageStore');
@@ -196,9 +199,22 @@ export function wireChatKnowledgePipeline(): void {
     logger
   );
 
+  // MediaWikiResolver covers UNLOCKS (ConsoleGamesWiki first, Fandom FFXIV fallback), alongside
+  // XivApiResolver which already claims UNLOCKS among its structured-data categories -- both get
+  // queried and merged for that category. wikiStubResolver still covers everything neither owns.
+  const { client: mediaWikiClient, baseUrls: mediaWikiBaseUrls } =
+    createMediaWikiClientFromEnv(logger);
+  const mediaWikiResolver = createMediaWikiResolver(
+    mediaWikiClient,
+    cache,
+    mediaWikiBaseUrls,
+    [UsageCategory.UNLOCKS],
+    logger
+  );
+
   container.registerInstance<readonly SourceResolver[]>(SourceResolversToken, [
     createXivApiResolver({ client: xivApiClient, cache }),
-    // TODO(DEV-23): Swap for MediaWiki resolver with per-category cache keys and TTLs.
+    mediaWikiResolver,
     createWikiStubResolver(),
   ]);
 }
