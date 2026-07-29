@@ -209,7 +209,9 @@ export const ANTHROPIC_DEFAULT_MODEL = 'claude-haiku-4-5-20251001' as const;
 export const ANTHROPIC_DEFAULT_MAX_TOKENS = 1_024 as const;
 
 /**
- * Default per-request timeout (ms); keeps the pipeline within the 15s NFR-3 budget alongside
- * retrieval. Override via {@link ENV_KEYS.ANTHROPIC_TIMEOUT_MS}.
+ * Default per-attempt timeout (ms) passed to the Anthropic SDK, which retries transient
+ * failures on top of this -- worst case is bounded by chatService's own pipeline-level
+ * `AbortSignal` (threaded through `LlmFormatRequest.signal`), not by this value alone.
+ * Override via {@link ENV_KEYS.ANTHROPIC_TIMEOUT_MS}.
  */
 export const ANTHROPIC_DEFAULT_TIMEOUT_MS = 12_000 as const;

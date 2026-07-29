@@ -25,6 +25,8 @@ export interface LlmFormatRequest {
   readonly retrievedChunks: readonly RetrievedChunk[];
   readonly conversationHistory?: readonly ConversationTurn[];
   readonly language?: string;
+  /** Caller's overall pipeline budget (e.g. chatService's timeout) — cancels the LLM call itself. */
+  readonly signal?: AbortSignal;
 }
 
 export interface LlmFormatResult {

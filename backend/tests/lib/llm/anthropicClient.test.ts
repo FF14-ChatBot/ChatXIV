@@ -151,6 +151,18 @@ describe('createAnthropicClient', () => {
       );
     });
 
+    it('passes the request signal through so the pipeline can actually cancel the call', async () => {
+      const client = createAnthropicClient({ apiKey: 'sk-ant-test' }, log);
+      const controller = new AbortController();
+
+      await client.formatWithCitations({ ...baseRequest, signal: controller.signal });
+
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ signal: controller.signal })
+      );
+    });
+
     it('omits the Context block when there are no retrieved chunks', async () => {
       const client = createAnthropicClient({ apiKey: 'sk-ant-test' }, log);
       await client.formatWithCitations(baseRequest);

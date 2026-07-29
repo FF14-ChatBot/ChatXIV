@@ -62,6 +62,16 @@ describe('createChatService', () => {
     expect(llm.formatWithCitationsStream).toHaveBeenCalled();
   });
 
+  it('passes the pipeline AbortSignal to the LLM client so a stalled call can actually be cancelled', async () => {
+    const svc = createChatService(classification, knowledge, llm);
+    const events: unknown[] = [];
+    for await (const e of svc.handleMessageStream({ message: 'raid tip' })) {
+      events.push(e);
+    }
+    const call = (llm.formatWithCitationsStream as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it('falls back when classification throws', async () => {
     classification.classify = vi.fn().mockRejectedValue(new Error('cls'));
     const svc = createChatService(classification, knowledge, llm);

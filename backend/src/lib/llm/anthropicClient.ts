@@ -43,7 +43,7 @@ export function createAnthropicClient(config: AnthropicClientConfig, log: pino.L
         messages: buildMessages(request),
         stream: true,
       },
-      { timeout: timeoutMs, maxRetries: 2 }
+      { timeout: timeoutMs, maxRetries: 2, signal: request.signal }
     );
   }
 

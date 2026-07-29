@@ -150,6 +150,7 @@ export function createChatService(
               ? [...request.conversationHistory]
               : undefined,
             language: request.language,
+            signal: controller.signal,
           });
 
           for await (const token of stream) {
