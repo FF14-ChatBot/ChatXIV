@@ -18,7 +18,13 @@ const RETRIEVAL_TIMEOUT_MS = 6_000;
  * SourceResolver(s) based on the classified category.
  *
  * When category is UNCATEGORIZED or confidence is low, queries all
- * resolvers in parallel and merges results by score.
+ * resolvers in parallel and merges results by score. This is a coarse,
+ * "ask everyone" fallback for when routing itself is uncertain -- it does
+ * not mean every resolver should treat every such query as relevant to it.
+ * `ResolveOptions.category` carries the actual category through so a
+ * resolver invoked only via this fallback can decline (return `[]`) rather
+ * than doing real work (e.g. outbound API calls) for a query it has no
+ * reason to believe is actually about one of its `supportedCategories`.
  */
 export function createKnowledgeService(resolvers: readonly SourceResolver[]): KnowledgeService {
   const categoryMap = buildCategoryMap(resolvers);
@@ -34,6 +40,7 @@ export function createKnowledgeService(resolvers: readonly SourceResolver[]): Kn
       }
 
       const resolveOptions = {
+        category,
         language: options?.language,
         entities: options?.entities,
         topK,
@@ -144,10 +151,11 @@ async function executeWithTimeout(
 ): Promise<readonly RetrievedChunk[]> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RETRIEVAL_TIMEOUT_MS);
+  const resolveOptionsWithSignal: ResolveOptions = { ...options, signal: controller.signal };
 
   try {
     const settled = await Promise.allSettled(
-      resolvers.map((r) => invokeResolver(r, query, options, controller.signal))
+      resolvers.map((r) => invokeResolver(r, query, resolveOptionsWithSignal, controller.signal))
     );
 
     const allChunks: RetrievedChunk[] = [];
@@ -168,7 +176,13 @@ async function executeWithTimeout(
       throwWhenAllResolversFailed(failures, resolvers);
     }
 
-    allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    // Secondary key (chunk text length) breaks exact score ties -- without it, `Array.sort`'s
+    // stability means ties silently fall back to resolver registration order in `container.ts`,
+    // so whichever resolver happens to be registered first always wins its own best-vs-best tie
+    // against another resolver sharing the category, regardless of actual content quality. Rank-
+    // based scoring (see `resolverScoring.ts`) caps every resolver's top result at the same 1.0,
+    // making a best-vs-best tie the single most common merge case, not a rare edge case.
+    allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || b.text.length - a.text.length);
     return allChunks.slice(0, topK);
   } finally {
     clearTimeout(timer);

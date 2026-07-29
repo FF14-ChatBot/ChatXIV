@@ -4,6 +4,11 @@ import { XivApiSchemaFormat } from '@src/lib/xivapi/types.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
 import type { TokenBucket } from '@src/lib/http/tokenBucket.js';
 import type pino from 'pino';
+import {
+  xivApiRowResponseFixture,
+  xivApiSearchResultFixture,
+  xivApiSheetResponseFixture,
+} from '@test/fixtures/xivapi.fixtures.js';
 
 function createMockLogger(): pino.Logger {
   return { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as pino.Logger;
@@ -110,6 +115,19 @@ describe('lib/xivapi/XIVApiClient', () => {
       const url = new URL(fetchMock.mock.calls[0][0] as string);
       expect(url.searchParams.get('version')).toBe('latest');
       expect(url.searchParams.get('schema')).toBe('source@7.0');
+    });
+
+    it('threads an optional caller signal into the underlying fetch so it can be cancelled', async () => {
+      fetchMock.mockResolvedValue(okJson({ results: [], schema: 's', version: 'v' }));
+      const controller = new AbortController();
+
+      const client = createXivApiClient(defaultConfig, throttle, log);
+      await client.search({}, controller.signal);
+
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(init.signal?.aborted).toBe(false);
+      controller.abort();
+      expect(init.signal?.aborted).toBe(true);
     });
   });
 
@@ -257,6 +275,40 @@ describe('lib/xivapi/XIVApiClient', () => {
       const url = new URL(fetchMock.mock.calls[0][0] as string);
       expect(url.pathname).toBe('/api/asset/map/s1d1/00');
       expect(url.searchParams.get('version')).toBe('7.0');
+    });
+  });
+
+  // ── Realistic API response shapes ─────────────────────────────────
+
+  describe('realistic fixture responses', () => {
+    it('returns a full search response (multiple results) unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(xivApiSearchResultFixture));
+
+      const client = createXivApiClient(defaultConfig, throttle, log);
+      const result = await client.search({ query: 'Name~"Potion"', sheets: 'Item' });
+
+      expect(result).toEqual(xivApiSearchResultFixture);
+      expect(result.results).toHaveLength(2);
+      expect(result.results[0]?.fields.Name).toBe('Potion');
+    });
+
+    it('returns a full single-row response unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(xivApiRowResponseFixture));
+
+      const client = createXivApiClient(defaultConfig, throttle, log);
+      const result = await client.getRow('Item', 4212);
+
+      expect(result).toEqual(xivApiRowResponseFixture);
+    });
+
+    it('returns a full multi-row sheet response unchanged', async () => {
+      fetchMock.mockResolvedValue(okJson(xivApiSheetResponseFixture));
+
+      const client = createXivApiClient(defaultConfig, throttle, log);
+      const result = await client.listSheetRows('Item', { rows: '4212,4213' });
+
+      expect(result).toEqual(xivApiSheetResponseFixture);
+      expect(result.rows).toHaveLength(2);
     });
   });
 

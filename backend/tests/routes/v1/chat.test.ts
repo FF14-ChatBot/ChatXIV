@@ -145,6 +145,48 @@ describe('chat routes', () => {
       expect(res.status).toBe(400);
     });
 
+    it('returns 400 when a conversationHistory item has an invalid role', async () => {
+      const res = await request(buildApp(chatService))
+        .post(`/v1${ChatRoute.Segment}`)
+        .send({ message: 'hi', conversationHistory: [{ role: 'system', content: 'x' }] });
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 when a conversationHistory item has non-string content', async () => {
+      const res = await request(buildApp(chatService))
+        .post(`/v1${ChatRoute.Segment}`)
+        .send({ message: 'hi', conversationHistory: [{ role: 'user', content: 123 }] });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when a conversationHistory item is not an object', async () => {
+      const res = await request(buildApp(chatService))
+        .post(`/v1${ChatRoute.Segment}`)
+        .send({ message: 'hi', conversationHistory: ['garbage'] });
+      expect(res.status).toBe(400);
+    });
+
+    it('accepts a well-formed conversationHistory', async () => {
+      chatService.handleMessage.mockResolvedValue({
+        messageId: 'msg-2',
+        answer: 'Hi',
+        sources: [],
+      });
+
+      const res = await request(buildApp(chatService))
+        .post(`/v1${ChatRoute.Segment}`)
+        .send({
+          message: 'hi',
+          conversationHistory: [
+            { role: 'user', content: 'earlier question' },
+            { role: 'assistant', content: 'earlier answer' },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+    });
+
     it('returns 503 SOURCE_UNAVAILABLE when handleMessage rejects', async () => {
       chatService.handleMessage.mockRejectedValue(AppError.sourceUnavailable('XIVAPI unavailable'));
 

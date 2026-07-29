@@ -46,13 +46,16 @@ export function createXivApiResolver(deps: XivApiResolverDeps): SourceResolver {
         dataSource: XIVAPI_DATA_SOURCE,
         getFetchedAt: (payload) => payload.fetchedAt,
         fetch: async () => {
-          const result = await deps.client.search({
-            query: trimmed,
-            language,
-            limit,
-            fields: 'Name',
-            transient: 'Description',
-          });
+          const result = await deps.client.search(
+            {
+              query: trimmed,
+              language,
+              limit,
+              fields: 'Name',
+              transient: 'Description',
+            },
+            options?.signal
+          );
           return createCachedUpstreamPayload(result, xivApiSearchSourceCitation(result.version));
         },
       });

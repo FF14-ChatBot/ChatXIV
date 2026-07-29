@@ -66,8 +66,22 @@ function computeRetryDelay(
   return backoffBaseMs * 2 ** attempt;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason as Error);
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(signal.reason as Error);
+      },
+      { once: true }
+    );
+  });
 }
 
 function isTimeoutError(err: unknown): boolean {
@@ -91,16 +105,35 @@ export abstract class RetryingHttpClient {
    * the client (e.g. a required `User-Agent`), pass `retryConfig.headers` instead of
    * overriding this method. Override in subclasses for POST, per-attempt/dynamic headers,
    * or non-JSON pipelines while keeping `fetchJson` retry behavior.
+   *
+   * `callerSignal` (e.g. a caller's overall retrieval-timeout budget) is combined with this
+   * attempt's own `timeoutMs` deadline so an external cancellation actually stops the in-flight
+   * request instead of it running to completion after the caller has moved on.
    */
-  protected async connect(url: string): Promise<Response> {
+  protected async connect(url: string, callerSignal?: AbortSignal): Promise<Response> {
     const { timeoutMs, sourceName, headers } = this.retryConfig;
+    const attemptSignal = AbortSignal.timeout(timeoutMs);
+    const signal = callerSignal ? AbortSignal.any([attemptSignal, callerSignal]) : attemptSignal;
     try {
       return await fetch(url, {
-        signal: AbortSignal.timeout(timeoutMs),
+        signal,
         ...(headers !== undefined ? { headers } : {}),
       });
     } catch (err: unknown) {
+      // Only an abort-shaped error can mean either signal fired -- a genuine non-abort failure
+      // (DNS failure, connection reset) that happens to coincide with the caller's timeout
+      // separately expiring must not be mislabeled as "cancelled", which would discard the real
+      // error message during incident triage.
       if (isTimeoutError(err)) {
+        // `isTimeoutError` can't tell attemptSignal's own timeout apart from callerSignal's
+        // cancellation once combined via `AbortSignal.any` -- both surface as the same
+        // AbortError/TimeoutError shape. Misattributing a caller's cancellation (e.g.
+        // knowledgeService's overall retrieval budget expiring) as "this request timed out
+        // after Xms" is actively misleading during incident triage, so check the caller's own
+        // signal to disambiguate which one actually fired.
+        if (callerSignal?.aborted) {
+          throw AppError.sourceUnavailable(`${sourceName} request cancelled`);
+        }
         throw AppError.sourceUnavailable(`${sourceName} request timed out after ${timeoutMs}ms`);
       }
       throw AppError.sourceUnavailable(
@@ -111,8 +144,10 @@ export abstract class RetryingHttpClient {
 
   /**
    * GET JSON with retries on 429/5xx. The `@Retryable` runner invokes `connect` per attempt.
+   * `signal`, when provided, cancels the in-flight request (and any pending retry backoff) if
+   * the caller's own time budget expires before this call would otherwise finish.
    */
-  fetchJson(url: string, log: pino.Logger): Promise<unknown> {
+  fetchJson(url: string, log: pino.Logger, signal?: AbortSignal): Promise<unknown> {
     const {
       maxRetries = DEFAULT_MAX_RETRIES,
       backoffBaseMs = DEFAULT_BACKOFF_BASE_MS,
@@ -120,7 +155,7 @@ export abstract class RetryingHttpClient {
       beforeAttempt,
     } = this.retryConfig;
 
-    const runConnect = (): Promise<Response> => this.connect(url);
+    const runConnect = (): Promise<Response> => this.connect(url, signal);
 
     class JsonRetryRunner {
       private attempt = 0;
@@ -168,7 +203,17 @@ export abstract class RetryingHttpClient {
           `${sourceName} retryable error; backing off`
         );
         this.attempt += 1;
-        await sleep(delay);
+        try {
+          await sleep(delay, signal);
+        } catch {
+          // sleep() only ever rejects because `signal` (the caller's own budget, not a
+          // per-attempt timeout) aborted -- normalize to AppError like `connect()` does, so a
+          // caller cancelling during retry backoff isn't distinguishable from any other
+          // caller-cancellation only by accident (a raw AbortError/DOMException here would
+          // bypass every `err instanceof AppError` check downstream, e.g. knowledgeService's
+          // `pickSourceUnavailableFailure`).
+          throw AppError.sourceUnavailable(`${sourceName} request cancelled`);
+        }
         throw new RetryableHttpStatusError();
       }
     }
