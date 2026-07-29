@@ -22,6 +22,7 @@ servers:
 
 tags:
   - name: Health
+  - name: Chat
   - name: Feature flags
   - name: Feedback
   - name: Documentation
@@ -60,6 +61,82 @@ paths:
             application/yaml:
               schema:
                 type: string
+
+  /v1/chat:
+    post:
+      tags: [Chat]
+      summary: Send a chat message (single JSON response)
+      description: |
+        Runs the full classify → retrieve → generate pipeline and returns one JSON body once
+        generation completes. Retrieval covers `ITEMS`, `CRAFTING`, `GATHERING`, `VENDORS`, `MSQ`,
+        `UNLOCKS`, `BIS`, `RAIDING`, `EXPLORATION`, `RELIC_WEAPONS`, and `COLLECTIBLES` via XIVAPI,
+        plus `UNLOCKS` additionally via MediaWiki (ConsoleGamesWiki, falling back to Fandom FFXIV);
+        other categories return empty `sources`. `answer` reflects a placeholder until the real
+        LLM client is wired in — treat `sources` as the meaningful field for now. Prefer
+        `POST /v1/chat/stream` for lower time-to-first-token in an interactive UI.
+      operationId: postChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequestBody'
+      responses:
+        '200':
+          description: Chat response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponseBody'
+        '400':
+          description: Validation error (missing/empty message, message too long, or malformed field)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /v1/chat/stream:
+    post:
+      tags: [Chat]
+      summary: Send a chat message (Server-Sent Events stream)
+      description: |
+        Same request contract as `POST /v1/chat`, but streams `ChatStreamEvent`s as Server-Sent
+        Events (`text/event-stream`) so a client can render tokens as they arrive: one or more
+        `token` events, then a `sources` event, then a final `done` event (or an `error` event on
+        failure). Each frame is `data: <json>\n\n`. Swagger's "Try it out" does not render SSE
+        incrementally — use `curl -N` or a real client to see it stream.
+      operationId: postChatStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequestBody'
+      responses:
+        '200':
+          description: Server-Sent Events stream of ChatStreamEvent frames
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ChatStreamEvent'
+        '400':
+          description: Validation error (missing/empty message, message too long, or malformed field)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 
   /v1/flags:
     get:
@@ -188,6 +265,93 @@ components:
         default: 50
 
   schemas:
+    ConversationTurn:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+
+    ChatRequestBody:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 12000
+          description: User message. Max length is the code constant `CHAT_MAX_USER_MESSAGE_CHARS` (12000).
+          example: how do I unlock the Palace of the Dead
+        sessionId:
+          type: string
+        language:
+          type: string
+          example: en
+        conversationHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationTurn'
+
+    SourceCitation:
+      type: object
+      required: [sourceName]
+      properties:
+        sourceName:
+          type: string
+        sourceUrl:
+          type: string
+        patchOrDate:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+
+    ChatResponseBody:
+      type: object
+      required: [messageId, answer, sources]
+      properties:
+        messageId:
+          type: string
+        answer:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceCitation'
+        category:
+          type: string
+          description: |
+            `UsageCategory` string value (e.g. UNLOCKS, RAIDING, MSQ) the query was classified
+            into, when classification succeeded.
+
+    ChatStreamEvent:
+      type: object
+      required: [type, messageId]
+      description: One SSE frame; shape varies by `type`.
+      properties:
+        type:
+          type: string
+          enum: [token, sources, done, error]
+        messageId:
+          type: string
+        content:
+          type: string
+          description: Present on `token` events — one chunk of the generated answer.
+        sources:
+          type: array
+          description: Present on `sources` and `done` events.
+          items:
+            $ref: '#/components/schemas/SourceCitation'
+        category:
+          type: string
+          description: Present on `done` events; `UsageCategory` string value.
+        error:
+          type: string
+          description: Present on `error` events.
+
     FeatureFlagEntry:
       type: object
       required: [name, enabled]
