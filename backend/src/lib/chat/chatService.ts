@@ -166,6 +166,14 @@ export function createChatService(
               content: token,
             };
           }
+
+          // The LLM client's stream ends silently (no throw) when `signal` fires mid-stream --
+          // the loop above exits with no further token to trigger the in-loop abort check, and
+          // would otherwise fall through to a normal Done as if a truncated answer were complete.
+          if (controller.signal.aborted) {
+            yield timeoutEvent(messageId);
+            return;
+          }
         } catch (err) {
           logger.error({ err, messageId }, 'LLM streaming failed');
           yield {

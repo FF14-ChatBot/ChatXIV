@@ -307,4 +307,29 @@ describe('createChatService', () => {
     expect((t2.value as { error?: string }).error).toMatch(/timed out/i);
     expect((await iter.next()).done).toBe(true);
   });
+
+  it('yields timeout when the LLM stream ends silently on abort (no further token, no throw)', async () => {
+    // Mirrors the real Anthropic SDK: once the request's own `signal` aborts, its stream just
+    // ends -- no further token, no throw -- rather than continuing to yield (which is what let
+    // the in-loop `controller.signal.aborted` check catch it before this regression was fixed).
+    vi.useFakeTimers();
+    llm.formatWithCitationsStream = vi.fn().mockImplementation(async function* (request: {
+      signal?: AbortSignal;
+    }) {
+      yield 'a';
+      await new Promise<void>((resolve) => {
+        request.signal?.addEventListener('abort', () => resolve());
+      });
+    });
+    const svc = createChatService(classification, knowledge, llm);
+    const iter = svc.handleMessageStream({ message: 'q' })[Symbol.asyncIterator]();
+    const t1 = await iter.next();
+    expect((t1.value as { content?: string }).content).toBe('a');
+    const t2Promise = iter.next();
+    await vi.advanceTimersByTimeAsync(30_001);
+    const t2 = await t2Promise;
+    expect((t2.value as { type: string }).type).toBe(ChatStreamEventType.Error);
+    expect((t2.value as { error?: string }).error).toMatch(/timed out/i);
+    expect((await iter.next()).done).toBe(true);
+  });
 });
