@@ -10,6 +10,8 @@
 import path from 'node:path';
 import os from 'node:os';
 import {
+  ANTHROPIC_DEFAULT_MAX_TOKENS,
+  ANTHROPIC_DEFAULT_TIMEOUT_MS,
   APP_DATA_DIRECTORY,
   ENV_KEYS,
   MEDIAWIKI_DEFAULT_BASE_URLS,
@@ -164,6 +166,14 @@ export function getAnthropicModel(): string | undefined {
     ENV_KEYS.ANTHROPIC_MODEL,
     `${ENV_KEYS.ANTHROPIC_MODEL} is not set; caller must supply a model or set this env var`
   );
+}
+
+export function getAnthropicMaxTokens(): number {
+  return readPositiveNumberEnv(ENV_KEYS.ANTHROPIC_MAX_TOKENS, ANTHROPIC_DEFAULT_MAX_TOKENS);
+}
+
+export function getAnthropicTimeoutMs(): number {
+  return readPositiveNumberEnv(ENV_KEYS.ANTHROPIC_TIMEOUT_MS, ANTHROPIC_DEFAULT_TIMEOUT_MS);
 }
 
 export type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';

@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import './lib/config/loadDotenv.js';
 import type { Server } from 'node:http';
 import { logger } from './lib/observability/logger.js';
 import { registerProcessErrorHandlers } from './lib/errors/registerProcessErrorHandlers.js';

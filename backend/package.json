@@ -19,6 +19,7 @@
     "smoke:xivapi": "tsx scripts/manual/xivapiSmoke.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@chatxiv/cdm": "*",
     "better-sqlite3": "^12.8.0",
     "builder-pattern": "^2.2.0",

@@ -13,6 +13,8 @@ declare global {
       TURNSTILE_SECRET_KEY?: string;
       ANTHROPIC_API_KEY?: string;
       ANTHROPIC_MODEL?: string;
+      ANTHROPIC_MAX_TOKENS?: string;
+      ANTHROPIC_TIMEOUT_MS?: string;
       OIDC_ISSUER?: string;
       OIDC_CLIENT_ID?: string;
       OIDC_CLIENT_SECRET?: string;
