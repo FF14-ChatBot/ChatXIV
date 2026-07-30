@@ -1,12 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ChatConversationProvider } from '@/features/chat/ChatConversationContext';
-import {
-  ChatSessionLanding,
-  ChatSessionProvider,
-  useChatSession,
-} from '@/features/chat/ChatSessionContext';
-import { ChatPage } from '@/features/chat/ChatPage';
+
+vi.mock('@/clients/chatxivApi/chat', () => ({
+  sendChatMessage: vi.fn().mockResolvedValue({ messageId: 'm', answer: 'a', sources: [] }),
+}));
+
+const { ChatConversationProvider } = await import('@/features/chat/ChatConversationContext');
+const { ChatSessionLanding, ChatSessionProvider, useChatSession } =
+  await import('@/features/chat/ChatSessionContext');
+const { ChatPage } = await import('@/features/chat/ChatPage');
 
 function NewChatTrigger() {
   const { startNewChat } = useChatSession();

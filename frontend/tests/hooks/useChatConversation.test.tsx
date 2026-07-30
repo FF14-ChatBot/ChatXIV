@@ -3,7 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatConversation } from '@/hooks/useChatConversation';
 import { CHAT_THREAD_GREETING } from '@/features/chat/chatThreadGreeting';
 import type { ChatAssistantPort } from '@/lib/chat/chatAssistantPort';
-import { DEMO_ASSISTANT_REPLY } from '@/lib/chat/chatAssistantPort';
+import { createDemoChatAssistantPort, DEMO_ASSISTANT_REPLY } from '@/lib/chat/chatAssistantPort';
 import { ChatSessionLanding } from '@/types/chatSession';
 import { ConversationRole } from '@chatxiv/cdm';
 import { logger } from '@/lib/logger/instance';
@@ -14,7 +14,8 @@ describe('useChatConversation', () => {
   });
 
   it('adds user message then assistant reply after demo delay', async () => {
-    const { result } = renderHook(() => useChatConversation(0));
+    const assistantPort = createDemoChatAssistantPort(50);
+    const { result } = renderHook(() => useChatConversation(0, { assistantPort }));
 
     act(() => {
       result.current.sendMessage('hi');
@@ -92,6 +93,72 @@ describe('useChatConversation', () => {
       expect(result.current.messages).toHaveLength(2);
       expect(result.current.messages[1]?.text).toBe('from mock');
     });
+  });
+
+  it('tracks isSending while a reply is pending, then clears it on resolve', async () => {
+    let resolveReply: (reply: { text: string }) => void;
+    const pending = new Promise<{ text: string }>((resolve) => {
+      resolveReply = resolve;
+    });
+    const assistantPort: ChatAssistantPort = {
+      getReply: () => pending,
+    };
+    const { result } = renderHook(() => useChatConversation(0, { assistantPort }));
+
+    expect(result.current.isSending).toBe(false);
+
+    act(() => {
+      result.current.sendMessage('q');
+    });
+    expect(result.current.isSending).toBe(true);
+
+    await act(async () => {
+      resolveReply({ text: 'reply' });
+      await pending;
+    });
+
+    await waitFor(() => expect(result.current.isSending).toBe(false));
+  });
+
+  it('clears isSending when the reply throws', async () => {
+    const assistantPort: ChatAssistantPort = {
+      getReply: async () => {
+        throw new Error('boom');
+      },
+    };
+    const { result } = renderHook(() => useChatConversation(0, { assistantPort }));
+
+    act(() => {
+      result.current.sendMessage('q');
+    });
+    expect(result.current.isSending).toBe(true);
+
+    await waitFor(() => expect(result.current.isSending).toBe(false));
+  });
+
+  it('passes prior turns as history, excluding the message just sent', async () => {
+    const getReply = vi.fn(async (userMessage: string) => ({ text: `reply to ${userMessage}` }));
+    const assistantPort: ChatAssistantPort = { getReply };
+    const { result } = renderHook(() => useChatConversation(0, { assistantPort }));
+
+    act(() => {
+      result.current.sendMessage('first');
+    });
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+
+    expect(getReply).toHaveBeenNthCalledWith(1, 'first', [], expect.any(AbortSignal));
+
+    act(() => {
+      result.current.sendMessage('second');
+    });
+    await waitFor(() => expect(result.current.messages).toHaveLength(4));
+
+    const secondCallHistory = getReply.mock.calls[1]?.[1] as { text: string; role: string }[];
+    expect(secondCallHistory).toHaveLength(2);
+    expect(secondCallHistory[0]?.text).toBe('first');
+    expect(secondCallHistory[0]?.role).toBe(ConversationRole.User);
+    expect(secondCallHistory[1]?.text).toBe('reply to first');
+    expect(secondCallHistory[1]?.role).toBe(ConversationRole.Assistant);
   });
 
   it('does not log when assistant reply throws AbortError', async () => {

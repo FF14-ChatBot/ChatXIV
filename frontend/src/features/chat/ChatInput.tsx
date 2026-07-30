@@ -7,9 +7,10 @@ interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  disabled?: boolean;
 }
 
-export function ChatInput({ value, onChange, onSend }: ChatInputProps) {
+export function ChatInput({ value, onChange, onSend, disabled = false }: ChatInputProps) {
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       onChange(e.target.value);
@@ -21,10 +22,10 @@ export function ChatInput({ value, onChange, onSend }: ChatInputProps) {
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        onSend();
+        if (!disabled) onSend();
       }
     },
-    [onSend]
+    [onSend, disabled]
   );
 
   return (
@@ -37,9 +38,16 @@ export function ChatInput({ value, onChange, onSend }: ChatInputProps) {
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          disabled={disabled}
           aria-label="Message"
         />
-        <Button size="icon" onClick={onSend} aria-label="Send message" type="button">
+        <Button
+          size="icon"
+          onClick={onSend}
+          disabled={disabled}
+          aria-label="Send message"
+          type="button"
+        >
           <Send />
         </Button>
       </div>

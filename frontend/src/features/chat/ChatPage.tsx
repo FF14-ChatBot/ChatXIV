@@ -9,7 +9,8 @@ import styles from './ChatPage.module.css';
 import { AdsensePlacement } from '../../lib/adsense/adsenseConfig';
 
 export function ChatPage() {
-  const { messages, inputValue, setInputValue, sendMessage } = useChatConversationContext();
+  const { messages, inputValue, setInputValue, sendMessage, isSending } =
+    useChatConversationContext();
   const mainScrollRef = useRef<HTMLDivElement>(null);
 
   const handleSend = useCallback(() => {
@@ -45,7 +46,7 @@ export function ChatPage() {
             className={clsx(styles.mainScroll, styles.mainScrollThread)}
           >
             <div className={styles.messageScrollPad}>
-              <MessageList messages={messages} />
+              <MessageList messages={messages} isSending={isSending} />
             </div>
           </div>
         </div>
@@ -65,7 +66,12 @@ export function ChatPage() {
         </div>
       )}
 
-      <ChatInput value={inputValue} onChange={setInputValue} onSend={handleSend} />
+      <ChatInput
+        value={inputValue}
+        onChange={setInputValue}
+        onSend={handleSend}
+        disabled={isSending}
+      />
     </div>
   );
 }

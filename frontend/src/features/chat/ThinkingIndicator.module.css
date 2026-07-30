@@ -1,0 +1,30 @@
+.assistantRow {
+  composes: assistantRow from './MessageList.module.css';
+}
+
+.bubble {
+  composes: assistant from './MessageList.module.css';
+}
+
+.pulsate {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--foreground) 90%, transparent);
+  animation: thinking-pulsate 1.2s ease-in-out infinite;
+}
+
+@keyframes thinking-pulsate {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulsate {
+    animation: none;
+  }
+}

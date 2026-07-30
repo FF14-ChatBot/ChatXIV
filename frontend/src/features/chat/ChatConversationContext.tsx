@@ -9,6 +9,8 @@ export type ChatConversationContextValue = {
   readonly inputValue: string;
   readonly setInputValue: (value: string) => void;
   readonly sendMessage: (text: string) => void;
+  /** True while awaiting a reply to the most recent `sendMessage` call. */
+  readonly isSending: boolean;
   /**
    * True when the user has typed or sent a message (assistant-only opener does not count).
    * When server-backed saved chats exist, extend this to include “unsaved edits since last save”.
@@ -20,7 +22,7 @@ const ChatConversationContext = createContext<ChatConversationContextValue | nul
 
 export function ChatConversationProvider({ children }: { readonly children: ReactNode }) {
   const { sessionGeneration, landing } = useChatSession();
-  const { messages, inputValue, setInputValue, sendMessage } = useChatConversation(
+  const { messages, inputValue, setInputValue, sendMessage, isSending } = useChatConversation(
     sessionGeneration,
     { sessionLanding: landing }
   );
@@ -34,9 +36,10 @@ export function ChatConversationProvider({ children }: { readonly children: Reac
       inputValue,
       setInputValue,
       sendMessage,
+      isSending,
       isEphemeralDirty,
     }),
-    [messages, inputValue, setInputValue, sendMessage, isEphemeralDirty]
+    [messages, inputValue, setInputValue, sendMessage, isSending, isEphemeralDirty]
   );
 
   return (

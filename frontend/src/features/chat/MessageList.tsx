@@ -2,13 +2,15 @@ import { ConversationRole } from '@chatxiv/cdm';
 import type { Message } from '../../types/chat';
 import { MessageFeedbackBar } from './MessageFeedbackBar';
 import { SourceDropdown } from './SourceDropdown';
+import { ThinkingIndicator } from './ThinkingIndicator';
 import styles from './MessageList.module.css';
 
 interface MessageListProps {
   messages: Message[];
+  isSending?: boolean;
 }
 
-export function MessageList({ messages }: MessageListProps) {
+export function MessageList({ messages, isSending = false }: MessageListProps) {
   return (
     <div className={styles.wrapper}>
       {messages.map((message) =>
@@ -33,6 +35,7 @@ export function MessageList({ messages }: MessageListProps) {
           </div>
         )
       )}
+      {isSending && <ThinkingIndicator />}
     </div>
   );
 }

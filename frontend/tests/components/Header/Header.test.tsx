@@ -25,6 +25,10 @@ vi.mock('@/features/auth/AuthProvider', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock('@/clients/chatxivApi/chat', () => ({
+  sendChatMessage: vi.fn().mockResolvedValue({ messageId: 'm', answer: 'a', sources: [] }),
+}));
+
 function SessionGenerationProbe() {
   const { sessionGeneration } = useChatSession();
   return <span data-testid="session-generation">{sessionGeneration}</span>;
