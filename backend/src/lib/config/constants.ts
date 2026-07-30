@@ -112,13 +112,16 @@ export const CACHE_KEY_PREFIX = 'chatxiv:cache:' as const;
 /** Interval for background Redis PING when the active cache backend is Redis. */
 export const CACHE_HEALTH_PROBE_INTERVAL_MS = 15_000 as const;
 
+const SECONDS_PER_HOUR = 60 * 60;
+const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
+
 /** TTL for XIVAPI search responses (24 hours). */
 // TODO(DEV-23): Per-category TTL constants (BiS 7–14d, wiki 24–48h, etc.) — Cache-Layer-Per-Category.md §2.
-export const CACHE_TTL_XIVAPI_SEARCH_SECONDS = 86_400 as const;
+export const CACHE_TTL_XIVAPI_SEARCH_SECONDS = SECONDS_PER_DAY;
 
 /** TR-9 stale grace beyond {@link CACHE_TTL_XIVAPI_SEARCH_SECONDS} (24 hours). */
 // TODO(DEV-23): Tune stale grace per category when per-category TTL lands.
-export const CACHE_STALE_GRACE_SECONDS = 86_400 as const;
+export const CACHE_STALE_GRACE_SECONDS = SECONDS_PER_DAY;
 
 /** Short TTL for in-flight fetch locks (coalescing concurrent cache misses). */
 export const CACHE_FETCH_LOCK_TTL_SECONDS = 30 as const;
