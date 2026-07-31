@@ -224,7 +224,7 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
     expect(chunks).toHaveLength(1);
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.FandomFfxiv,
-      expect.any(String),
+      'unlock something obscure Final Fantasy XIV',
       2,
       undefined
     );
@@ -273,7 +273,34 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
     );
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.FandomFfxiv,
-      expect.any(String),
+      'nothing findable anywhere Final Fantasy XIV',
+      2,
+      undefined
+    );
+  });
+
+  it('appends the FFXIV disambiguation boost only for the Fandom fallback, not ConsoleGamesWiki', async () => {
+    const { client, resolver } = setup();
+    client.search.mockImplementation((wikiId) =>
+      Promise.resolve(
+        wikiId === MediaWikiWikiId.ConsoleGamesWiki
+          ? searchResponse([])
+          : searchResponse([searchEntry({ title: 'Ninja (Final Fantasy XIV)' })])
+      )
+    );
+    client.parse.mockResolvedValue(mediaWikiParseResponseWithInfoboxFixture);
+
+    await resolver.resolve('unlock ninja', { topK: 8 });
+
+    expect(client.search).toHaveBeenCalledWith(
+      MediaWikiWikiId.ConsoleGamesWiki,
+      'unlock ninja',
+      2,
+      undefined
+    );
+    expect(client.search).toHaveBeenCalledWith(
+      MediaWikiWikiId.FandomFfxiv,
+      'unlock ninja Final Fantasy XIV',
       2,
       undefined
     );
