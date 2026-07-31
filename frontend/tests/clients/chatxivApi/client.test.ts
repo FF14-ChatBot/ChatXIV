@@ -131,6 +131,15 @@ describe('chatxivApiRequest', () => {
     }
   });
 
+  it('rethrows AbortError as-is instead of wrapping it in ApiClientError', async () => {
+    vi.stubGlobal('fetch', () => Promise.reject(new DOMException('Aborted', 'AbortError')));
+
+    const ac = new AbortController();
+    await expect(
+      chatxivApiRequest('POST', '/v1/chat', { body: {}, signal: ac.signal })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('throws ApiClientError with INTERNAL_ERROR when 4xx body is not valid JSON', async () => {
     vi.stubGlobal('fetch', () =>
       Promise.resolve({
