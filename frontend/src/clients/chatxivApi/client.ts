@@ -53,7 +53,8 @@ async function runRequest<T = unknown>(
   let response: Response;
   try {
     response = await coreRequest(httpConfig, method, path, { body, signal });
-  } catch {
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e;
     throw ApiClientError.fromCode(ERROR_CODES.INTERNAL_ERROR);
   }
 

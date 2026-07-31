@@ -11,6 +11,7 @@ import { ChatSessionProvider, useChatSession } from '@/features/chat/ChatSession
 import { Header } from '@/components/Header/Header';
 import { ThemeProvider } from '@/hooks/useTheme';
 import type { AuthState } from '@/features/auth/AuthProvider';
+import { DEFAULT_CHAT_RESPONSE } from '../../mocks/sendChatMessage.mock';
 
 const mockAuth: AuthState = {
   user: null,
@@ -24,6 +25,12 @@ vi.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => mockAuth,
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+
+const sendChatMessageMock = vi.fn();
+vi.mock('@/clients/chatxivApi/chat', () => ({
+  sendChatMessage: (...args: unknown[]) => sendChatMessageMock(...args),
+}));
+sendChatMessageMock.mockResolvedValue(DEFAULT_CHAT_RESPONSE);
 
 function SessionGenerationProbe() {
   const { sessionGeneration } = useChatSession();

@@ -59,4 +59,19 @@ describe('ChatInput', () => {
     fireEvent.click(screen.getByRole('button', { name: /send message/i }));
     expect(onSend).toHaveBeenCalled();
   });
+
+  it('disables the textarea and send button when disabled', () => {
+    render(<ChatInput value="x" onChange={vi.fn()} onSend={vi.fn()} disabled />);
+
+    expect(getField()).toBeDisabled();
+    expect(screen.getByRole('button', { name: /send message/i })).toBeDisabled();
+  });
+
+  it('does not call onSend on Enter while disabled', () => {
+    const onSend = vi.fn();
+    render(<ChatInput value="hi" onChange={vi.fn()} onSend={onSend} disabled />);
+
+    fireEvent.keyDown(getField(), { key: 'Enter', code: 'Enter', shiftKey: false });
+    expect(onSend).not.toHaveBeenCalled();
+  });
 });

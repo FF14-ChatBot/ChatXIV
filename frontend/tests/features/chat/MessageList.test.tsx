@@ -84,4 +84,14 @@ describe('MessageList', () => {
     expect(screen.getByText('The Lodestone')).toBeInTheDocument();
     expect(screen.getByText('XIVAPI')).toBeInTheDocument();
   });
+
+  it('shows the Thinking indicator when isSending is true', () => {
+    render(<MessageList messages={[]} isSending />);
+    expect(screen.getByRole('status', { name: /thinking/i })).toBeInTheDocument();
+  });
+
+  it('does not show the Thinking indicator when isSending is false', () => {
+    render(<MessageList messages={[]} isSending={false} />);
+    expect(screen.queryByRole('status', { name: /thinking/i })).not.toBeInTheDocument();
+  });
 });

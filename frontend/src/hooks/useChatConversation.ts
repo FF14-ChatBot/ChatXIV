@@ -3,7 +3,8 @@ import { ConversationRole } from '@chatxiv/cdm';
 import type { Message } from '../types/chat';
 import { CHAT_THREAD_GREETING } from '../features/chat/chatThreadGreeting';
 import { ChatSessionLanding } from '../types/chatSession';
-import { createDemoChatAssistantPort, type ChatAssistantPort } from '../lib/chat/chatAssistantPort';
+import type { ChatAssistantPort } from '../lib/chat/chatAssistantPort';
+import { createChatxivChatAssistantPort } from '../lib/chat/chatxivChatAssistantPort';
 import { logger } from '../lib/logger/instance';
 
 export type UseChatConversationOptions = {
@@ -33,18 +34,26 @@ export function useChatConversation(
     options;
   const fallbackPortRef = useRef<ChatAssistantPort | null>(null);
   if (fallbackPortRef.current === null) {
-    fallbackPortRef.current = createDemoChatAssistantPort();
+    fallbackPortRef.current = createChatxivChatAssistantPort();
   }
   const assistantPort = assistantPortOption ?? fallbackPortRef.current;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const prevSessionGenerationRef = useRef<number | null>(null);
+  // Read inside sendMessage instead of closing over `messages` directly, so sendMessage's own
+  // identity stays stable across message updates -- otherwise any consumer with `sendMessage` in
+  // an effect's dependency array (e.g. a "seed a message" effect) infinite-loops, since sending a
+  // message changes `messages`, which would change `sendMessage`, which would re-run the effect.
+  const messagesRef = useRef<Message[]>(messages);
+  messagesRef.current = messages;
 
   const cancelPendingReply = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    setIsSending(false);
   }, []);
 
   useEffect(() => {
@@ -74,16 +83,21 @@ export function useChatConversation(
         role: ConversationRole.User,
       };
 
+      // Prior turns only -- read before `setMessages` below commits, so the new user message is
+      // correctly excluded.
+      const historySnapshot = messagesRef.current;
+
       setMessages((prev) => [...prev, userMessage]);
       setInputValue('');
       cancelPendingReply();
 
       const ac = new AbortController();
       abortRef.current = ac;
+      setIsSending(true);
 
       void (async () => {
         try {
-          const reply = await assistantPort.getReply(trimmed, ac.signal);
+          const reply = await assistantPort.getReply(trimmed, historySnapshot, ac.signal);
           if (abortRef.current !== ac) return;
           const botMessage: Message = {
             id: crypto.randomUUID(),
@@ -100,6 +114,7 @@ export function useChatConversation(
         } finally {
           if (abortRef.current === ac) {
             abortRef.current = null;
+            setIsSending(false);
           }
         }
       })();
@@ -110,6 +125,7 @@ export function useChatConversation(
   return {
     messages,
     inputValue,
+    isSending,
     setInputValue,
     sendMessage,
   };

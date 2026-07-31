@@ -1,4 +1,5 @@
 import type { SourceCitation } from '@chatxiv/cdm';
+import type { Message } from '../../types/chat';
 
 /**
  * Abstraction for obtaining assistant text after a user message. The UI depends on this port,
@@ -11,7 +12,12 @@ export type AssistantReply = {
 };
 
 export interface ChatAssistantPort {
-  getReply(userMessage: string, signal?: AbortSignal): Promise<AssistantReply>;
+  /** `history` is prior turns only (not including `userMessage`) — pass `[]` if unsupported. */
+  getReply(
+    userMessage: string,
+    history: readonly Message[],
+    signal?: AbortSignal
+  ): Promise<AssistantReply>;
 }
 
 export const DEMO_ASSISTANT_REPLY =
@@ -30,7 +36,7 @@ export const DEMO_ASSISTANT_SOURCES: readonly SourceCitation[] = [
 
 export function createDemoChatAssistantPort(delayMs = 1000): ChatAssistantPort {
   return {
-    getReply(_userMessage, signal) {
+    getReply(_userMessage, _history, signal) {
       return new Promise((resolve, reject) => {
         const id = window.setTimeout(() => {
           resolve({ text: DEMO_ASSISTANT_REPLY, sources: DEMO_ASSISTANT_SOURCES });
