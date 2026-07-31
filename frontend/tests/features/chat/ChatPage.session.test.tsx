@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { DEFAULT_CHAT_RESPONSE } from '../../mocks/sendChatMessage.mock';
 
+const sendChatMessageMock = vi.fn();
 vi.mock('@/clients/chatxivApi/chat', () => ({
-  sendChatMessage: vi.fn().mockResolvedValue({ messageId: 'm', answer: 'a', sources: [] }),
+  sendChatMessage: (...args: unknown[]) => sendChatMessageMock(...args),
 }));
+sendChatMessageMock.mockResolvedValue(DEFAULT_CHAT_RESPONSE);
 
 const { ChatConversationProvider } = await import('@/features/chat/ChatConversationContext');
 const { ChatSessionLanding, ChatSessionProvider, useChatSession } =
