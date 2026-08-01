@@ -117,8 +117,34 @@ describe('container', () => {
     const resolvers = container.resolve<readonly SourceResolver[]>(SourceResolversToken);
     expect(resolvers).toHaveLength(3);
     expect(resolvers[0]?.supportedCategories).toContain(UsageCategory.ITEMS);
-    expect(resolvers[1]?.supportedCategories).toEqual([UsageCategory.UNLOCKS]);
+
+    const mediaWikiCategories = resolvers[1]?.supportedCategories ?? [];
+    expect(mediaWikiCategories).toEqual(
+      expect.arrayContaining([
+        UsageCategory.UNLOCKS,
+        UsageCategory.BLUE_MAGE,
+        UsageCategory.FIELD_OPERATIONS,
+        UsageCategory.DEEP_DUNGEONS,
+        UsageCategory.GLAMOUR,
+        UsageCategory.HOUSING,
+        UsageCategory.PVP,
+        UsageCategory.FATES,
+        UsageCategory.LIFESTYLE_CONTENT,
+        UsageCategory.CRITERION,
+        UsageCategory.GOLD_SAUCER,
+        UsageCategory.SEASONAL_EVENTS,
+      ])
+    );
+    expect(mediaWikiCategories).toHaveLength(12);
+
+    // Neither XIVAPI's categories nor MediaWiki's newly-registered ones should still fall
+    // through to the always-empty stub -- would silently waste a resolver call on every request.
     expect(resolvers[2]?.supportedCategories).not.toContain(UsageCategory.ITEMS);
     expect(resolvers[2]?.supportedCategories).not.toContain(UsageCategory.UNLOCKS);
+    expect(resolvers[2]?.supportedCategories).not.toContain(UsageCategory.GLAMOUR);
+    expect(resolvers[2]?.supportedCategories).not.toContain(UsageCategory.HOUSING);
+    // SETTINGS and PATCH_NOTES are deliberately still on the stub (see createWikiStubResolver doc).
+    expect(resolvers[2]?.supportedCategories).toContain(UsageCategory.SETTINGS);
+    expect(resolvers[2]?.supportedCategories).toContain(UsageCategory.PATCH_NOTES);
   });
 });

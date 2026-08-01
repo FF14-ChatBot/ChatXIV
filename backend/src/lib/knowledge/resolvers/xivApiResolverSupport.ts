@@ -32,10 +32,22 @@ export function isXivApiResolverCategory(category: UsageCategory): boolean {
   return xivApiCategorySet.has(category);
 }
 
-export function wikiStubCategories(): UsageCategory[] {
-  // TODO(DEV-23): Replace stub list when MediaWiki resolver registers its own supportedCategories.
+/**
+ * Categories still with no real resolver: everything except UNCATEGORIZED, XIVAPI's own
+ * categories, and whatever the caller passes as `alreadyCoveredElsewhere` (e.g. MediaWiki's
+ * registered categories) -- keeps the stub's coverage shrinking as real resolvers take on more
+ * categories, instead of silently double-registering a category to both a real resolver and this
+ * always-empty one.
+ */
+export function wikiStubCategories(
+  alreadyCoveredElsewhere: readonly UsageCategory[] = []
+): UsageCategory[] {
+  const coveredElsewhere = new Set<UsageCategory>([
+    ...xivApiCategorySet,
+    ...alreadyCoveredElsewhere,
+  ]);
   return Object.values(UsageCategory).filter(
-    (category) => category !== UsageCategory.UNCATEGORIZED && !xivApiCategorySet.has(category)
+    (category) => category !== UsageCategory.UNCATEGORIZED && !coveredElsewhere.has(category)
   );
 }
 

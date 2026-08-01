@@ -35,6 +35,15 @@ describe('xivApiResolverSupport', () => {
     expect(wikiCategories.length).toBeGreaterThan(0);
   });
 
+  it('wikiStubCategories also excludes categories passed as already covered elsewhere', () => {
+    const wikiCategories = wikiStubCategories([UsageCategory.GLAMOUR, UsageCategory.HOUSING]);
+    expect(wikiCategories).not.toContain(UsageCategory.GLAMOUR);
+    expect(wikiCategories).not.toContain(UsageCategory.HOUSING);
+    // Still excludes XIVAPI's own categories and still leaves something uncovered.
+    expect(wikiCategories).not.toContain(UsageCategory.ITEMS);
+    expect(wikiCategories).toContain(UsageCategory.SETTINGS);
+  });
+
   it('isXivApiResolverCategory identifies XIVAPI-backed categories', () => {
     expect(isXivApiResolverCategory(UsageCategory.ITEMS)).toBe(true);
     expect(isXivApiResolverCategory(UsageCategory.UNCATEGORIZED)).toBe(false);

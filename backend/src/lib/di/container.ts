@@ -203,20 +203,37 @@ export function wireChatKnowledgePipeline(): void {
 
   // MediaWikiResolver covers UNLOCKS (ConsoleGamesWiki first, Fandom FFXIV fallback), alongside
   // XivApiResolver which already claims UNLOCKS among its structured-data categories -- both get
-  // queried and merged for that category. wikiStubResolver still covers everything neither owns.
+  // queried and merged for that category. The rest were live-checked against ConsoleGamesWiki
+  // (DEV-23) before adding: each returned clearly relevant top hits for a representative query.
+  // wikiStubResolver still covers everything neither owns (SETTINGS, PATCH_NOTES -- see its doc
+  // comment).
+  const mediaWikiCategories = [
+    UsageCategory.UNLOCKS,
+    UsageCategory.BLUE_MAGE,
+    UsageCategory.FIELD_OPERATIONS,
+    UsageCategory.DEEP_DUNGEONS,
+    UsageCategory.GLAMOUR,
+    UsageCategory.HOUSING,
+    UsageCategory.PVP,
+    UsageCategory.FATES,
+    UsageCategory.LIFESTYLE_CONTENT,
+    UsageCategory.CRITERION,
+    UsageCategory.GOLD_SAUCER,
+    UsageCategory.SEASONAL_EVENTS,
+  ];
   const { client: mediaWikiClient, baseUrls: mediaWikiBaseUrls } =
     createMediaWikiClientFromEnv(logger);
   const mediaWikiResolver = createMediaWikiResolver(
     mediaWikiClient,
     cache,
     mediaWikiBaseUrls,
-    [UsageCategory.UNLOCKS],
+    mediaWikiCategories,
     logger
   );
 
   container.registerInstance<readonly SourceResolver[]>(SourceResolversToken, [
     createXivApiResolver({ client: xivApiClient, cache }),
     mediaWikiResolver,
-    createWikiStubResolver(),
+    createWikiStubResolver(mediaWikiCategories),
   ]);
 }
