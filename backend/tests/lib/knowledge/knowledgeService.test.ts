@@ -196,13 +196,13 @@ describe('createKnowledgeService', () => {
       supportedCategories: [UsageCategory.RAIDING],
       resolve: async () =>
         new Promise((resolve) => {
-          setTimeout(() => resolve([{ text: 'late', source: { sourceName: 's' } }]), 10_000);
+          setTimeout(() => resolve([{ text: 'late', source: { sourceName: 's' } }]), 15_000);
         }),
     };
     const svc = createKnowledgeService([slow]);
     const retrievePromise = svc.retrieve('q', { category: UsageCategory.RAIDING });
     const settled = retrievePromise.catch(() => undefined);
-    await vi.advanceTimersByTimeAsync(6_001);
+    await vi.advanceTimersByTimeAsync(10_001);
     await expect(retrievePromise).rejects.toMatchObject({
       code: ERROR_CODES.SOURCE_UNAVAILABLE,
     });
