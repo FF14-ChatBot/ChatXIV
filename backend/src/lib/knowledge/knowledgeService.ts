@@ -11,7 +11,16 @@ import type {
 } from './types.js';
 
 const DEFAULT_TOP_K = 8;
-const RETRIEVAL_TIMEOUT_MS = 6_000;
+/**
+ * Shared across every resolver invoked for a query. MediaWiki's per-wiki rate limiter (see
+ * `mediawiki/rateLimit.ts`) can itself add multiple seconds of queueing on a cold token bucket
+ * before a resolver's first fetch even starts, and `mediaWikiResolver.ts`'s ConsoleGamesWiki ->
+ * Fandom fallback attempts two wikis sequentially -- confirmed live that this can exceed a 6s
+ * budget from rate-limit queueing alone, not slow responses. `chatService.ts`'s own
+ * `PIPELINE_TIMEOUT_MS` (30s) and the Anthropic call's default timeout (12s) leave ample room to
+ * give retrieval more time without risking the overall request budget.
+ */
+const RETRIEVAL_TIMEOUT_MS = 10_000;
 
 /**
  * Registry-based knowledge service. Routes queries to the appropriate
