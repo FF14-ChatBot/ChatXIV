@@ -10,11 +10,35 @@
  * the stat-priority order (e.g. "Crit > DH > Det") per job/content alongside the link, so the
  * LLM has something to discuss beyond "go here" without taking on full gear-list maintenance.
  */
-export interface CuratedBisLinkEntry {
+
+/**
+ * Patch this data was last reviewed against. Bump this whenever a new patch drops.
+ *
+ * Every `populated: true` entry whose `patch` no longer matches gets `stale: true` on its
+ * citation (see curatedDataResolver.ts) until someone re-confirms and updates it -- and
+ * curatedBisLinks.test.ts asserts no entry is currently stale, so bumping this without updating
+ * entries fails the suite immediately instead of silently shipping outdated links.
+ */
+export const CURRENT_PATCH = '7.2';
+
+interface CuratedBisLinkEntryBase {
   /** Canonical job name, e.g. "Reaper". */
   readonly job: string;
   /** Strings that identify this job in free text (abbreviations, casing variants). */
   readonly jobAliases: readonly string[];
+}
+
+/**
+ * No real guide configured yet. Deliberately has no `sourceUrl` field at all -- not an empty
+ * string, not a placeholder link -- so there's no way for a fake URL to accidentally reach a
+ * citation. The resolver reports this honestly instead of guessing or staying silent.
+ */
+export interface UnpopulatedCuratedBisLinkEntry extends CuratedBisLinkEntryBase {
+  readonly populated: false;
+}
+
+export interface PopulatedCuratedBisLinkEntry extends CuratedBisLinkEntryBase {
+  readonly populated: true;
   /**
    * What the guide covers, kept generic (e.g. "current Savage raid tier") rather than naming a
    * specific fight, so an entry doesn't need editing every time a new fight releases within the
@@ -23,31 +47,19 @@ export interface CuratedBisLinkEntry {
   readonly content: string;
   readonly sourceName: string;
   readonly sourceUrl: string;
-  readonly patchOrDate?: string;
-  /** ISO date this entry was last confirmed to point somewhere accurate. */
+  /** Patch this entry was last confirmed accurate for; compared against `CURRENT_PATCH`. */
+  readonly patch: string;
+  /** ISO date this entry was last confirmed accurate. */
   readonly lastUpdated: string;
 }
 
+export type CuratedBisLinkEntry = UnpopulatedCuratedBisLinkEntry | PopulatedCuratedBisLinkEntry;
+
 /**
- * PLACEHOLDER DATA -- illustrative examples only, not verified real guidance or real URLs.
- * What this file/resolver pair delivers is the shape and matching behavior; populate real,
- * checked links before this resolver serves live traffic.
+ * Real content: none populated yet. Add real, checked links (flip to `populated: true`, fill in
+ * the rest of PopulatedCuratedBisLinkEntry) before this resolver serves live traffic for a job.
  */
 export const CURATED_BIS_LINKS: readonly CuratedBisLinkEntry[] = [
-  {
-    job: 'Reaper',
-    jobAliases: ['rpr', 'reaper'],
-    content: 'current Savage raid tier',
-    sourceName: 'The Balance (placeholder -- replace with the real current guide)',
-    sourceUrl: 'https://example.com/replace-with-real-reaper-bis-guide',
-    lastUpdated: '2026-08-03',
-  },
-  {
-    job: 'White Mage',
-    jobAliases: ['whm', 'white mage', 'white.mage'],
-    content: 'current Savage raid tier',
-    sourceName: 'The Balance (placeholder -- replace with the real current guide)',
-    sourceUrl: 'https://example.com/replace-with-real-white-mage-bis-guide',
-    lastUpdated: '2026-08-03',
-  },
+  { job: 'Reaper', jobAliases: ['rpr', 'reaper'], populated: false },
+  { job: 'White Mage', jobAliases: ['whm', 'white mage', 'white.mage'], populated: false },
 ];

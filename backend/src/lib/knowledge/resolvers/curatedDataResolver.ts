@@ -1,6 +1,10 @@
 import { UsageCategory } from '@chatxiv/cdm';
 import type { ResolveOptions, RetrievedChunk, SourceResolver } from '../types.js';
-import { CURATED_BIS_LINKS, type CuratedBisLinkEntry } from '../curated/curatedBisLinks.js';
+import {
+  CURATED_BIS_LINKS,
+  CURRENT_PATCH,
+  type CuratedBisLinkEntry,
+} from '../curated/curatedBisLinks.js';
 
 const CURATED_DATA_CATEGORIES: readonly UsageCategory[] = [UsageCategory.BIS];
 
@@ -22,13 +26,28 @@ function matchesJob(
 }
 
 function toChunk(entry: CuratedBisLinkEntry): RetrievedChunk {
+  if (!entry.populated) {
+    return {
+      text: `No curated Best-in-Slot link has been set up yet for ${entry.job}. Tell the user this specific lookup isn't available yet rather than guessing or inventing a source.`,
+      source: {
+        sourceName: 'Not yet configured',
+      },
+    };
+  }
+
+  const isStale = entry.patch !== CURRENT_PATCH;
+  const staleNote = isStale
+    ? ` This was last confirmed for patch ${entry.patch}; the game has since moved to ${CURRENT_PATCH}, so mention it may be out of date until someone re-checks it.`
+    : '';
+
   return {
-    text: `${entry.job} Best-in-Slot guidance for the ${entry.content} is maintained externally by ${entry.sourceName} (see the linked source). Point the user there rather than stating a gear list, since BiS priorities shift with balance patches.`,
+    text: `${entry.job} Best-in-Slot guidance for the ${entry.content} is maintained externally by ${entry.sourceName} (see the linked source). Point the user there rather than stating a gear list, since BiS priorities shift with balance patches.${staleNote}`,
     source: {
       sourceName: entry.sourceName,
       sourceUrl: entry.sourceUrl,
-      ...(entry.patchOrDate !== undefined ? { patchOrDate: entry.patchOrDate } : {}),
+      patchOrDate: entry.patch,
       lastUpdated: entry.lastUpdated,
+      ...(isStale ? { stale: true as const } : {}),
     },
   };
 }
@@ -37,9 +56,12 @@ function toChunk(entry: CuratedBisLinkEntry): RetrievedChunk {
  * Third `SourceResolver` implementation alongside XivApiResolver/MediaWikiResolver (see
  * `knowledge/types.ts`), for content that has no live API and would otherwise need hand
  * maintenance -- currently just Best-in-Slot. Resolves to link-only chunks; see
- * `curatedBisLinks.ts` for why and the deferred stat-priority middle ground.
+ * `curatedBisLinks.ts` for why, the populated/unpopulated split, and the deferred stat-priority
+ * middle ground.
  */
-export function createCuratedDataResolver(): SourceResolver {
+export function createCuratedDataResolver(
+  entries: readonly CuratedBisLinkEntry[] = CURATED_BIS_LINKS
+): SourceResolver {
   return {
     supportedCategories: CURATED_DATA_CATEGORIES,
     async resolve(query: string, options?: ResolveOptions): Promise<readonly RetrievedChunk[]> {
@@ -55,7 +77,7 @@ export function createCuratedDataResolver(): SourceResolver {
       }
 
       const queryLower = trimmed.toLowerCase();
-      const matches = CURATED_BIS_LINKS.filter((entry) =>
+      const matches = entries.filter((entry) =>
         matchesJob(entry, queryLower, options?.entities?.jobName)
       );
 
