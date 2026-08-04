@@ -12,18 +12,26 @@ describe('lib/knowledge/curated/curatedBisLinks', () => {
     expect(stale).toEqual([]);
   });
 
-  it('has no job alias reused across two different entries', () => {
+  it('has no job alias reused by two different jobs (same job reusing its own alias across content-type rows is fine)', () => {
     const ownerByAlias = new Map<string, string>();
     for (const entry of CURATED_BIS_LINKS) {
       for (const alias of entry.jobAliases) {
         const key = alias.toLowerCase();
         const owner = ownerByAlias.get(key);
-        expect(
-          owner,
-          `alias "${alias}" is claimed by both ${owner} and ${entry.job}`
-        ).toBeUndefined();
+        if (owner !== undefined && owner !== entry.job) {
+          throw new Error(`alias "${alias}" is claimed by both ${owner} and ${entry.job}`);
+        }
         ownerByAlias.set(key, entry.job);
       }
+    }
+  });
+
+  it('has no exact duplicate (job, contentType) row', () => {
+    const seen = new Set<string>();
+    for (const entry of CURATED_BIS_LINKS) {
+      const key = `${entry.job}::${entry.contentType}`;
+      expect(seen.has(key), `duplicate entry for ${key}`).toBe(false);
+      seen.add(key);
     }
   });
 });

@@ -21,11 +21,27 @@
  */
 export const CURRENT_PATCH = '7.2';
 
+/**
+ * What kind of BiS an entry covers. A job can have more than one entry -- e.g. separate Savage
+ * and Extreme rows -- distinguished by this field; see the commented example below.
+ */
+export const BisContentType = {
+  SAVAGE: 'Savage',
+  EXTREME: 'Extreme',
+  ULTIMATE: 'Ultimate',
+  LEVELING: 'Leveling',
+  CRAFTING_GEAR: 'Crafting gear',
+  GATHERING_GEAR: 'Gathering gear',
+} as const;
+export type BisContentType = (typeof BisContentType)[keyof typeof BisContentType];
+
 interface CuratedBisLinkEntryBase {
-  /** Canonical job name, e.g. "Reaper". */
+  /** Canonical job name, e.g. "Reaper". Always matches on its own -- no need to also list it
+   *  (or a lowercase copy of it) in `jobAliases`; only add abbreviations/nicknames there. */
   readonly job: string;
-  /** Strings that identify this job in free text (abbreviations, casing variants). */
+  /** Abbreviations or nicknames that identify this job in free text, e.g. "rpr". */
   readonly jobAliases: readonly string[];
+  readonly contentType: BisContentType;
 }
 
 /**
@@ -39,12 +55,6 @@ export interface UnpopulatedCuratedBisLinkEntry extends CuratedBisLinkEntryBase 
 
 export interface PopulatedCuratedBisLinkEntry extends CuratedBisLinkEntryBase {
   readonly populated: true;
-  /**
-   * What the guide covers, kept generic (e.g. "current Savage raid tier") rather than naming a
-   * specific fight, so an entry doesn't need editing every time a new fight releases within the
-   * same content type.
-   */
-  readonly content: string;
   readonly sourceName: string;
   readonly sourceUrl: string;
   /** Patch this entry was last confirmed accurate for; compared against `CURRENT_PATCH`. */
@@ -57,63 +67,131 @@ export type CuratedBisLinkEntry = UnpopulatedCuratedBisLinkEntry | PopulatedCura
 
 /**
  * Real content: none populated yet -- every entry below is a placeholder. To fill one in, flip
- * `populated` to `true` and add the rest of PopulatedCuratedBisLinkEntry's fields, e.g.:
+ * `populated` to `true` and add the rest of PopulatedCuratedBisLinkEntry's fields. A job can have
+ * more than one entry (one per BisContentType) -- for example, both of these could coexist:
  *
  * {
  *   job: 'Reaper',
- *   jobAliases: ['rpr', 'reaper'],
+ *   jobAliases: ['rpr'],
+ *   contentType: BisContentType.SAVAGE,
  *   populated: true,
- *   content: 'current Savage raid tier',       // or e.g. "current crafting gear" for a DoH job
  *   sourceName: 'The Balance',
  *   sourceUrl: 'https://www.thebalanceffxiv.com/wiki/reaper/',  // verify before using
  *   patch: CURRENT_PATCH,
  *   lastUpdated: '2026-08-03',                 // the date you actually checked the link
  * },
+ * {
+ *   job: 'Reaper',
+ *   jobAliases: ['rpr'],
+ *   contentType: BisContentType.EXTREME,
+ *   populated: true,
+ *   sourceName: 'The Balance',
+ *   sourceUrl: 'https://www.thebalanceffxiv.com/wiki/reaper/extreme/',
+ *   patch: CURRENT_PATCH,
+ *   lastUpdated: '2026-08-03',
+ * },
  */
 export const CURATED_BIS_LINKS: readonly CuratedBisLinkEntry[] = [
   // -- Tanks --
-  { job: 'Paladin', jobAliases: ['pld', 'paladin'], populated: false },
-  { job: 'Warrior', jobAliases: ['war', 'warrior'], populated: false },
-  { job: 'Dark Knight', jobAliases: ['drk', 'dark knight', 'dark.knight'], populated: false },
-  { job: 'Gunbreaker', jobAliases: ['gnb', 'gunbreaker'], populated: false },
+  { job: 'Paladin', jobAliases: ['pld'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Warrior', jobAliases: ['war'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Dark Knight', jobAliases: ['drk'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Gunbreaker', jobAliases: ['gnb'], contentType: BisContentType.SAVAGE, populated: false },
 
   // -- Healers --
-  { job: 'White Mage', jobAliases: ['whm', 'white mage', 'white.mage'], populated: false },
-  { job: 'Scholar', jobAliases: ['sch', 'scholar'], populated: false },
-  { job: 'Astrologian', jobAliases: ['ast', 'astrologian'], populated: false },
-  { job: 'Sage', jobAliases: ['sge', 'sage'], populated: false },
+  { job: 'White Mage', jobAliases: ['whm'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Scholar', jobAliases: ['sch'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Astrologian', jobAliases: ['ast'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Sage', jobAliases: ['sge'], contentType: BisContentType.SAVAGE, populated: false },
 
   // -- Melee DPS --
-  { job: 'Monk', jobAliases: ['mnk', 'monk'], populated: false },
-  { job: 'Dragoon', jobAliases: ['drg', 'dragoon'], populated: false },
-  { job: 'Ninja', jobAliases: ['nin', 'ninja'], populated: false },
-  { job: 'Samurai', jobAliases: ['sam', 'samurai'], populated: false },
-  { job: 'Reaper', jobAliases: ['rpr', 'reaper'], populated: false },
-  { job: 'Viper', jobAliases: ['vpr', 'viper'], populated: false },
+  { job: 'Monk', jobAliases: ['mnk'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Dragoon', jobAliases: ['drg'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Ninja', jobAliases: ['nin'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Samurai', jobAliases: ['sam'], contentType: BisContentType.SAVAGE, populated: false },
+  // Demonstrates a job carrying more than one content-type entry -- both still unpopulated.
+  { job: 'Reaper', jobAliases: ['rpr'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Reaper', jobAliases: ['rpr'], contentType: BisContentType.EXTREME, populated: false },
+  { job: 'Viper', jobAliases: ['vpr'], contentType: BisContentType.SAVAGE, populated: false },
 
   // -- Physical Ranged DPS --
-  { job: 'Bard', jobAliases: ['brd', 'bard'], populated: false },
-  { job: 'Machinist', jobAliases: ['mch', 'machinist'], populated: false },
-  { job: 'Dancer', jobAliases: ['dnc', 'dancer'], populated: false },
+  { job: 'Bard', jobAliases: ['brd'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Machinist', jobAliases: ['mch'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Dancer', jobAliases: ['dnc'], contentType: BisContentType.SAVAGE, populated: false },
 
   // -- Magical Ranged DPS --
-  { job: 'Black Mage', jobAliases: ['blm', 'black mage', 'black.mage'], populated: false },
-  { job: 'Summoner', jobAliases: ['smn', 'summoner'], populated: false },
-  { job: 'Red Mage', jobAliases: ['rdm', 'red mage', 'red.mage'], populated: false },
-  { job: 'Pictomancer', jobAliases: ['pct', 'pictomancer'], populated: false },
+  { job: 'Black Mage', jobAliases: ['blm'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Summoner', jobAliases: ['smn'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Red Mage', jobAliases: ['rdm'], contentType: BisContentType.SAVAGE, populated: false },
+  { job: 'Pictomancer', jobAliases: ['pct'], contentType: BisContentType.SAVAGE, populated: false },
 
   // -- Disciples of the Hand (crafters) --
-  { job: 'Carpenter', jobAliases: ['crp', 'carpenter'], populated: false },
-  { job: 'Blacksmith', jobAliases: ['bsm', 'blacksmith'], populated: false },
-  { job: 'Armorer', jobAliases: ['arm', 'armorer'], populated: false },
-  { job: 'Goldsmith', jobAliases: ['gsm', 'goldsmith'], populated: false },
-  { job: 'Leatherworker', jobAliases: ['ltw', 'leatherworker'], populated: false },
-  { job: 'Weaver', jobAliases: ['wvr', 'weaver'], populated: false },
-  { job: 'Alchemist', jobAliases: ['alc', 'alchemist'], populated: false },
-  { job: 'Culinarian', jobAliases: ['cul', 'culinarian'], populated: false },
+  {
+    job: 'Carpenter',
+    jobAliases: ['crp'],
+    contentType: BisContentType.CRAFTING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Blacksmith',
+    jobAliases: ['bsm'],
+    contentType: BisContentType.CRAFTING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Armorer',
+    jobAliases: ['arm'],
+    contentType: BisContentType.CRAFTING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Goldsmith',
+    jobAliases: ['gsm'],
+    contentType: BisContentType.CRAFTING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Leatherworker',
+    jobAliases: ['ltw'],
+    contentType: BisContentType.CRAFTING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Weaver',
+    jobAliases: ['wvr'],
+    contentType: BisContentType.CRAFTING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Alchemist',
+    jobAliases: ['alc'],
+    contentType: BisContentType.CRAFTING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Culinarian',
+    jobAliases: ['cul'],
+    contentType: BisContentType.CRAFTING_GEAR,
+    populated: false,
+  },
 
   // -- Disciples of the Land (gatherers) --
-  { job: 'Miner', jobAliases: ['min', 'miner'], populated: false },
-  { job: 'Botanist', jobAliases: ['btn', 'botanist'], populated: false },
-  { job: 'Fisher', jobAliases: ['fsh', 'fisher'], populated: false },
+  {
+    job: 'Miner',
+    jobAliases: ['min'],
+    contentType: BisContentType.GATHERING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Botanist',
+    jobAliases: ['btn'],
+    contentType: BisContentType.GATHERING_GEAR,
+    populated: false,
+  },
+  {
+    job: 'Fisher',
+    jobAliases: ['fsh'],
+    contentType: BisContentType.GATHERING_GEAR,
+    populated: false,
+  },
 ];
