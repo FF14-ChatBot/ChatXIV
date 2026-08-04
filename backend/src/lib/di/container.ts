@@ -58,6 +58,7 @@ import {
   getAnthropicMaxTokens,
   getAnthropicModel,
   getAnthropicTimeoutMs,
+  getXivApiUserAgent,
 } from '../config/env.js';
 import { createKeywordClassifier } from '../classification/keywordClassifier.js';
 import { createRoutingClassifier } from '../classification/routingClassifier.js';
@@ -197,7 +198,7 @@ export function wireChatKnowledgePipeline(): void {
 
   const cache = container.resolve<CacheClient>(CacheClientToken);
   const xivApiClient = createXivApiClient(
-    { baseUrl: XIVAPI_BASE_URL, timeoutMs: XIVAPI_TIMEOUT_MS },
+    { baseUrl: XIVAPI_BASE_URL, timeoutMs: XIVAPI_TIMEOUT_MS, userAgent: getXivApiUserAgent() },
     createTokenBucket(XIVAPI_RATE_LIMIT_PER_SECOND, XIVAPI_RATE_LIMIT_BURST, logger),
     logger
   );

@@ -103,6 +103,17 @@ describe('lib/mediawiki/client', () => {
       expect(url.searchParams.get('format')).toBe('json');
       expect(url.searchParams.get('titles')).toBe('Potion');
     });
+
+    it('sends maxlag=5 on every request, and a caller-supplied value cannot override it (DEV-59 roadmap)', async () => {
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      await client.query(MediaWikiWikiId.ConsoleGamesWiki, { maxlag: '9999', titles: 'Potion' });
+
+      const url = new URL(fetchMock.mock.calls[0][0] as string);
+      expect(url.searchParams.get('maxlag')).toBe('5');
+    });
   });
 
   describe('parse', () => {

@@ -40,6 +40,8 @@ import type {
 export interface XivApiClientConfig {
   readonly baseUrl: string;
   readonly timeoutMs: number;
+  /** Sent as the `User-Agent` header on every request; see `getXivApiUserAgent` for why. */
+  readonly userAgent: string;
 }
 
 const SOURCE_NAME = XIVAPI_DATA_SOURCE;
@@ -52,6 +54,7 @@ export class XivApiHttpClient extends RetryingHttpClient implements XivApiClient
     super({
       timeoutMs: config.timeoutMs,
       sourceName: SOURCE_NAME,
+      headers: { 'User-Agent': config.userAgent },
       beforeAttempt: async (ctx: BeforeAttemptContext) => {
         try {
           // `consume()` itself measures queue-wait and calls `ctx.onQueueWait` only when this

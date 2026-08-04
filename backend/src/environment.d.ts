@@ -28,7 +28,9 @@ declare global {
       REDIS_URL?: string;
       CACHE_BACKEND?: string;
       REDIS_REQUIRED?: string;
+      XIVAPI_USER_AGENT?: string;
       MEDIAWIKI_USER_AGENT?: string;
+      MEDIAWIKI_USER_AGENT_REQUIRED?: string;
       MEDIAWIKI_TIMEOUT_MS?: string;
       MEDIAWIKI_RATE_LIMIT_PER_SECOND?: string;
       MEDIAWIKI_RATE_LIMIT_QUEUE_TIMEOUT_MS?: string;

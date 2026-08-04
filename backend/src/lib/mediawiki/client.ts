@@ -15,7 +15,7 @@ import {
   type RequestOptions,
 } from '../http/fetchWithRetry.js';
 import { normalizeTokenBucketTimeout } from '../http/normalizeTokenBucketTimeout.js';
-import { MediaWikiWikiId } from '../config/constants.js';
+import { MediaWikiWikiId, MEDIAWIKI_MAXLAG_SECONDS } from '../config/constants.js';
 import {
   getMediaWikiUserAgent,
   getMediaWikiTimeoutMs,
@@ -116,10 +116,13 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
     }
-    // Set after params so a caller-supplied `action`/`format` key can never
+    // Set after params so a caller-supplied `action`/`format`/`maxlag` key can never
     // override the intended request.
     url.searchParams.set('action', action);
     url.searchParams.set('format', 'json');
+    // MediaWiki API etiquette (TR-8): lets a lagged wiki ask us to back off before we ever
+    // reach an edge-level block, rather than requesting at a fixed rate regardless of load.
+    url.searchParams.set('maxlag', String(MEDIAWIKI_MAXLAG_SECONDS));
     return url;
   }
 

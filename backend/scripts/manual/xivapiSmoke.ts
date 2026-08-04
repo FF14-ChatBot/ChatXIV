@@ -17,6 +17,7 @@ import {
   XIVAPI_RATE_LIMIT_BURST,
 } from '../../src/lib/config/constants.js';
 import { logger } from '../../src/lib/observability/logger.js';
+import { getXivApiUserAgent } from '../../src/lib/config/env.js';
 
 const query = process.argv[2] ?? 'Name~"Potion"';
 
@@ -24,6 +25,7 @@ async function main(): Promise<void> {
   const config: XivApiClientConfig = {
     baseUrl: XIVAPI_BASE_URL,
     timeoutMs: XIVAPI_TIMEOUT_MS,
+    userAgent: getXivApiUserAgent(),
   };
   const throttle = createTokenBucket(XIVAPI_RATE_LIMIT_PER_SECOND, XIVAPI_RATE_LIMIT_BURST, logger);
   const client = createXivApiClient(config, throttle, logger);

@@ -5,6 +5,7 @@
  * `requestConfig.ts` / `cors.ts` / `cacheConfig.ts`) next to the code that consumes each value.
  */
 import { validateCacheConfig } from './cacheConfig.js';
+import { validateMediaWikiConfig } from './env.js';
 
 /**
  * Env var names that must be set for the server to start.
@@ -29,4 +30,5 @@ export function validateRequiredEnvKeys(keys: readonly string[]): void {
 export function validateStartupConfig(): void {
   validateRequiredEnvKeys(STARTUP_REQUIRED);
   validateCacheConfig();
+  validateMediaWikiConfig();
 }
