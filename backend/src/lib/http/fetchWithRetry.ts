@@ -46,6 +46,14 @@ export interface BeforeAttemptContext {
   readonly url: string;
   /** Incoming HTTP request id when `fetchJson` runs inside `requestContext` middleware. */
   readonly requestId?: string;
+  /**
+   * The caller's own time budget (e.g. `knowledgeService.ts`'s per-resolver retrieval timeout),
+   * when provided. Hooks that can block (e.g. a token-bucket `consume()` queued behind a cold
+   * rate limiter) should thread this through so a caller that's already given up stops waiting
+   * for a token immediately, instead of the wait lingering un-cancelled after the caller has
+   * moved on (DEV-59).
+   */
+  readonly signal?: AbortSignal;
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -174,6 +182,7 @@ export abstract class RetryingHttpClient {
           await beforeAttempt({
             url,
             ...(store?.requestId !== undefined ? { requestId: store.requestId } : {}),
+            ...(signal !== undefined ? { signal } : {}),
           });
         }
 

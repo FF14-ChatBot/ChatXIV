@@ -139,6 +139,64 @@ describe('lib/http/tokenBucket', () => {
     expect(resolutions).toEqual([0, 1, 2, 3, 4]);
   });
 
+  it('rejects immediately without queueing when the signal is already aborted', async () => {
+    const bucket = createTokenBucket(1);
+    await bucket.consume(); // exhaust the only token
+
+    const controller = new AbortController();
+    const reason = new Error('already gone');
+    controller.abort(reason);
+
+    await expect(bucket.consume(undefined, controller.signal)).rejects.toBe(reason);
+    // Nothing should be queued -- advancing time must not resolve or throw from a phantom waiter.
+    await vi.advanceTimersByTimeAsync(2_000);
+  });
+
+  it('cancels a queued wait when its signal aborts, without disturbing other waiters (DEV-59)', async () => {
+    const bucket = createTokenBucket(1, 1);
+    await bucket.consume(); // takes the only token immediately
+
+    const controller = new AbortController();
+    const reason = new Error('caller gave up');
+    let firstRejected: unknown;
+    const first = bucket.consume(undefined, controller.signal).catch((err: unknown) => {
+      firstRejected = err;
+    });
+
+    let secondResolved = false;
+    const second = bucket.consume().then(() => {
+      secondResolved = true;
+    });
+
+    // Abort the first waiter well before its token would have arrived.
+    await vi.advanceTimersByTimeAsync(200);
+    controller.abort(reason);
+    await first;
+    expect(firstRejected).toBe(reason);
+
+    // The second waiter, still queued, must still be served on its own turn -- the aborted
+    // waiter's removal from the queue must not leave the FIFO order or drain scheduling broken.
+    expect(secondResolved).toBe(false);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await second;
+    expect(secondResolved).toBe(true);
+  });
+
+  it('does not reject or leak a listener once a signal-bearing wait resolves normally', async () => {
+    const bucket = createTokenBucket(1, 1);
+    await bucket.consume();
+
+    const controller = new AbortController();
+    const pending = bucket.consume(undefined, controller.signal);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expect(pending).resolves.toBeUndefined();
+
+    // Aborting after the wait already resolved must be a no-op -- no unhandled rejection, no
+    // effect on a since-reused queue.
+    expect(() => controller.abort(new Error('too late'))).not.toThrow();
+  });
+
   it('warns when empty and a logger is configured', async () => {
     const log = createMockLogger();
     const bucket = createTokenBucket(2, 2, log);

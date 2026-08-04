@@ -211,4 +211,52 @@ describe('createKnowledgeService', () => {
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
+
+  it('gives each resolver its own AbortSignal, not one shared across all of them (DEV-59)', async () => {
+    const seenSignals: AbortSignal[] = [];
+    const capture: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async (_query, options) => {
+        if (options?.signal) seenSignals.push(options.signal);
+        return [];
+      },
+    };
+    const captureToo: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async (_query, options) => {
+        if (options?.signal) seenSignals.push(options.signal);
+        return [];
+      },
+    };
+    const svc = createKnowledgeService([capture, captureToo]);
+    await svc.retrieve('q', { category: UsageCategory.RAIDING });
+
+    expect(seenSignals).toHaveLength(2);
+    // Previously one AbortController was shared across the whole fan-out, so any one resolver's
+    // timeout aborted every resolver's signal, not just its own. Each resolver must now get a
+    // distinct signal so that guarantee holds by construction, not by coincidence of timing.
+    expect(seenSignals[0]).not.toBe(seenSignals[1]);
+  });
+
+  it("preserves a healthy resolver's result even when another resolver never settles and times out", async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {
+      /* noop */
+    });
+    const hangs: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: () => new Promise(() => {}), // never settles on its own
+    };
+    const healthy: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async () => [{ text: 'still works', source: { sourceName: 'ok' } }],
+    };
+    const svc = createKnowledgeService([hangs, healthy]);
+    const retrievePromise = svc.retrieve('q', { category: UsageCategory.RAIDING });
+    await vi.advanceTimersByTimeAsync(10_001);
+
+    const result = await retrievePromise;
+    expect(result.chunks.map((c) => c.text)).toEqual(['still works']);
+    warn.mockRestore();
+  });
 });
