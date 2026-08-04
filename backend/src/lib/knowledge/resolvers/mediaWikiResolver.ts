@@ -48,6 +48,17 @@ const DEFAULT_SEARCH_LIMIT = 8;
  */
 const MAX_SEARCH_QUERY_CHARS = 300;
 
+/**
+ * Appended to the search term only when falling back to the Fandom wiki (never ConsoleGamesWiki,
+ * which is already FFXIV-only). Fandom's `finalfantasy.fandom.com` spans every mainline Final
+ * Fantasy title and spinoff, and its relevance ranking has no notion of "this game specifically"
+ * -- confirmed live that a query like "Ninja" ranks FFXIV's own job page below FFXI's and
+ * Stranger of Paradise's same-named pages. Appending this term as a relevance boost (not a hard
+ * filter -- CirrusSearch has no reliable exact-category match for this wiki's actual category
+ * names) reliably surfaces the FFXIV page first without risking zero results.
+ */
+const FANDOM_FFXIV_SEARCH_BOOST = 'Final Fantasy XIV' as const;
+
 const HTML_ENTITIES: Readonly<Record<string, string>> = {
   '&amp;': '&',
   '&quot;': '"',
@@ -304,13 +315,19 @@ export function createMediaWikiResolver(
 
       for (const wikiId of wikiOrder) {
         if (options.signal?.aborted) return [];
+        // Only Fandom gets the FFXIV boost -- ConsoleGamesWiki is already FFXIV-only, so
+        // appending it there would just be noise against an already-scoped search.
+        const wikiQuery =
+          wikiId === MediaWikiWikiId.FandomFfxiv
+            ? `${searchQuery} ${FANDOM_FFXIV_SEARCH_BOOST}`
+            : searchQuery;
         try {
           const chunks = await resolveForWiki(
             client,
             cache,
             wikiId,
             baseUrls[wikiId],
-            searchQuery,
+            wikiQuery,
             topK,
             log,
             options.signal
@@ -318,7 +335,7 @@ export function createMediaWikiResolver(
           allWikisFailed = false;
           if (chunks.length > 0) return chunks;
         } catch (err) {
-          log.warn({ err, query: searchQuery, wikiId }, 'MediaWiki lookup failed for this wiki');
+          log.warn({ err, query: wikiQuery, wikiId }, 'MediaWiki lookup failed for this wiki');
         }
       }
 
