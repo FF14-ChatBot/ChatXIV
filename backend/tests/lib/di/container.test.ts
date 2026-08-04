@@ -118,7 +118,11 @@ describe('container', () => {
     expect(resolvers).toHaveLength(4);
     expect(resolvers[0]?.supportedCategories).toContain(UsageCategory.ITEMS);
     expect(resolvers[1]?.supportedCategories).toEqual([UsageCategory.UNLOCKS]);
-    expect(resolvers[2]?.supportedCategories).toEqual([UsageCategory.BIS]);
+    expect(resolvers[2]?.supportedCategories).toEqual([
+      UsageCategory.BIS,
+      UsageCategory.CRAFTING,
+      UsageCategory.GATHERING,
+    ]);
     expect(resolvers[3]?.supportedCategories).not.toContain(UsageCategory.ITEMS);
     expect(resolvers[3]?.supportedCategories).not.toContain(UsageCategory.UNLOCKS);
   });

@@ -6,7 +6,14 @@ import {
   type CuratedBisLinkEntry,
 } from '../curated/curatedBisLinks.js';
 
-const CURATED_DATA_CATEGORIES: readonly UsageCategory[] = [UsageCategory.BIS];
+// Crafting/gathering BiS queries classify as CRAFTING/GATHERING, not BIS -- the keyword
+// classifier's dedicated patterns for those (e.g. "bis for miner") match before its generic BIS
+// pattern ever would. XivApiResolver already listens on all three for the same reason.
+const CURATED_DATA_CATEGORIES: readonly UsageCategory[] = [
+  UsageCategory.BIS,
+  UsageCategory.CRAFTING,
+  UsageCategory.GATHERING,
+];
 
 function matchesJob(
   entry: CuratedBisLinkEntry,

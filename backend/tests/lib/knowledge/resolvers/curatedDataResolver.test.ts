@@ -37,9 +37,27 @@ const stalePatchSage: CuratedBisLinkEntry = {
 const fixtureEntries = [unpopulatedReaper, currentPatchWhiteMage, stalePatchSage];
 
 describe('lib/knowledge/resolvers/curatedDataResolver', () => {
-  it('exposes BIS as its supported category', () => {
+  it('exposes BIS, CRAFTING, and GATHERING as its supported categories', () => {
     const resolver = createCuratedDataResolver(fixtureEntries);
-    expect(resolver.supportedCategories).toEqual([UsageCategory.BIS]);
+    expect(resolver.supportedCategories).toEqual([
+      UsageCategory.BIS,
+      UsageCategory.CRAFTING,
+      UsageCategory.GATHERING,
+    ]);
+  });
+
+  it('matches a profession under its own classified category (GATHERING, not BIS)', async () => {
+    const miner: CuratedBisLinkEntry = {
+      job: 'Miner',
+      jobAliases: ['min', 'miner'],
+      populated: false,
+    };
+    const resolver = createCuratedDataResolver([miner]);
+
+    const chunks = await resolver.resolve('what is bis for my miner', {
+      category: UsageCategory.GATHERING,
+    });
+    expect(chunks).toHaveLength(1);
   });
 
   it('declines without matching when options.category is a category it does not support', async () => {
