@@ -3,6 +3,9 @@ import { ERROR_CODES, UsageCategory } from '@chatxiv/cdm';
 import { logger } from '@src/lib/observability/logger.js';
 import { AppError } from '@src/lib/errors/AppError.js';
 import { createKnowledgeService } from '@src/lib/knowledge/knowledgeService.js';
+import { rankScore } from '@src/lib/knowledge/resolverScoring.js';
+import { createCuratedDataResolver } from '@src/lib/knowledge/resolvers/curatedDataResolver.js';
+import { BisContentType, CURRENT_PATCH } from '@src/lib/knowledge/curated/curatedBisLinks.js';
 import type { SourceResolver } from '@src/lib/knowledge/types.js';
 
 describe('createKnowledgeService', () => {
@@ -172,6 +175,41 @@ describe('createKnowledgeService', () => {
     });
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it('merges a real CuratedDataResolver populated chunk alongside a rank-scored sibling for the same category (regression: curated chunks must not lose the merge to a score-0 default)', async () => {
+    const curated = createCuratedDataResolver([
+      {
+        job: 'White Mage',
+        jobAliases: ['whm'],
+        contentType: BisContentType.SAVAGE,
+        populated: true,
+        sourceName: 'The Balance',
+        sourceUrl: 'https://example.com/whm-bis',
+        patch: CURRENT_PATCH,
+        lastUpdated: '2026-08-03',
+      },
+    ]);
+    // Shaped like XivApiResolver/MediaWikiResolver: real rank-based scores, not the hand-set
+    // fixed scores the other tests in this file use, so this exercises the same scale collision
+    // the real resolvers would hit in production.
+    const xivApiLike: SourceResolver = {
+      supportedCategories: [UsageCategory.BIS],
+      resolve: async () => [
+        { text: 'xivapi result 1', source: { sourceName: 'XIVAPI' }, score: rankScore(0) },
+        { text: 'xivapi result 2', source: { sourceName: 'XIVAPI' }, score: rankScore(1) },
+      ],
+    };
+    const svc = createKnowledgeService([curated, xivApiLike]);
+
+    // topK: 2 is the crux -- before curatedDataResolver assigned real scores, its chunk defaulted
+    // to 0 and was always the weakest of the three, so it fell out of the top 2 here every time.
+    const result = await svc.retrieve('white mage bis', { category: UsageCategory.BIS, topK: 2 });
+
+    expect(result.chunks).toHaveLength(2);
+    expect(result.chunks.some((c) => c.source.sourceUrl === 'https://example.com/whm-bis')).toBe(
+      true
+    );
   });
 
   it('treats missing scores as zero when sorting', async () => {
