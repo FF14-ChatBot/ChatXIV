@@ -6,6 +6,7 @@ import {
   CURRENT_PATCH,
   type CuratedBisLinkEntry,
 } from '../curated/curatedBisLinks.js';
+import { rankScore } from '../resolverScoring.js';
 
 // Crafting/gathering BiS queries classify as CRAFTING/GATHERING, not BIS -- the keyword
 // classifier's dedicated patterns for those (e.g. "bis for miner") match before its generic BIS
@@ -16,7 +17,12 @@ const CURATED_DATA_CATEGORIES: readonly UsageCategory[] = [
   UsageCategory.GATHERING,
 ];
 
-/** Caps how many chunks a single query can pull in when no caller-supplied topK is given. */
+/**
+ * Caps how many chunks a single query can pull in when no caller-supplied topK is given.
+ * Production traffic never hits this: knowledgeService.ts always computes a concrete topK (its
+ * own DEFAULT_TOP_K) and passes it through options, so this only applies when a test calls
+ * resolve() directly, bypassing knowledgeService.
+ */
 const CURATED_DATA_DEFAULT_TOP_K = 5;
 
 /** Free-text words that pin a query to one specific BisContentType, checked before falling back
@@ -38,6 +44,14 @@ function escapeRegExp(text: string): string {
  * Whole-word/whole-phrase match: word-boundaries around the phrase so a short alias like "arm"
  * can't match inside "farm", and `\s*` between the phrase's own words so "white mage" also
  * matches a query spelled "whitemage" without needing a separately maintained no-space alias.
+ *
+ * Known limitation: word boundaries don't disambiguate a short alias from an ordinary word
+ * spelled the same way -- e.g. "min" (Miner) also matches "min ilvl", "war" (Warrior) also
+ * matches unrelated uses of that word. Every job alias is FFXIV's standard 3-letter code, so
+ * there's no length-based cutoff that filters out the colliding ones without also breaking
+ * legitimate short-alias matches (e.g. "bis for war"). See `matchesJob`'s `entityJobName`
+ * parameter below -- once the classifier actually populates it, that structured signal sidesteps
+ * this collision risk entirely instead of trying to patch it here.
  */
 function includesPhrase(text: string, phrase: string): boolean {
   const words = phrase.trim().split(/\s+/).map(escapeRegExp);
@@ -45,6 +59,12 @@ function includesPhrase(text: string, phrase: string): boolean {
   return pattern.test(text);
 }
 
+/**
+ * `entityJobName`, when present, is trusted over phrase-matching the raw query below --
+ * currently always `undefined` in production, since nothing in the classification layer
+ * populates `ExtractedEntities.jobName` yet (see `types.ts`). Once something does, this path
+ * sidesteps `includesPhrase`'s alias/common-word collision risk entirely.
+ */
 function matchesJob(entry: CuratedBisLinkEntry, query: string, entityJobName?: string): boolean {
   if (entityJobName !== undefined) {
     const entityLower = entityJobName.toLowerCase();
@@ -70,13 +90,23 @@ function detectContentType(query: string): BisContentType | undefined {
   return undefined;
 }
 
-function toChunk(entry: CuratedBisLinkEntry): RetrievedChunk {
+/**
+ * TODO: once a user-facing feedback/report mechanism exists (no `POST /v1/feedback` route yet --
+ * see Feedback-API-Implementation.md), add report-this-entry language to both the "not yet
+ * configured" text below and the stale-note text, so users can flag entries that are wrong,
+ * missing, or out of date instead of just being told so with no way to act on it.
+ */
+function toChunk(entry: CuratedBisLinkEntry, rank: number): RetrievedChunk {
   if (!entry.populated) {
     return {
       text: `No curated Best-in-Slot source is currently configured for ${entry.job} (${entry.contentType}).`,
       source: {
         sourceName: `Not yet configured (${entry.job} – ${entry.contentType})`,
       },
+      // Explicit 0, not just knowledgeService's `score ?? 0` fallback: an unconfigured placeholder
+      // carries no real information, so it must not outrank -- or crowd out -- an actual answer
+      // from another resolver sharing this category.
+      score: 0,
     };
   }
 
@@ -94,6 +124,11 @@ function toChunk(entry: CuratedBisLinkEntry): RetrievedChunk {
       lastUpdated: entry.lastUpdated,
       ...(isStale ? { stale: true as const } : {}),
     },
+    // Rank-based like XivApiResolver/MediaWikiResolver (see resolverScoring.ts) so a populated
+    // curated entry -- the authoritative answer this resolver exists to surface -- competes on
+    // the same scale instead of defaulting to 0 and always losing the merge to any resolver that
+    // does assign a score.
+    score: rankScore(rank),
   };
 }
 
@@ -136,7 +171,7 @@ export function createCuratedDataResolver(
       const matches = typeFiltered.length > 0 ? typeFiltered : jobMatches;
 
       const topK = options?.topK ?? CURATED_DATA_DEFAULT_TOP_K;
-      return matches.slice(0, topK).map(toChunk);
+      return matches.slice(0, topK).map((entry, rank) => toChunk(entry, rank));
     },
   };
 }

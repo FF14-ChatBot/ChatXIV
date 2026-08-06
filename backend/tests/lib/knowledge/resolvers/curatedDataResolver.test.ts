@@ -216,6 +216,35 @@ describe('lib/knowledge/resolvers/curatedDataResolver', () => {
     });
   });
 
+  describe('scoring (regression: curated chunks must not default to score 0)', () => {
+    it('scores a populated entry at rankScore(0), competitive with XivApiResolver/MediaWikiResolver', async () => {
+      const resolver = createCuratedDataResolver(fixtureEntries);
+      const chunks = await resolver.resolve('white mage bis', { category: UsageCategory.BIS });
+
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0]?.score).toBe(1);
+    });
+
+    it('scores an unpopulated ("not configured") entry at exactly 0, not the same scale as a real answer', async () => {
+      const resolver = createCuratedDataResolver(fixtureEntries);
+      const chunks = await resolver.resolve('savage bis for rpr', { category: UsageCategory.BIS });
+
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0]?.score).toBe(0);
+    });
+
+    it('scores multiple matches by their position, not all at the same value', async () => {
+      const resolver = createCuratedDataResolver(fixtureEntries);
+      // Reaper's two entries: unpopulated Savage (rank 0 -> forced 0) then populated Extreme
+      // (rank 1 -> rankScore(1)) -- matches the resolver's own return order (fixtureEntries order).
+      const chunks = await resolver.resolve('bis for rpr', { category: UsageCategory.BIS });
+
+      expect(chunks).toHaveLength(2);
+      expect(chunks[0]?.score).toBe(0);
+      expect(chunks[1]?.score).toBeCloseTo(0.5);
+    });
+  });
+
   it('prefers options.entities.jobName over query text when provided', async () => {
     const resolver = createCuratedDataResolver(fixtureEntries);
     const chunks = await resolver.resolve('gear check', {
