@@ -17,6 +17,27 @@ describe('lib/mediawiki/rateLimit', () => {
     expect(cgw).not.toBe(fandom);
   });
 
+  it("threads maxQueueWaitMs through to each wiki's bucket (DEV-59)", async () => {
+    vi.useFakeTimers();
+    try {
+      const limiter = createMediaWikiRateLimiter(1, undefined, 300);
+      const cgw = limiter.forWiki(MediaWikiWikiId.ConsoleGamesWiki);
+      await cgw.consume(); // takes the only token; refill is 1000ms out
+
+      let rejected: unknown;
+      const pending = cgw.consume().catch((err: unknown) => {
+        rejected = err;
+      });
+
+      await vi.advanceTimersByTimeAsync(300);
+      await pending;
+      expect(rejected).toBeInstanceOf(Error);
+      expect((rejected as Error).message).toContain('300ms');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('exhausting one wiki bucket does not affect another wiki', async () => {
     vi.useFakeTimers();
     try {

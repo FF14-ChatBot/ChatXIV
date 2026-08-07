@@ -85,6 +85,8 @@ export const ENV_KEYS = {
   MEDIAWIKI_TIMEOUT_MS: 'MEDIAWIKI_TIMEOUT_MS',
   /** Requests per second, applied per wiki (not global). */
   MEDIAWIKI_RATE_LIMIT_PER_SECOND: 'MEDIAWIKI_RATE_LIMIT_PER_SECOND',
+  /** Caps how long a single request queues for a token before failing fast (DEV-59). */
+  MEDIAWIKI_RATE_LIMIT_QUEUE_TIMEOUT_MS: 'MEDIAWIKI_RATE_LIMIT_QUEUE_TIMEOUT_MS',
   /** Overrides the default ConsoleGamesWiki base URL (testing or alternate endpoints). */
   MEDIAWIKI_CGW_URL: 'MEDIAWIKI_CGW_URL',
   /** Overrides the default Fandom FFXIV wiki base URL (testing or alternate endpoints). */
@@ -200,6 +202,15 @@ export const MEDIAWIKI_DEFAULT_TIMEOUT_MS = 5_000 as const;
 
 /** Conservative default; applied per wiki, not globally (TR-8). */
 export const MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND = 1 as const;
+
+/**
+ * Default cap on a single request's rate-limit queue wait (DEV-59). The observed real-world
+ * queue wait that originally triggered this ticket was ~1s (a cold single-token bucket); 4s
+ * gives generous headroom above normal contention while still failing fast -- and distinctly,
+ * with its own error -- well before it could otherwise silently consume most/all of a
+ * resolver's much larger overall retrieval budget.
+ */
+export const MEDIAWIKI_DEFAULT_RATE_LIMIT_QUEUE_TIMEOUT_MS = 4_000 as const;
 
 /**
  * Cheapest tier sufficient for the narrow format+cite task (context-grounded answer, no

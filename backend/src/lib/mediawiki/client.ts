@@ -15,6 +15,7 @@ import {
   getMediaWikiUserAgent,
   getMediaWikiTimeoutMs,
   getMediaWikiRateLimitPerSecond,
+  getMediaWikiRateLimitQueueTimeoutMs,
   getMediaWikiBaseUrl,
 } from '../config/env.js';
 import { createMediaWikiRateLimiter, type MediaWikiRateLimiter } from './rateLimit.js';
@@ -77,10 +78,11 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
       timeoutMs: config.timeoutMs,
       sourceName: SOURCE_NAME,
       headers: { 'User-Agent': config.userAgent },
-      beforeAttempt: (ctx: BeforeAttemptContext) => {
+      beforeAttempt: async (ctx: BeforeAttemptContext) => {
         const wikiId = wikiIdForUrl(baseUrls, ctx.url);
-        if (wikiId === undefined) return Promise.resolve();
-        return rateLimiter.forWiki(wikiId).consume(
+        if (wikiId === undefined) return;
+        const startedAt = Date.now();
+        await rateLimiter.forWiki(wikiId).consume(
           {
             url: ctx.url,
             wikiId,
@@ -88,6 +90,11 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
           },
           ctx.signal
         );
+        // Reported even when it was ~0ms (immediate grant) -- a caller extending its own
+        // deadline by 0 is a harmless no-op, and always measuring here (rather than only when
+        // `consume()` actually queued) keeps this simple with no separate "did it queue" signal
+        // to keep in sync.
+        ctx.onQueueWait?.(Date.now() - startedAt);
       },
     });
     this.baseUrls = baseUrls;
@@ -114,39 +121,43 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
     wikiId: MediaWikiWikiId,
     action: string,
     params: Readonly<Record<string, string>>,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onQueueWait?: (waitedMs: number) => void
   ): Promise<T> {
     const url = this.buildUrl(wikiId, action, params);
-    return (await this.fetchJson(url.toString(), this.log, signal)) as T;
+    return (await this.fetchJson(url.toString(), this.log, signal, onQueueWait)) as T;
   }
 
   async query(
     wikiId: MediaWikiWikiId,
     params: MediaWikiQueryParams,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onQueueWait?: (waitedMs: number) => void
   ): Promise<MediaWikiApiResponse> {
-    return this.request<MediaWikiApiResponse>(wikiId, 'query', params, signal);
+    return this.request<MediaWikiApiResponse>(wikiId, 'query', params, signal, onQueueWait);
   }
 
   async parse(
     wikiId: MediaWikiWikiId,
     params: MediaWikiParseParams,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onQueueWait?: (waitedMs: number) => void
   ): Promise<MediaWikiApiResponse> {
-    return this.request<MediaWikiApiResponse>(wikiId, 'parse', params, signal);
+    return this.request<MediaWikiApiResponse>(wikiId, 'parse', params, signal, onQueueWait);
   }
 
   async search(
     wikiId: MediaWikiWikiId,
     srsearch: string,
     limit?: number,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onQueueWait?: (waitedMs: number) => void
   ): Promise<MediaWikiSearchResponse> {
     const params: Record<string, string> = { list: 'search', srsearch };
     if (limit !== undefined) {
       params.srlimit = String(limit);
     }
-    return this.request<MediaWikiSearchResponse>(wikiId, 'query', params, signal);
+    return this.request<MediaWikiSearchResponse>(wikiId, 'query', params, signal, onQueueWait);
   }
 }
 
@@ -180,7 +191,11 @@ export function createMediaWikiClientFromEnv(log: pino.Logger): MediaWikiClientF
     timeoutMs: getMediaWikiTimeoutMs(),
     userAgent: getMediaWikiUserAgent(),
   };
-  const rateLimiter = createMediaWikiRateLimiter(getMediaWikiRateLimitPerSecond(), log);
+  const rateLimiter = createMediaWikiRateLimiter(
+    getMediaWikiRateLimitPerSecond(),
+    log,
+    getMediaWikiRateLimitQueueTimeoutMs()
+  );
   const client = new MediaWikiHttpClient(config, rateLimiter, log);
   // `client.baseUrls` is the normalized form the client actually requests against -- return that
   // (not `config.baseUrls`) so callers building their own URLs from this (e.g. MediaWikiResolver's

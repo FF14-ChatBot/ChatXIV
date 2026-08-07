@@ -34,17 +34,21 @@ export interface MediaWikiClient {
   query(
     wikiId: MediaWikiWikiId,
     params: MediaWikiQueryParams,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    /** Reports rate-limiter queue-wait duration per attempt (DEV-59); see `BeforeAttemptContext`. */
+    onQueueWait?: (waitedMs: number) => void
   ): Promise<MediaWikiApiResponse>;
   parse(
     wikiId: MediaWikiWikiId,
     params: MediaWikiParseParams,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onQueueWait?: (waitedMs: number) => void
   ): Promise<MediaWikiApiResponse>;
   search(
     wikiId: MediaWikiWikiId,
     srsearch: string,
     limit?: number,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onQueueWait?: (waitedMs: number) => void
   ): Promise<MediaWikiSearchResponse>;
 }

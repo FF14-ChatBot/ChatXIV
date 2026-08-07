@@ -63,6 +63,14 @@ export interface ResolveOptions {
    * after `KnowledgeService.retrieve()` has already returned.
    */
   readonly signal?: AbortSignal;
+  /**
+   * Reports time this resolver spent blocked on something other than real fetch/parse work
+   * (e.g. a rate-limiter queue wait) so `KnowledgeService` can extend this resolver's own
+   * deadline by that amount instead of it counting 1:1 against the resolver's overall budget
+   * (DEV-59 Direction #1). Resolvers with nothing to report simply never call it -- most won't
+   * need to.
+   */
+  readonly onQueueWait?: (waitedMs: number) => void;
 }
 
 /**

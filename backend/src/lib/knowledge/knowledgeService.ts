@@ -14,19 +14,29 @@ const DEFAULT_TOP_K = 8;
 /**
  * Each resolver invoked for a query gets its own independent budget of this length (see
  * `executeWithTimeout` -- one `AbortController` per resolver, not one shared across all of
- * them). MediaWiki's per-wiki rate limiter (see `mediawiki/rateLimit.ts`) can itself add
- * multiple seconds of queueing on a cold token bucket before a resolver's first fetch even
- * starts, and `mediaWikiResolver.ts`'s ConsoleGamesWiki -> Fandom fallback attempts two wikis
- * sequentially -- confirmed live that this can exceed a 6s budget from rate-limit queueing
- * alone, not slow responses (DEV-59). Per-resolver isolation means a slow/queued source no
- * longer also aborts a healthy one running in parallel that would have finished on its own --
- * the previous shared-controller design meant one resolver's timeout took every resolver down
- * with it, even ones with nothing to do with the delay. `chatService.ts`'s own
- * `PIPELINE_TIMEOUT_MS` (30s) and the Anthropic call's default timeout (12s) leave ample room
- * for this per-resolver budget without risking the overall request budget, since resolvers run
- * concurrently -- the worst case is still bounded by the single slowest one, not their sum.
+ * them). Per-resolver isolation means a slow/queued source no longer also aborts a healthy one
+ * running in parallel that would have finished on its own -- the previous shared-controller
+ * design meant one resolver's timeout took every resolver down with it, even ones with nothing
+ * to do with the delay. `chatService.ts`'s own `PIPELINE_TIMEOUT_MS` (30s) and the Anthropic
+ * call's default timeout (12s) leave ample room for this per-resolver budget without risking
+ * the overall request budget, since resolvers run concurrently -- the worst case is still
+ * bounded by the single slowest one, not their sum.
+ *
+ * This is "real work" time, not wall-clock time from invocation: `onQueueWait` (see
+ * `invokeResolverWithOwnTimeout`) extends a resolver's own deadline by however long it spent
+ * queued for a rate-limit token, so that time doesn't compete 1:1 with actual fetch/parse work
+ * for the same budget (DEV-59 Direction #1) -- capped by `HARD_CEILING_MULTIPLIER` below.
  */
 const RETRIEVAL_TIMEOUT_MS = 10_000;
+/**
+ * How far past RETRIEVAL_TIMEOUT_MS a resolver's deadline can be pushed by queue-wait
+ * extensions (`onQueueWait`) before the hard ceiling wins regardless -- otherwise repeated
+ * rate-limiter congestion could extend a resolver's deadline indefinitely, well past what the
+ * rest of the pipeline can tolerate. 1.5x keeps 15s retrieval + 12s Anthropic default timeout =
+ * 27s comfortably under the 30s `PIPELINE_TIMEOUT_MS`; a naive 2x (20s) would already exceed it
+ * on its own.
+ */
+const HARD_CEILING_MULTIPLIER = 1.5;
 
 /**
  * Registry-based knowledge service. Routes queries to the appropriate
@@ -164,6 +174,11 @@ function throwWhenAllResolversFailed(
  * `RETRIEVAL_TIMEOUT_MS` (e.g. queued behind a cold rate limiter) aborts every other resolver
  * too, including ones with no relationship to the delay that would have succeeded on their own.
  * Isolating the timer per resolver means a slow/queued source only ever costs itself.
+ *
+ * The deadline is mutable, not a single fixed `setTimeout`: `onQueueWait` (passed into the
+ * resolver via `ResolveOptions`) extends it by however long the resolver just spent queued for
+ * a rate-limit token, so that wait doesn't silently consume the same budget as real fetch/parse
+ * work (DEV-59 Direction #1) -- while `HARD_CEILING_MULTIPLIER` still bounds the total.
  */
 function invokeResolverWithOwnTimeout(
   resolver: SourceResolver,
@@ -171,11 +186,33 @@ function invokeResolverWithOwnTimeout(
   options: ResolveOptions
 ): { readonly promise: Promise<readonly RetrievedChunk[]>; readonly clear: () => void } {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), RETRIEVAL_TIMEOUT_MS);
-  const resolveOptionsWithSignal: ResolveOptions = { ...options, signal: controller.signal };
+  const startedAt = Date.now();
+  const hardCeilingMs = RETRIEVAL_TIMEOUT_MS * HARD_CEILING_MULTIPLIER;
+  let workingDeadlineMs = RETRIEVAL_TIMEOUT_MS;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  function armTimer(remainingMs: number): void {
+    if (timer !== undefined) clearTimeout(timer);
+    timer = setTimeout(() => controller.abort(), Math.max(0, remainingMs));
+  }
+
+  function onQueueWait(waitedMs: number): void {
+    if (waitedMs <= 0) return;
+    workingDeadlineMs = Math.min(workingDeadlineMs + waitedMs, hardCeilingMs);
+    armTimer(workingDeadlineMs - (Date.now() - startedAt));
+  }
+
+  armTimer(workingDeadlineMs);
+  const resolveOptionsWithSignal: ResolveOptions = {
+    ...options,
+    signal: controller.signal,
+    onQueueWait,
+  };
   return {
     promise: invokeResolver(resolver, query, resolveOptionsWithSignal, controller.signal),
-    clear: () => clearTimeout(timer),
+    clear: () => {
+      if (timer !== undefined) clearTimeout(timer);
+    },
   };
 }
 

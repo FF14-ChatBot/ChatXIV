@@ -54,6 +54,14 @@ export interface BeforeAttemptContext {
    * moved on (DEV-59).
    */
   readonly signal?: AbortSignal;
+  /**
+   * Reports how long this attempt blocked on something *other than* the request itself (e.g. a
+   * token-bucket queue wait) before `beforeAttempt` returned. Optional: a hook with nothing to
+   * report simply never calls it. Callers that own a time budget (e.g. `knowledgeService.ts`'s
+   * per-resolver deadline) can use this to stop counting that wait against the resolver's own
+   * budget instead of it competing 1:1 with real fetch/parse time (DEV-59 Direction #1).
+   */
+  readonly onQueueWait?: (waitedMs: number) => void;
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -153,9 +161,15 @@ export abstract class RetryingHttpClient {
   /**
    * GET JSON with retries on 429/5xx. The `@Retryable` runner invokes `connect` per attempt.
    * `signal`, when provided, cancels the in-flight request (and any pending retry backoff) if
-   * the caller's own time budget expires before this call would otherwise finish.
+   * the caller's own time budget expires before this call would otherwise finish. `onQueueWait`,
+   * when provided, is forwarded to `beforeAttempt` on every attempt (see `BeforeAttemptContext`).
    */
-  fetchJson(url: string, log: pino.Logger, signal?: AbortSignal): Promise<unknown> {
+  fetchJson(
+    url: string,
+    log: pino.Logger,
+    signal?: AbortSignal,
+    onQueueWait?: (waitedMs: number) => void
+  ): Promise<unknown> {
     const {
       maxRetries = DEFAULT_MAX_RETRIES,
       backoffBaseMs = DEFAULT_BACKOFF_BASE_MS,
@@ -183,6 +197,7 @@ export abstract class RetryingHttpClient {
             url,
             ...(store?.requestId !== undefined ? { requestId: store.requestId } : {}),
             ...(signal !== undefined ? { signal } : {}),
+            ...(onQueueWait !== undefined ? { onQueueWait } : {}),
           });
         }
 

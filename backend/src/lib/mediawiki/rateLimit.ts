@@ -11,7 +11,10 @@ export interface MediaWikiRateLimiter {
 
 export function createMediaWikiRateLimiter(
   ratePerSecond: number,
-  log?: pino.Logger
+  log?: pino.Logger,
+  /** Caps a single queued request's wait before it fails fast instead of eating the caller's
+   *  overall retrieval budget with no distinguishable error (DEV-59). */
+  maxQueueWaitMs?: number
 ): MediaWikiRateLimiter {
   const buckets = new Map<MediaWikiWikiId, TokenBucket>();
 
@@ -20,7 +23,7 @@ export function createMediaWikiRateLimiter(
       const existing = buckets.get(wikiId);
       if (existing) return existing;
 
-      const bucket = createTokenBucket(ratePerSecond, ratePerSecond, log);
+      const bucket = createTokenBucket(ratePerSecond, ratePerSecond, log, maxQueueWaitMs);
       buckets.set(wikiId, bucket);
       return bucket;
     },

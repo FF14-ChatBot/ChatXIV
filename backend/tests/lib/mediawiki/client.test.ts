@@ -318,5 +318,42 @@ describe('lib/mediawiki/client', () => {
 
       expect(bucket.consume).toHaveBeenCalledWith(expect.any(Object), controller.signal);
     });
+
+    it('reports how long the request actually blocked on throttle.consume via onQueueWait (DEV-59)', async () => {
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter, bucket } = createMockRateLimiter();
+      vi.mocked(bucket.consume).mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 20))
+      );
+      const onQueueWait = vi.fn();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      await client.query(MediaWikiWikiId.ConsoleGamesWiki, {}, undefined, onQueueWait);
+
+      expect(onQueueWait).toHaveBeenCalledTimes(1);
+      // Allow a little scheduling slack rather than asserting an exact value.
+      expect(onQueueWait.mock.calls[0][0]).toBeGreaterThanOrEqual(15);
+    });
+
+    it('still reports a ~0ms wait when the token is granted immediately, so extending a deadline by it is a harmless no-op', async () => {
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter } = createMockRateLimiter(); // default: consume() resolves immediately
+      const onQueueWait = vi.fn();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      await client.query(MediaWikiWikiId.ConsoleGamesWiki, {}, undefined, onQueueWait);
+
+      expect(onQueueWait).toHaveBeenCalledTimes(1);
+      expect(onQueueWait.mock.calls[0][0]).toBeGreaterThanOrEqual(0);
+    });
+
+    it('does not require onQueueWait to be provided', async () => {
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter, bucket } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      await expect(client.query(MediaWikiWikiId.ConsoleGamesWiki, {})).resolves.toBeDefined();
+      expect(bucket.consume).toHaveBeenCalled();
+    });
   });
 });
