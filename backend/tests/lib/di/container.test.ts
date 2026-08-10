@@ -111,14 +111,19 @@ describe('container', () => {
     expect(() => wireChatKnowledgePipeline()).toThrow(/initializeCache/i);
   });
 
-  it('wireChatKnowledgePipeline registers XIVAPI, MediaWiki, and wiki stub resolvers', () => {
+  it('wireChatKnowledgePipeline registers XIVAPI, MediaWiki, curated data, and wiki stub resolvers', () => {
     registerTestCacheClient();
     wireChatKnowledgePipeline();
     const resolvers = container.resolve<readonly SourceResolver[]>(SourceResolversToken);
-    expect(resolvers).toHaveLength(3);
+    expect(resolvers).toHaveLength(4);
     expect(resolvers[0]?.supportedCategories).toContain(UsageCategory.ITEMS);
     expect(resolvers[1]?.supportedCategories).toEqual([UsageCategory.UNLOCKS]);
-    expect(resolvers[2]?.supportedCategories).not.toContain(UsageCategory.ITEMS);
-    expect(resolvers[2]?.supportedCategories).not.toContain(UsageCategory.UNLOCKS);
+    expect(resolvers[2]?.supportedCategories).toEqual([
+      UsageCategory.BIS,
+      UsageCategory.CRAFTING,
+      UsageCategory.GATHERING,
+    ]);
+    expect(resolvers[3]?.supportedCategories).not.toContain(UsageCategory.ITEMS);
+    expect(resolvers[3]?.supportedCategories).not.toContain(UsageCategory.UNLOCKS);
   });
 });
