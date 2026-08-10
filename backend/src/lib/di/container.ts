@@ -70,6 +70,7 @@ import {
 } from '../knowledge/knowledgePipelineState.js';
 import { createXivApiResolver } from '../knowledge/resolvers/xivApiResolver.js';
 import { createMediaWikiResolver } from '../knowledge/resolvers/mediaWikiResolver.js';
+import { createCuratedDataResolver } from '../knowledge/resolvers/curatedDataResolver.js';
 import { createXivApiClient } from '../xivapi/XIVApiClient.js';
 import { createMediaWikiClientFromEnv } from '../mediawiki/client.js';
 import { createTokenBucket } from '../http/tokenBucket.js';
@@ -217,6 +218,7 @@ export function wireChatKnowledgePipeline(): void {
   container.registerInstance<readonly SourceResolver[]>(SourceResolversToken, [
     createXivApiResolver({ client: xivApiClient, cache }),
     mediaWikiResolver,
+    createCuratedDataResolver(),
     createWikiStubResolver(),
   ]);
 }
