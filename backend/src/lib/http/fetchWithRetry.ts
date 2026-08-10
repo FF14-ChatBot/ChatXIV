@@ -41,6 +41,26 @@ export interface RetryingHttpClientConfig {
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_BACKOFF_BASE_MS = 1_000;
 
+/**
+ * Reports how long a call blocked on something *other than* the request itself (e.g. a
+ * token-bucket queue wait), called only when it actually queued -- never for an immediate grant.
+ * Callers that own a time budget (e.g. `knowledgeService.ts`'s per-resolver deadline) can use
+ * this to stop counting that wait against the resolver's own budget instead of it competing 1:1
+ * with real fetch/parse time (DEV-59 Direction #1). Named here since both source resolvers and
+ * every layer between them and the token bucket share this exact signature (DEV-59).
+ */
+export type OnQueueWait = (waitedMs: number) => void;
+
+/**
+ * Per-call request plumbing (DEV-59): bundles `signal` and `onQueueWait` so client methods and
+ * resolver-internal helpers take one options object instead of two same-shaped optional trailing
+ * positional params, which is easy to transpose at a call site with no compiler error.
+ */
+export interface RequestOptions {
+  readonly signal?: AbortSignal;
+  readonly onQueueWait?: OnQueueWait;
+}
+
 /** Context passed to `beforeAttempt` so hooks (e.g. throttles) can attribute work. */
 export interface BeforeAttemptContext {
   readonly url: string;
@@ -54,14 +74,8 @@ export interface BeforeAttemptContext {
    * moved on (DEV-59).
    */
   readonly signal?: AbortSignal;
-  /**
-   * Reports how long this attempt blocked on something *other than* the request itself (e.g. a
-   * token-bucket queue wait) before `beforeAttempt` returned. Optional: a hook with nothing to
-   * report simply never calls it. Callers that own a time budget (e.g. `knowledgeService.ts`'s
-   * per-resolver deadline) can use this to stop counting that wait against the resolver's own
-   * budget instead of it competing 1:1 with real fetch/parse time (DEV-59 Direction #1).
-   */
-  readonly onQueueWait?: (waitedMs: number) => void;
+  /** See `OnQueueWait`. */
+  readonly onQueueWait?: OnQueueWait;
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -168,7 +182,7 @@ export abstract class RetryingHttpClient {
     url: string,
     log: pino.Logger,
     signal?: AbortSignal,
-    onQueueWait?: (waitedMs: number) => void
+    onQueueWait?: OnQueueWait
   ): Promise<unknown> {
     const {
       maxRetries = DEFAULT_MAX_RETRIES,

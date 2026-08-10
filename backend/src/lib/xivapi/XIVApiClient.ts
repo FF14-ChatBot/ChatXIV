@@ -11,8 +11,14 @@
  */
 
 import type pino from 'pino';
-import { RetryingHttpClient } from '../http/fetchWithRetry.js';
+import {
+  RetryingHttpClient,
+  type BeforeAttemptContext,
+  type RequestOptions,
+} from '../http/fetchWithRetry.js';
 import type { TokenBucket } from '../http/tokenBucket.js';
+import { TokenBucketQueueTimeoutError } from '../http/tokenBucket.js';
+import { AppError } from '../errors/AppError.js';
 import { XIVAPI_DATA_SOURCE } from '../config/constants.js';
 import type {
   XivApiAssetBody,
@@ -47,11 +53,29 @@ export class XivApiHttpClient extends RetryingHttpClient implements XivApiClient
     super({
       timeoutMs: config.timeoutMs,
       sourceName: SOURCE_NAME,
-      beforeAttempt: (ctx) =>
-        throttle.consume({
-          url: ctx.url,
-          ...(ctx.requestId !== undefined ? { requestId: ctx.requestId } : {}),
-        }),
+      beforeAttempt: async (ctx: BeforeAttemptContext) => {
+        try {
+          // `consume()` itself measures queue-wait and calls `ctx.onQueueWait` only when this
+          // attempt actually queued -- it's the one place that already knows which case applies.
+          await throttle.consume(
+            {
+              url: ctx.url,
+              ...(ctx.requestId !== undefined ? { requestId: ctx.requestId } : {}),
+            },
+            ctx.signal,
+            ctx.onQueueWait
+          );
+        } catch (err) {
+          // Normalize like `connect()`/`sleep()` already do for their own failure modes, so a
+          // caller distinguishing failure types (e.g. `pickSourceUnavailableFailure`) doesn't
+          // lose this specific diagnostic to a generic fallback only because it originated in
+          // the rate limiter instead of the fetch itself.
+          if (err instanceof TokenBucketQueueTimeoutError) {
+            throw AppError.sourceUnavailable(`${SOURCE_NAME} rate limiter: ${err.message}`);
+          }
+          throw err;
+        }
+      },
     });
     this.baseUrl = config.baseUrl;
     this.log = log;
@@ -87,7 +111,7 @@ export class XivApiHttpClient extends RetryingHttpClient implements XivApiClient
     return this.fetchBlob(url.toString(), this.log);
   }
 
-  async search(params: XivApiSearchParams, signal?: AbortSignal): Promise<XivApiSearchResult> {
+  async search(params: XivApiSearchParams, options?: RequestOptions): Promise<XivApiSearchResult> {
     const url = this.buildUrl('search');
     this.setOptionalParam(url, 'version', params.version);
     this.setOptionalParam(url, 'query', params.query);
@@ -99,7 +123,12 @@ export class XivApiHttpClient extends RetryingHttpClient implements XivApiClient
     this.setOptionalParam(url, 'fields', params.fields);
     this.setOptionalParam(url, 'transient', params.transient);
 
-    return (await this.fetchJson(url.toString(), this.log, signal)) as XivApiSearchResult;
+    return (await this.fetchJson(
+      url.toString(),
+      this.log,
+      options?.signal,
+      options?.onQueueWait
+    )) as XivApiSearchResult;
   }
 
   async listSheets(params?: XivApiListSheetsParams): Promise<XivApiListSheetsResponse> {

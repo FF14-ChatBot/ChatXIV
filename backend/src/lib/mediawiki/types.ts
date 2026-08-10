@@ -1,4 +1,5 @@
 import type { MediaWikiWikiId } from '../config/constants.js';
+import type { RequestOptions } from '../http/fetchWithRetry.js';
 
 /** Generic `action=query` params (e.g. `list`, `prop`, `titles`) — MediaWiki's query API is modular. */
 export type MediaWikiQueryParams = Record<string, string>;
@@ -34,21 +35,17 @@ export interface MediaWikiClient {
   query(
     wikiId: MediaWikiWikiId,
     params: MediaWikiQueryParams,
-    signal?: AbortSignal,
-    /** Reports rate-limiter queue-wait duration per attempt (DEV-59); see `BeforeAttemptContext`. */
-    onQueueWait?: (waitedMs: number) => void
+    options?: RequestOptions
   ): Promise<MediaWikiApiResponse>;
   parse(
     wikiId: MediaWikiWikiId,
     params: MediaWikiParseParams,
-    signal?: AbortSignal,
-    onQueueWait?: (waitedMs: number) => void
+    options?: RequestOptions
   ): Promise<MediaWikiApiResponse>;
   search(
     wikiId: MediaWikiWikiId,
     srsearch: string,
     limit?: number,
-    signal?: AbortSignal,
-    onQueueWait?: (waitedMs: number) => void
+    options?: RequestOptions
   ): Promise<MediaWikiSearchResponse>;
 }

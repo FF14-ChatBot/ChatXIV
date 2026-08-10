@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type pino from 'pino';
-import { createTokenBucket } from '@src/lib/http/tokenBucket.js';
+import { createTokenBucket, TokenBucketQueueTimeoutError } from '@src/lib/http/tokenBucket.js';
 
 function createMockLogger(): pino.Logger {
   return { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as pino.Logger;
@@ -209,7 +209,7 @@ describe('lib/http/tokenBucket', () => {
     await vi.advanceTimersByTimeAsync(500);
     await pending;
 
-    expect(rejected).toBeInstanceOf(Error);
+    expect(rejected).toBeInstanceOf(TokenBucketQueueTimeoutError);
     expect((rejected as Error).message).toContain('500ms');
   });
 
@@ -332,6 +332,58 @@ describe('lib/http/tokenBucket', () => {
       expect.objectContaining({ maxQueueWaitMs: 400, url: 'https://example.com/x' }),
       expect.stringContaining('Token bucket queue wait exceeded cap')
     );
+  });
+
+  it('does not call onQueueWait for an immediate grant (DEV-59)', async () => {
+    const bucket = createTokenBucket(10);
+    const onQueueWait = vi.fn();
+
+    await bucket.consume(undefined, undefined, onQueueWait);
+
+    expect(onQueueWait).not.toHaveBeenCalled();
+  });
+
+  it('calls onQueueWait with the actual wait duration once a queued call is granted (DEV-59)', async () => {
+    const bucket = createTokenBucket(1, 1);
+    await bucket.consume(); // takes the only token; next refill is 1000ms out
+
+    const onQueueWait = vi.fn();
+    const pending = bucket.consume(undefined, undefined, onQueueWait);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await pending;
+
+    expect(onQueueWait).toHaveBeenCalledTimes(1);
+    expect(onQueueWait).toHaveBeenCalledWith(expect.any(Number));
+    expect(onQueueWait.mock.calls[0]?.[0]).toBeGreaterThanOrEqual(1_000);
+  });
+
+  it('does not call onQueueWait when the wait ends in a queue-timeout instead of a grant', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 300);
+    await bucket.consume();
+
+    const onQueueWait = vi.fn();
+    const pending = bucket.consume(undefined, undefined, onQueueWait).catch(() => undefined);
+
+    await vi.advanceTimersByTimeAsync(300);
+    await pending;
+
+    expect(onQueueWait).not.toHaveBeenCalled();
+  });
+
+  it('uses only one live timer even with a queue-timeout cap and multiple queued waiters (DEV-59: no second per-waiter timer)', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 5_000);
+    await bucket.consume(); // takes the only token immediately
+
+    const waiters = Array.from({ length: 4 }, () => bucket.consume().catch(() => undefined));
+
+    // Four waiters queued behind a capped bucket -- a per-waiter queue-timeout timer alongside
+    // the existing drain timer would show 5 live timers here; folding the cap into the shared
+    // drain tick keeps it at 1 regardless of queue depth.
+    expect(vi.getTimerCount()).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    await Promise.all(waiters);
   });
 
   it('warns when empty and a logger is configured', async () => {

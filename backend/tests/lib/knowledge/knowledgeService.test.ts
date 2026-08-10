@@ -347,4 +347,61 @@ describe('createKnowledgeService', () => {
     expect(result.chunks.map((c) => c.text)).toEqual(['still works']);
     warn.mockRestore();
   });
+
+  it('does not leak a timer when onQueueWait fires after this invocation is already cleared (DEV-59: abandoned dangling upstream call)', async () => {
+    vi.useFakeTimers();
+    let capturedOnQueueWait: ((waitedMs: number) => void) | undefined;
+    const resolver: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async (_query, options) => {
+        // A resolver that races several candidate upstream calls and returns as soon as one
+        // succeeds could leave another's `consume()` promise (and its `onQueueWait` callback)
+        // still pending when it returns -- captured here to fire "late", after this invocation
+        // has already settled and been cleared.
+        capturedOnQueueWait = options?.onQueueWait;
+        return [{ text: 'ok', source: { sourceName: 'x' } }];
+      },
+    };
+    const svc = createKnowledgeService([resolver]);
+    await svc.retrieve('q', { category: UsageCategory.RAIDING });
+
+    expect(vi.getTimerCount()).toBe(0);
+    capturedOnQueueWait?.(1_000);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('is immune to a backward wall-clock jump mid-request (uses a monotonic clock, not Date.now(), DEV-59)', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {
+      /* noop */
+    });
+    const hangsAfterClockJump: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async (_query, options) => {
+        // Simulate an NTP correction / manual clock change jumping the wall clock backward,
+        // then report a queue-wait -- which re-arms the abort timer using an elapsed-time
+        // computation taken *after* the jump. A `Date.now()`-based version of that computation
+        // would read a huge negative elapsed duration here and re-arm the timer for roughly an
+        // hour instead of the ~10s actually remaining, effectively disabling the timeout.
+        vi.setSystemTime(Date.now() - 60 * 60 * 1_000);
+        options?.onQueueWait?.(2_000); // extends the 10s base deadline to 12s
+        return new Promise(() => {
+          /* never resolves -- only a correctly-armed timer should end this */
+        });
+      },
+    };
+    const svc = createKnowledgeService([hangsAfterClockJump]);
+    const retrievePromise = svc.retrieve('q', { category: UsageCategory.RAIDING });
+    const settled = retrievePromise.catch(() => undefined);
+
+    // Extended deadline is 12s (10s base + 2s queue-wait); advance just past it. Under the old
+    // Date.now()-based bug this would never fire within the fake-timer run.
+    await vi.advanceTimersByTimeAsync(12_001);
+    await expect(retrievePromise).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
+    await vi.runAllTimersAsync();
+    await settled;
+    warn.mockRestore();
+  });
 });

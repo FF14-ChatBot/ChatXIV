@@ -11,6 +11,7 @@ import {
 } from '../../cache/cachedUpstreamPayload.js';
 import { getOrFetch } from '../../getOrFetch.js';
 import type { CacheClient } from '../../cache/types.js';
+import type { RequestOptions } from '../../http/fetchWithRetry.js';
 import type { XivApiClient, XivApiSearchResult } from '../../xivapi/types.js';
 import type { ResolveOptions, RetrievedChunk, SourceResolver } from '../types.js';
 import {
@@ -36,6 +37,10 @@ export function createXivApiResolver(deps: XivApiResolverDeps): SourceResolver {
 
       const language = normalizeXivApiLanguage(options?.language);
       const limit = options?.topK ?? XIVAPI_SEARCH_DEFAULT_LIMIT;
+      const requestOptions: RequestOptions = {
+        signal: options?.signal,
+        onQueueWait: options?.onQueueWait,
+      };
 
       // TODO(DEV-23): Pass category-aware TTL/grace and dedicated keys when not using search-only MVP.
       const { value: cached, stale } = await getOrFetch<CachedUpstreamPayload<XivApiSearchResult>>({
@@ -54,7 +59,7 @@ export function createXivApiResolver(deps: XivApiResolverDeps): SourceResolver {
               fields: 'Name',
               transient: 'Description',
             },
-            options?.signal
+            requestOptions
           );
           return createCachedUpstreamPayload(result, xivApiSearchSourceCitation(result.version));
         },

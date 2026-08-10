@@ -1,4 +1,20 @@
 import type pino from 'pino';
+import type { OnQueueWait } from './fetchWithRetry.js';
+
+/**
+ * Thrown when a `consume()` call's queue wait exceeds `maxQueueWaitMs` (DEV-59). Distinct from
+ * an abort-driven rejection (`signal.reason`) so callers can `instanceof`-check it specifically
+ * and normalize it into a source-specific `AppError`, the way `connect()`/`sleep()` already do
+ * for their own failure modes -- a raw `Error` here would bypass `instanceof AppError` checks
+ * downstream (e.g. `knowledgeService.ts`'s `pickSourceUnavailableFailure`), losing this specific
+ * diagnostic in favor of a generic fallback message.
+ */
+export class TokenBucketQueueTimeoutError extends Error {
+  constructor(maxQueueWaitMs: number) {
+    super(`Token bucket queue wait exceeded ${maxQueueWaitMs}ms`);
+    this.name = 'TokenBucketQueueTimeoutError';
+  }
+}
 
 export interface TokenBucket {
   /**
@@ -7,13 +23,22 @@ export interface TokenBucket {
    *   wait is cancelled immediately and the waiter is removed from the queue -- instead of
    *   lingering un-cancelled after the caller has already given up (DEV-59), which would let an
    *   HTTP call fire later for a request nobody is waiting on anymore.
+   * @param onQueueWait Reports how long this call actually waited for a token. Called only when
+   *   the call genuinely queued (never for an immediate grant) -- the bucket is the one place
+   *   that already knows which case applies, so callers don't need to time it themselves.
    */
-  consume(meta?: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<void>;
+  consume(
+    meta?: Readonly<Record<string, unknown>>,
+    signal?: AbortSignal,
+    onQueueWait?: OnQueueWait
+  ): Promise<void>;
 }
 
 interface Waiter {
   readonly resolve: () => void;
+  readonly rejectTimeout: () => void;
   readonly meta: Readonly<Record<string, unknown>> | undefined;
+  readonly enqueuedAt: number;
 }
 
 export function createTokenBucket(
@@ -25,15 +50,14 @@ export function createTokenBucket(
    * and unset by default (unbounded wait, the original behavior) -- callers whose upstream has
    * no published rate limit to calibrate against (e.g. XIVAPI) have no reason to fail fast here.
    * MediaWiki's rate limiter sets this (DEV-59): without it, a queue wait has no ceiling of its
-   * own and silently consumes the caller's entire retrieval budget with no distinguishable error
-   * -- see `Token bucket queue wait exceeded` below vs. a generic abort/timeout.
+   * own and silently consumes the caller's entire retrieval budget with no distinguishable error.
    */
   maxQueueWaitMs?: number
 ): TokenBucket {
   let tokens = burstCapacity;
   let lastRefill = Date.now();
   let drainTimer: ReturnType<typeof setTimeout> | undefined;
-  /** FIFO — waiters are granted tokens in arrival order as refills make them available. */
+  /** FIFO — waiters are granted tokens (or evicted on timeout) in arrival order. */
   const queue: Waiter[] = [];
 
   function refill(): void {
@@ -43,7 +67,11 @@ export function createTokenBucket(
     lastRefill = now;
   }
 
-  function consume(meta?: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<void> {
+  function consume(
+    meta?: Readonly<Record<string, unknown>>,
+    signal?: AbortSignal,
+    onQueueWait?: OnQueueWait
+  ): Promise<void> {
     refill();
 
     // The `queue.length === 0` check preserves FIFO order: a request that arrives while
@@ -58,25 +86,11 @@ export function createTokenBucket(
       return Promise.reject(signal.reason as Error);
     }
 
-    return new Promise<void>((resolve, reject) => {
-      // `onAbort`/`queueTimeoutTimer` are declared before `waiter` so `wrappedResolve` can
-      // reference them in its closure; both are only ever invoked later (from `scheduleDrain`
-      // or the queue-timeout timer, after this constructor returns), by which point they're
-      // always assigned when applicable.
-      let onAbort: (() => void) | undefined;
-      let queueTimeoutTimer: ReturnType<typeof setTimeout> | undefined;
+    const enqueuedAt = Date.now();
 
-      // Shared by every exit path (granted, aborted, queue-timeout) so exactly one of them can
-      // ever fire -- without this, e.g. the queue-timeout could still fire after a token was
-      // already granted moments earlier, spuriously rejecting an already-resolved caller.
-      const cleanup = (): void => {
-        if (onAbort !== undefined) {
-          signal?.removeEventListener('abort', onAbort);
-        }
-        if (queueTimeoutTimer !== undefined) {
-          clearTimeout(queueTimeoutTimer);
-        }
-      };
+    return new Promise<void>((resolve, reject) => {
+      let onAbort: (() => void) | undefined;
+
       const removeFromQueue = (): void => {
         const idx = queue.indexOf(waiter);
         if (idx !== -1) {
@@ -85,37 +99,51 @@ export function createTokenBucket(
       };
 
       const wrappedResolve = (): void => {
-        cleanup();
+        if (onAbort !== undefined) {
+          signal?.removeEventListener('abort', onAbort);
+        }
+        onQueueWait?.(Date.now() - enqueuedAt);
         resolve();
       };
-      const waiter: Waiter = { resolve: wrappedResolve, meta };
+      const rejectTimeout = (): void => {
+        if (onAbort !== undefined) {
+          signal?.removeEventListener('abort', onAbort);
+        }
+        if (log) {
+          log.warn(
+            { maxQueueWaitMs, tokens, ratePerSecond, burstCapacity, ...meta },
+            "Token bucket queue wait exceeded cap; giving up rather than eating the caller's full budget"
+          );
+        }
+        // `maxQueueWaitMs` is always defined here -- `rejectTimeout` is only ever installed as a
+        // reachable exit path (via `evictExpiredWaiters`) when it's set; see `scheduleDrain`.
+        reject(new TokenBucketQueueTimeoutError(maxQueueWaitMs as number));
+      };
+      const waiter: Waiter = { resolve: wrappedResolve, rejectTimeout, meta, enqueuedAt };
       queue.push(waiter);
 
       if (signal) {
         onAbort = () => {
-          cleanup();
           removeFromQueue();
           reject(signal.reason as Error);
         };
         signal.addEventListener('abort', onAbort, { once: true });
       }
 
-      if (maxQueueWaitMs !== undefined) {
-        queueTimeoutTimer = setTimeout(() => {
-          cleanup();
-          removeFromQueue();
-          if (log) {
-            log.warn(
-              { maxQueueWaitMs, tokens, ratePerSecond, burstCapacity, ...meta },
-              "Token bucket queue wait exceeded cap; giving up rather than eating the caller's full budget"
-            );
-          }
-          reject(new Error(`Token bucket queue wait exceeded ${maxQueueWaitMs}ms`));
-        }, maxQueueWaitMs);
-      }
-
       scheduleDrain();
     });
+  }
+
+  /**
+   * Evicts (from the front) any waiter whose queue wait has already reached `maxQueueWaitMs` as
+   * of `now`. FIFO means the front waiter has been queued longest, so once it hasn't expired,
+   * nothing behind it can have either.
+   */
+  function evictExpiredWaiters(now: number): void {
+    if (maxQueueWaitMs === undefined) return;
+    while (queue.length > 0 && now - queue[0].enqueuedAt >= maxQueueWaitMs) {
+      queue.shift()?.rejectTimeout();
+    }
   }
 
   /**
@@ -124,11 +152,28 @@ export function createTokenBucket(
    * stale `tokens` value and schedule its own timer, so all of them would wake in lockstep,
    * only one would find a token, and the rest would collide again on the next round (a
    * thundering herd that costs O(n²) wakeups to drain n queued requests instead of O(n)).
+   *
+   * The same shared timer also covers the queue-timeout deadline (DEV-59) -- it wakes at
+   * whichever comes first, the next refill or the front waiter's `maxQueueWaitMs` deadline --
+   * rather than each waiter owning a second, independent `setTimeout` layered on top of this
+   * one, which would double timer-registration/cleanup churn per queued request for no behavior
+   * this single shared timer can't already provide.
    */
   function scheduleDrain(): void {
-    if (drainTimer !== undefined || queue.length === 0) return;
+    if (drainTimer !== undefined) return;
 
-    const waitMs = Math.max(0, ((1 - tokens) / ratePerSecond) * 1_000);
+    const now = Date.now();
+    evictExpiredWaiters(now);
+    if (queue.length === 0) return;
+
+    const refillWaitMs = Math.max(0, ((1 - tokens) / ratePerSecond) * 1_000);
+    const timeoutWaitMs =
+      maxQueueWaitMs !== undefined
+        ? Math.max(0, maxQueueWaitMs - (now - queue[0].enqueuedAt))
+        : undefined;
+    const waitMs =
+      timeoutWaitMs !== undefined ? Math.min(refillWaitMs, timeoutWaitMs) : refillWaitMs;
+
     if (log) {
       log.warn(
         {

@@ -35,6 +35,13 @@ const RETRIEVAL_TIMEOUT_MS = 10_000;
  * rest of the pipeline can tolerate. 1.5x keeps 15s retrieval + 12s Anthropic default timeout =
  * 27s comfortably under the 30s `PIPELINE_TIMEOUT_MS`; a naive 2x (20s) would already exceed it
  * on its own.
+ *
+ * The resulting extension budget -- `RETRIEVAL_TIMEOUT_MS * (HARD_CEILING_MULTIPLIER - 1)` =
+ * 5s -- is deliberately sized against `MEDIAWIKI_DEFAULT_RATE_LIMIT_QUEUE_TIMEOUT_MS` (4s, in
+ * `constants.ts`): one full queue-timeout's worth of wait fits with margin to spare. A resolver
+ * that racks up more than one such wait (e.g. several sequential upstream calls each queuing to
+ * their cap) will still hit the hard ceiling and get aborted -- an acceptable fallback, since
+ * that pattern means the upstream source is persistently congested, not just briefly delayed.
  */
 const HARD_CEILING_MULTIPLIER = 1.5;
 
@@ -186,20 +193,35 @@ function invokeResolverWithOwnTimeout(
   options: ResolveOptions
 ): { readonly promise: Promise<readonly RetrievedChunk[]>; readonly clear: () => void } {
   const controller = new AbortController();
-  const startedAt = Date.now();
+  // Monotonic, not wall-clock: `Date.now()` can jump backward (NTP correction, manual clock
+  // change) mid-request, which would corrupt the `elapsedMs()` subtraction below and could arm
+  // a wildly wrong-length timer. `process.hrtime.bigint()` is immune to that -- deltas stay
+  // small (this resolver's own timeout, at most tens of seconds) so converting the *delta* to
+  // Number never loses precision, even though the raw bigint itself eventually would.
+  const startedAt = process.hrtime.bigint();
   const hardCeilingMs = RETRIEVAL_TIMEOUT_MS * HARD_CEILING_MULTIPLIER;
   let workingDeadlineMs = RETRIEVAL_TIMEOUT_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // Guards against a resolver that abandons some in-flight upstream call without awaiting it
+  // (e.g. takes the first of several racing candidates and leaves the rest dangling) -- its
+  // `onQueueWait` could otherwise still fire after `clear()` has already run for this
+  // invocation, re-arming a timer nothing will ever clear again.
+  let finished = false;
+
+  function elapsedMs(): number {
+    return Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+  }
 
   function armTimer(remainingMs: number): void {
     if (timer !== undefined) clearTimeout(timer);
+    if (finished) return;
     timer = setTimeout(() => controller.abort(), Math.max(0, remainingMs));
   }
 
   function onQueueWait(waitedMs: number): void {
-    if (waitedMs <= 0) return;
+    if (finished || waitedMs <= 0) return;
     workingDeadlineMs = Math.min(workingDeadlineMs + waitedMs, hardCeilingMs);
-    armTimer(workingDeadlineMs - (Date.now() - startedAt));
+    armTimer(workingDeadlineMs - elapsedMs());
   }
 
   armTimer(workingDeadlineMs);
@@ -211,6 +233,7 @@ function invokeResolverWithOwnTimeout(
   return {
     promise: invokeResolver(resolver, query, resolveOptionsWithSignal, controller.signal),
     clear: () => {
+      finished = true;
       if (timer !== undefined) clearTimeout(timer);
     },
   };

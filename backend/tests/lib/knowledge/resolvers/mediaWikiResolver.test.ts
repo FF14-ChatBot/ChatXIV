@@ -90,14 +90,12 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
       expect.any(Number),
-      undefined,
-      onQueueWait
+      { signal: undefined, onQueueWait }
     );
     expect(client.parse).toHaveBeenCalledWith(
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.objectContaining({ page: expect.any(String) }),
-      undefined,
-      onQueueWait
+      { signal: undefined, onQueueWait }
     );
   });
 
@@ -143,14 +141,12 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
       2, // clamped to MAX_PAGES_TO_PARSE, not the raw topK (8) -- see MAX_PAGES_TO_PARSE test below
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
     expect(client.parse).toHaveBeenCalledWith(
       MediaWikiWikiId.ConsoleGamesWiki,
       { page: 'Palace of the Dead' },
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
   });
 
@@ -255,14 +251,12 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       MediaWikiWikiId.FandomFfxiv,
       'unlock something obscure Final Fantasy XIV',
       2,
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
     expect(client.parse).toHaveBeenCalledWith(
       MediaWikiWikiId.FandomFfxiv,
       { page: 'Fandom Unlock Page' },
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
   });
 
@@ -300,15 +294,13 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
       2,
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.FandomFfxiv,
       'nothing findable anywhere Final Fantasy XIV',
       2,
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
   });
 
@@ -329,15 +321,13 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       MediaWikiWikiId.ConsoleGamesWiki,
       'unlock ninja',
       2,
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
     expect(client.search).toHaveBeenCalledWith(
       MediaWikiWikiId.FandomFfxiv,
       'unlock ninja Final Fantasy XIV',
       2,
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
   });
 
@@ -404,8 +394,7 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
       2,
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
   });
 
@@ -421,8 +410,7 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
       2,
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
   });
 
@@ -436,8 +424,7 @@ describe('lib/knowledge/resolvers/mediaWikiResolver', () => {
       MediaWikiWikiId.ConsoleGamesWiki,
       expect.any(String),
       1,
-      undefined,
-      undefined
+      { signal: undefined, onQueueWait: undefined }
     );
   });
 

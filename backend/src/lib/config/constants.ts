@@ -209,6 +209,12 @@ export const MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND = 1 as const;
  * gives generous headroom above normal contention while still failing fast -- and distinctly,
  * with its own error -- well before it could otherwise silently consume most/all of a
  * resolver's much larger overall retrieval budget.
+ *
+ * This value is also the practical upper bound on a single `onQueueWait` extension consumed by
+ * `knowledgeService.ts`'s `HARD_CEILING_MULTIPLIER` (see its comment there for the matching
+ * arithmetic) -- a queue wait can never itself exceed this cap before `tokenBucket.ts` rejects
+ * it, so the extension budget there only needs to comfortably cover one wait this long, not an
+ * unbounded one.
  */
 export const MEDIAWIKI_DEFAULT_RATE_LIMIT_QUEUE_TIMEOUT_MS = 4_000 as const;
 

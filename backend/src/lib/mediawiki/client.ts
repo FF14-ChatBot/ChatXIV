@@ -9,7 +9,13 @@
  */
 
 import type pino from 'pino';
-import { RetryingHttpClient, type BeforeAttemptContext } from '../http/fetchWithRetry.js';
+import {
+  RetryingHttpClient,
+  type BeforeAttemptContext,
+  type RequestOptions,
+} from '../http/fetchWithRetry.js';
+import { TokenBucketQueueTimeoutError } from '../http/tokenBucket.js';
+import { AppError } from '../errors/AppError.js';
 import { MediaWikiWikiId } from '../config/constants.js';
 import {
   getMediaWikiUserAgent,
@@ -81,20 +87,28 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
       beforeAttempt: async (ctx: BeforeAttemptContext) => {
         const wikiId = wikiIdForUrl(baseUrls, ctx.url);
         if (wikiId === undefined) return;
-        const startedAt = Date.now();
-        await rateLimiter.forWiki(wikiId).consume(
-          {
-            url: ctx.url,
-            wikiId,
-            ...(ctx.requestId !== undefined ? { requestId: ctx.requestId } : {}),
-          },
-          ctx.signal
-        );
-        // Reported even when it was ~0ms (immediate grant) -- a caller extending its own
-        // deadline by 0 is a harmless no-op, and always measuring here (rather than only when
-        // `consume()` actually queued) keeps this simple with no separate "did it queue" signal
-        // to keep in sync.
-        ctx.onQueueWait?.(Date.now() - startedAt);
+        try {
+          // `consume()` itself measures queue-wait and calls `ctx.onQueueWait` only when this
+          // attempt actually queued -- it's the one place that already knows which case applies.
+          await rateLimiter.forWiki(wikiId).consume(
+            {
+              url: ctx.url,
+              wikiId,
+              ...(ctx.requestId !== undefined ? { requestId: ctx.requestId } : {}),
+            },
+            ctx.signal,
+            ctx.onQueueWait
+          );
+        } catch (err) {
+          // Normalize like `connect()`/`sleep()` already do for their own failure modes, so a
+          // caller distinguishing failure types (e.g. `pickSourceUnavailableFailure`) doesn't
+          // lose this specific diagnostic to a generic fallback only because it originated in
+          // the rate limiter instead of the fetch itself.
+          if (err instanceof TokenBucketQueueTimeoutError) {
+            throw AppError.sourceUnavailable(`${SOURCE_NAME} rate limiter: ${err.message}`);
+          }
+          throw err;
+        }
       },
     });
     this.baseUrls = baseUrls;
@@ -121,43 +135,44 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
     wikiId: MediaWikiWikiId,
     action: string,
     params: Readonly<Record<string, string>>,
-    signal?: AbortSignal,
-    onQueueWait?: (waitedMs: number) => void
+    options?: RequestOptions
   ): Promise<T> {
     const url = this.buildUrl(wikiId, action, params);
-    return (await this.fetchJson(url.toString(), this.log, signal, onQueueWait)) as T;
+    return (await this.fetchJson(
+      url.toString(),
+      this.log,
+      options?.signal,
+      options?.onQueueWait
+    )) as T;
   }
 
   async query(
     wikiId: MediaWikiWikiId,
     params: MediaWikiQueryParams,
-    signal?: AbortSignal,
-    onQueueWait?: (waitedMs: number) => void
+    options?: RequestOptions
   ): Promise<MediaWikiApiResponse> {
-    return this.request<MediaWikiApiResponse>(wikiId, 'query', params, signal, onQueueWait);
+    return this.request<MediaWikiApiResponse>(wikiId, 'query', params, options);
   }
 
   async parse(
     wikiId: MediaWikiWikiId,
     params: MediaWikiParseParams,
-    signal?: AbortSignal,
-    onQueueWait?: (waitedMs: number) => void
+    options?: RequestOptions
   ): Promise<MediaWikiApiResponse> {
-    return this.request<MediaWikiApiResponse>(wikiId, 'parse', params, signal, onQueueWait);
+    return this.request<MediaWikiApiResponse>(wikiId, 'parse', params, options);
   }
 
   async search(
     wikiId: MediaWikiWikiId,
     srsearch: string,
     limit?: number,
-    signal?: AbortSignal,
-    onQueueWait?: (waitedMs: number) => void
+    options?: RequestOptions
   ): Promise<MediaWikiSearchResponse> {
     const params: Record<string, string> = { list: 'search', srsearch };
     if (limit !== undefined) {
       params.srlimit = String(limit);
     }
-    return this.request<MediaWikiSearchResponse>(wikiId, 'query', params, signal, onQueueWait);
+    return this.request<MediaWikiSearchResponse>(wikiId, 'query', params, options);
   }
 }
 
