@@ -80,11 +80,14 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
       beforeAttempt: (ctx: BeforeAttemptContext) => {
         const wikiId = wikiIdForUrl(baseUrls, ctx.url);
         if (wikiId === undefined) return Promise.resolve();
-        return rateLimiter.forWiki(wikiId).consume({
-          url: ctx.url,
-          wikiId,
-          ...(ctx.requestId !== undefined ? { requestId: ctx.requestId } : {}),
-        });
+        return rateLimiter.forWiki(wikiId).consume(
+          {
+            url: ctx.url,
+            wikiId,
+            ...(ctx.requestId !== undefined ? { requestId: ctx.requestId } : {}),
+          },
+          ctx.signal
+        );
       },
     });
     this.baseUrls = baseUrls;

@@ -1,8 +1,14 @@
 import type pino from 'pino';
 
 export interface TokenBucket {
-  /** Optional structured fields for logs (e.g. `url` from the outbound HTTP request). */
-  consume(meta?: Readonly<Record<string, unknown>>): Promise<void>;
+  /**
+   * @param meta Optional structured fields for logs (e.g. `url` from the outbound HTTP request).
+   * @param signal When provided and it aborts while this call is queued waiting for a token, the
+   *   wait is cancelled immediately and the waiter is removed from the queue -- instead of
+   *   lingering un-cancelled after the caller has already given up (DEV-59), which would let an
+   *   HTTP call fire later for a request nobody is waiting on anymore.
+   */
+  consume(meta?: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<void>;
 }
 
 interface Waiter {
@@ -28,7 +34,7 @@ export function createTokenBucket(
     lastRefill = now;
   }
 
-  function consume(meta?: Readonly<Record<string, unknown>>): Promise<void> {
+  function consume(meta?: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<void> {
     refill();
 
     // The `queue.length === 0` check preserves FIFO order: a request that arrives while
@@ -39,8 +45,35 @@ export function createTokenBucket(
       return Promise.resolve();
     }
 
-    return new Promise<void>((resolve) => {
-      queue.push({ resolve, meta });
+    if (signal?.aborted) {
+      return Promise.reject(signal.reason as Error);
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      // `onAbort` is declared before `waiter` so `wrappedResolve` can reference it in its
+      // closure; it's only ever invoked later (from `scheduleDrain`, after this constructor
+      // returns), by which point `onAbort` is always assigned when `signal` was provided.
+      let onAbort: (() => void) | undefined;
+      const wrappedResolve = (): void => {
+        if (onAbort !== undefined) {
+          signal?.removeEventListener('abort', onAbort);
+        }
+        resolve();
+      };
+      const waiter: Waiter = { resolve: wrappedResolve, meta };
+      queue.push(waiter);
+
+      if (signal) {
+        onAbort = () => {
+          const idx = queue.indexOf(waiter);
+          if (idx !== -1) {
+            queue.splice(idx, 1);
+          }
+          reject(signal.reason as Error);
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
+
       scheduleDrain();
     });
   }

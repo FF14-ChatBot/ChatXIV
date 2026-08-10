@@ -12,13 +12,19 @@ import type {
 
 const DEFAULT_TOP_K = 8;
 /**
- * Shared across every resolver invoked for a query. MediaWiki's per-wiki rate limiter (see
- * `mediawiki/rateLimit.ts`) can itself add multiple seconds of queueing on a cold token bucket
- * before a resolver's first fetch even starts, and `mediaWikiResolver.ts`'s ConsoleGamesWiki ->
- * Fandom fallback attempts two wikis sequentially -- confirmed live that this can exceed a 6s
- * budget from rate-limit queueing alone, not slow responses. `chatService.ts`'s own
- * `PIPELINE_TIMEOUT_MS` (30s) and the Anthropic call's default timeout (12s) leave ample room to
- * give retrieval more time without risking the overall request budget.
+ * Each resolver invoked for a query gets its own independent budget of this length (see
+ * `executeWithTimeout` -- one `AbortController` per resolver, not one shared across all of
+ * them). MediaWiki's per-wiki rate limiter (see `mediawiki/rateLimit.ts`) can itself add
+ * multiple seconds of queueing on a cold token bucket before a resolver's first fetch even
+ * starts, and `mediaWikiResolver.ts`'s ConsoleGamesWiki -> Fandom fallback attempts two wikis
+ * sequentially -- confirmed live that this can exceed a 6s budget from rate-limit queueing
+ * alone, not slow responses (DEV-59). Per-resolver isolation means a slow/queued source no
+ * longer also aborts a healthy one running in parallel that would have finished on its own --
+ * the previous shared-controller design meant one resolver's timeout took every resolver down
+ * with it, even ones with nothing to do with the delay. `chatService.ts`'s own
+ * `PIPELINE_TIMEOUT_MS` (30s) and the Anthropic call's default timeout (12s) leave ample room
+ * for this per-resolver budget without risking the overall request budget, since resolvers run
+ * concurrently -- the worst case is still bounded by the single slowest one, not their sum.
  */
 const RETRIEVAL_TIMEOUT_MS = 10_000;
 
@@ -152,20 +158,39 @@ function throwWhenAllResolversFailed(
   );
 }
 
+/**
+ * One AbortController + timer per resolver (DEV-59) -- deliberately not one shared controller
+ * for the whole fan-out. With a single shared controller, any one resolver running past
+ * `RETRIEVAL_TIMEOUT_MS` (e.g. queued behind a cold rate limiter) aborts every other resolver
+ * too, including ones with no relationship to the delay that would have succeeded on their own.
+ * Isolating the timer per resolver means a slow/queued source only ever costs itself.
+ */
+function invokeResolverWithOwnTimeout(
+  resolver: SourceResolver,
+  query: string,
+  options: ResolveOptions
+): { readonly promise: Promise<readonly RetrievedChunk[]>; readonly clear: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RETRIEVAL_TIMEOUT_MS);
+  const resolveOptionsWithSignal: ResolveOptions = { ...options, signal: controller.signal };
+  return {
+    promise: invokeResolver(resolver, query, resolveOptionsWithSignal, controller.signal),
+    clear: () => clearTimeout(timer),
+  };
+}
+
 async function executeWithTimeout(
   resolvers: readonly SourceResolver[],
   query: string,
   options: ResolveOptions,
   topK: number
 ): Promise<readonly RetrievedChunk[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), RETRIEVAL_TIMEOUT_MS);
-  const resolveOptionsWithSignal: ResolveOptions = { ...options, signal: controller.signal };
+  const invocations = resolvers.map((resolver) =>
+    invokeResolverWithOwnTimeout(resolver, query, options)
+  );
 
   try {
-    const settled = await Promise.allSettled(
-      resolvers.map((r) => invokeResolver(r, query, resolveOptionsWithSignal, controller.signal))
-    );
+    const settled = await Promise.allSettled(invocations.map((i) => i.promise));
 
     const allChunks: RetrievedChunk[] = [];
     const failures: unknown[] = [];
@@ -194,6 +219,8 @@ async function executeWithTimeout(
     allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || b.text.length - a.text.length);
     return allChunks.slice(0, topK);
   } finally {
-    clearTimeout(timer);
+    for (const invocation of invocations) {
+      invocation.clear();
+    }
   }
 }

@@ -303,8 +303,20 @@ describe('lib/mediawiki/client', () => {
       );
 
       expect(bucket.consume).toHaveBeenCalledWith(
-        expect.objectContaining({ requestId: 'wiki-req-1' })
+        expect.objectContaining({ requestId: 'wiki-req-1' }),
+        undefined
       );
+    });
+
+    it('forwards the caller-supplied signal into throttle.consume (DEV-59)', async () => {
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter, bucket } = createMockRateLimiter();
+      const controller = new AbortController();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      await client.query(MediaWikiWikiId.ConsoleGamesWiki, {}, controller.signal);
+
+      expect(bucket.consume).toHaveBeenCalledWith(expect.any(Object), controller.signal);
     });
   });
 });
