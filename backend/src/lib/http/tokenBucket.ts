@@ -189,6 +189,12 @@ export function createTokenBucket(
 
     drainTimer = setTimeout(() => {
       drainTimer = undefined;
+      // Evict anyone who has already reached the cap *before* granting -- otherwise a waiter
+      // whose deadline is exactly what woke this timer could still win a token in the loop
+      // below (if refill happens to produce one on the same tick), while another waiter with
+      // the identical wait duration gets timed out purely because of loop order, not because
+      // it waited any longer.
+      evictExpiredWaiters(Date.now());
       refill();
       while (tokens >= 1 && queue.length > 0) {
         tokens -= 1;

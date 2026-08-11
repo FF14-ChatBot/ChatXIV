@@ -386,6 +386,35 @@ describe('lib/http/tokenBucket', () => {
     await Promise.all(waiters);
   });
 
+  it('evicts a waiter at the cap even when a token becomes available on the same tick (DEV-59: grant must not win the race against its own expiry)', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 4_000);
+    await bucket.consume(); // takes the only token immediately; refills at 1/s thereafter
+
+    // Five waiters queued at t=0 behind a 1/s refill: the first four get granted in lockstep
+    // with the refill cadence (t=1000, 2000, 3000, 4000), so the 4th grant lands on the exact
+    // same tick as every remaining waiter's 4000ms cap -- the tie this bug depended on.
+    const outcomes: unknown[] = [];
+    const waiters = Array.from({ length: 5 }, (_, i) =>
+      bucket
+        .consume()
+        .then(() => {
+          outcomes[i] = 'granted';
+        })
+        .catch((err: unknown) => {
+          outcomes[i] = err;
+        })
+    );
+
+    await vi.advanceTimersByTimeAsync(4_000);
+    await Promise.all(waiters);
+
+    // Waiters 3 and 4 both waited exactly the 4000ms cap -- both must time out consistently,
+    // not one granted and the other rejected purely because of which order the drain timer's
+    // eviction-vs-grant logic happened to run in.
+    expect(outcomes[3]).toBeInstanceOf(TokenBucketQueueTimeoutError);
+    expect(outcomes[4]).toBeInstanceOf(TokenBucketQueueTimeoutError);
+  });
+
   it('warns when empty and a logger is configured', async () => {
     const log = createMockLogger();
     const bucket = createTokenBucket(2, 2, log);

@@ -17,8 +17,7 @@ import {
   type RequestOptions,
 } from '../http/fetchWithRetry.js';
 import type { TokenBucket } from '../http/tokenBucket.js';
-import { TokenBucketQueueTimeoutError } from '../http/tokenBucket.js';
-import { AppError } from '../errors/AppError.js';
+import { normalizeTokenBucketTimeout } from '../http/normalizeTokenBucketTimeout.js';
 import { XIVAPI_DATA_SOURCE } from '../config/constants.js';
 import type {
   XivApiAssetBody,
@@ -66,14 +65,7 @@ export class XivApiHttpClient extends RetryingHttpClient implements XivApiClient
             ctx.onQueueWait
           );
         } catch (err) {
-          // Normalize like `connect()`/`sleep()` already do for their own failure modes, so a
-          // caller distinguishing failure types (e.g. `pickSourceUnavailableFailure`) doesn't
-          // lose this specific diagnostic to a generic fallback only because it originated in
-          // the rate limiter instead of the fetch itself.
-          if (err instanceof TokenBucketQueueTimeoutError) {
-            throw AppError.sourceUnavailable(`${SOURCE_NAME} rate limiter: ${err.message}`);
-          }
-          throw err;
+          normalizeTokenBucketTimeout(err, SOURCE_NAME);
         }
       },
     });
