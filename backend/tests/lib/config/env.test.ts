@@ -22,10 +22,13 @@ import {
   getTurnstileSecretKey,
   getLokiPushConfig,
   getMediaWikiUserAgent,
+  getMediaWikiUserAgentRequired,
+  validateMediaWikiConfig,
   getMediaWikiTimeoutMs,
   getMediaWikiRateLimitPerSecond,
   getMediaWikiRateLimitQueueTimeoutMs,
   getMediaWikiBaseUrl,
+  getXivApiUserAgent,
 } from '@src/lib/config/env.js';
 import { ENV_KEYS, MediaWikiWikiId } from '@src/lib/config/constants.js';
 
@@ -462,6 +465,79 @@ describe('lib/config/env', () => {
     it('falls back to a placeholder that never sends a blank header', () => {
       delete process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT];
       expect(getMediaWikiUserAgent()).toBe('ChatXIV/1.0 (unconfigured-contact)');
+    });
+  });
+
+  describe('getMediaWikiUserAgentRequired', () => {
+    it('defaults to false when unset', () => {
+      delete process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED];
+      expect(getMediaWikiUserAgentRequired()).toBe(false);
+    });
+
+    it('parses true/1 as true and false/0 as false', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED] = 'true';
+      expect(getMediaWikiUserAgentRequired()).toBe(true);
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED] = '1';
+      expect(getMediaWikiUserAgentRequired()).toBe(true);
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED] = 'false';
+      expect(getMediaWikiUserAgentRequired()).toBe(false);
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED] = '0';
+      expect(getMediaWikiUserAgentRequired()).toBe(false);
+    });
+  });
+
+  describe('validateMediaWikiConfig', () => {
+    it('does nothing when MEDIAWIKI_USER_AGENT_REQUIRED is unset (default off)', () => {
+      delete process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED];
+      delete process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT];
+      const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+      validateMediaWikiConfig();
+      expect(exit).not.toHaveBeenCalled();
+      exit.mockRestore();
+    });
+
+    it('exits when required and MEDIAWIKI_USER_AGENT is unset', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED] = 'true';
+      delete process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT];
+      const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      validateMediaWikiConfig();
+      expect(error).toHaveBeenCalled();
+      expect(exit).toHaveBeenCalledWith(1);
+      exit.mockRestore();
+      error.mockRestore();
+    });
+
+    it('exits when required and MEDIAWIKI_USER_AGENT is blank/whitespace', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED] = 'true';
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT] = '   ';
+      const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      validateMediaWikiConfig();
+      expect(exit).toHaveBeenCalledWith(1);
+      exit.mockRestore();
+      error.mockRestore();
+    });
+
+    it('does not exit when required and MEDIAWIKI_USER_AGENT is set', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED] = 'true';
+      process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT] = 'ChatXIV/1.0 (ops@chatxiv.example)';
+      const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+      validateMediaWikiConfig();
+      expect(exit).not.toHaveBeenCalled();
+      exit.mockRestore();
+    });
+  });
+
+  describe('getXivApiUserAgent', () => {
+    it('returns the configured value', () => {
+      process.env[ENV_KEYS.XIVAPI_USER_AGENT] = 'ChatXIV/1.0 (ops@chatxiv.example)';
+      expect(getXivApiUserAgent()).toBe('ChatXIV/1.0 (ops@chatxiv.example)');
+    });
+
+    it('falls back to a placeholder that never sends a blank header', () => {
+      delete process.env[ENV_KEYS.XIVAPI_USER_AGENT];
+      expect(getXivApiUserAgent()).toBe('ChatXIV/1.0 (unconfigured-contact)');
     });
   });
 

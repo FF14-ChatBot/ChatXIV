@@ -22,6 +22,7 @@ function createMockThrottle(): TokenBucket {
 const defaultConfig: XivApiClientConfig = {
   baseUrl: 'https://v2.xivapi.com/api',
   timeoutMs: 5_000,
+  userAgent: 'ChatXIV/1.0 (test@example.com)',
 };
 
 describe('lib/xivapi/XIVApiClient', () => {
@@ -414,6 +415,21 @@ describe('lib/xivapi/XIVApiClient', () => {
     });
   });
 
+  // ── Headers ────────────────────────────────────────────────────────
+
+  describe('User-Agent header', () => {
+    it('sends the configured User-Agent on every request', async () => {
+      fetchMock.mockResolvedValue(okJson({ results: [], schema: 's', version: 'v' }));
+
+      const client = createXivApiClient(defaultConfig, throttle, log);
+      await client.search({});
+
+      const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+      const headers = init?.headers as Record<string, string> | undefined;
+      expect(headers?.['User-Agent']).toBe('ChatXIV/1.0 (test@example.com)');
+    });
+  });
+
   // ── Base URL trailing-slash handling ───────────────────────────────
 
   describe('base URL normalization', () => {
@@ -423,6 +439,7 @@ describe('lib/xivapi/XIVApiClient', () => {
       const config: XivApiClientConfig = {
         baseUrl: 'https://v2.xivapi.com/api/',
         timeoutMs: 5_000,
+        userAgent: 'ChatXIV/1.0 (test@example.com)',
       };
       const client = createXivApiClient(config, throttle, log);
       await client.search({});
@@ -437,6 +454,7 @@ describe('lib/xivapi/XIVApiClient', () => {
       const config: XivApiClientConfig = {
         baseUrl: 'https://v2.xivapi.com/api',
         timeoutMs: 5_000,
+        userAgent: 'ChatXIV/1.0 (test@example.com)',
       };
       const client = createXivApiClient(config, throttle, log);
       await client.getRow('Item', 42);

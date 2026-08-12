@@ -80,8 +80,13 @@ export const ENV_KEYS = {
   CACHE_BACKEND: 'CACHE_BACKEND',
   /** When true, startup fails if the resolved backend is Redis but ping fails. */
   REDIS_REQUIRED: 'REDIS_REQUIRED',
+  /** No documented policy requires this for XIVAPI, unlike MediaWiki's TR-8 -- sent anyway as
+   *  standard HTTP client hygiene so the operator can be identified/contacted if ever needed. */
+  XIVAPI_USER_AGENT: 'XIVAPI_USER_AGENT',
   /** Required by wiki policy; identifies app + contact, e.g. `ChatXIV/1.0 (contact@example.com)`. */
   MEDIAWIKI_USER_AGENT: 'MEDIAWIKI_USER_AGENT',
+  /** When true, startup fails if MEDIAWIKI_USER_AGENT is unset. Default false (warn only). */
+  MEDIAWIKI_USER_AGENT_REQUIRED: 'MEDIAWIKI_USER_AGENT_REQUIRED',
   MEDIAWIKI_TIMEOUT_MS: 'MEDIAWIKI_TIMEOUT_MS',
   /** Requests per second, applied per wiki (not global). */
   MEDIAWIKI_RATE_LIMIT_PER_SECOND: 'MEDIAWIKI_RATE_LIMIT_PER_SECOND',
@@ -179,7 +184,8 @@ export const METRICS_SKIP_ROUTE_PREFIXES = [
 
 export const XIVAPI_BASE_URL = 'https://v2.xivapi.com/api' as const;
 export const XIVAPI_TIMEOUT_MS = 5_000 as const;
-// Universalis API: https://docs.universalis.app/ — 25 req/s sustained, 50 req/s burst
+// Self-imposed conservative default -- XIVAPI v2 (boilmaster) publishes no documented numeric
+// rate limit as of this writing; not modeled on any specific upstream policy.
 export const XIVAPI_RATE_LIMIT_PER_SECOND = 25 as const;
 export const XIVAPI_RATE_LIMIT_BURST = 50 as const;
 
@@ -217,6 +223,14 @@ export const MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND = 1 as const;
  * unbounded one.
  */
 export const MEDIAWIKI_DEFAULT_RATE_LIMIT_QUEUE_TIMEOUT_MS = 4_000 as const;
+
+/**
+ * `maxlag` seconds sent on every MediaWiki request (mediawiki.org "API:Etiquette"): lets a
+ * replication-lagged wiki tell a well-behaved client to back off before it ever reaches an
+ * edge-level block, instead of the client hammering it at a fixed rate regardless of server load.
+ * 5s is the conventional default recommended by that etiquette page.
+ */
+export const MEDIAWIKI_MAXLAG_SECONDS = 5 as const;
 
 /**
  * Cheapest tier sufficient for the narrow format+cite task (context-grounded answer, no

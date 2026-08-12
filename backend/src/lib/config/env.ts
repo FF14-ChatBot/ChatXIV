@@ -338,6 +338,22 @@ export function getLokiPushConfig(): LokiPushConfig | undefined {
   return undefined;
 }
 
+// ── XIVAPI client ────────────────────────────────────────────────────
+
+/**
+ * XIVAPI v2 documents no User-Agent policy (unlike MediaWiki's TR-8), so this is standard HTTP
+ * client hygiene rather than a compliance requirement -- sent so the operator can be identified
+ * or contacted if that's ever useful, not because it's required. Falls back to a placeholder
+ * that identifies the misconfiguration rather than sending no header at all.
+ */
+export function getXivApiUserAgent(): string {
+  const trimmed = readOptionalTrimmedEnv(
+    ENV_KEYS.XIVAPI_USER_AGENT,
+    `${ENV_KEYS.XIVAPI_USER_AGENT} is not set; using a placeholder`
+  );
+  return trimmed ?? 'ChatXIV/1.0 (unconfigured-contact)';
+}
+
 // ── MediaWiki client ───────────────────────────────────────────────
 
 /**
@@ -350,6 +366,34 @@ export function getMediaWikiUserAgent(): string {
     `${ENV_KEYS.MEDIAWIKI_USER_AGENT} is not set; using a placeholder (wikis may block or rate-limit this)`
   );
   return trimmed ?? 'ChatXIV/1.0 (unconfigured-contact)';
+}
+
+/**
+ * When true, startup fails if `MEDIAWIKI_USER_AGENT` is unset -- mirrors `REDIS_REQUIRED`'s
+ * soft-by-default/hard-gate-available shape (see `cacheConfig.ts`) rather than failing
+ * unconditionally, so an existing deployment relying on today's placeholder fallback doesn't
+ * break the moment this ships. Opt in once a real, contactable value is actually configured.
+ */
+export function getMediaWikiUserAgentRequired(): boolean {
+  const raw = process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED];
+  if (raw === undefined || raw === '') return false;
+  return raw.toLowerCase() === 'true' || raw === '1';
+}
+
+/**
+ * Fatal startup check, called from `validate.ts`'s `validateStartupConfig()` -- see
+ * `getMediaWikiUserAgentRequired`'s doc for why this is opt-in rather than always-on.
+ */
+export function validateMediaWikiConfig(): void {
+  if (!getMediaWikiUserAgentRequired()) return;
+
+  const raw = process.env[ENV_KEYS.MEDIAWIKI_USER_AGENT];
+  if (raw === undefined || raw.trim() === '') {
+    console.error(
+      `Fatal: ${ENV_KEYS.MEDIAWIKI_USER_AGENT_REQUIRED}=true requires ${ENV_KEYS.MEDIAWIKI_USER_AGENT} to be set`
+    );
+    process.exit(1);
+  }
 }
 
 /**
