@@ -250,6 +250,56 @@ describe('createKnowledgeService', () => {
     warn.mockRestore();
   });
 
+  it("extends a resolver's own deadline by reported queue-wait time instead of counting it against the fixed budget (DEV-59 Direction #1)", async () => {
+    vi.useFakeTimers();
+    const queuedThenSlow: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async (_query, options) => {
+        // Simulate a 5s rate-limiter queue wait reported up front (see mediaWikiResolver.ts's
+        // onQueueWait threading) -- without the extension, the fixed 10s budget alone would not
+        // be enough for the 12s of "real work" that follows.
+        options?.onQueueWait?.(5_000);
+        return new Promise((resolve) => {
+          setTimeout(() => resolve([{ text: 'ok', source: { sourceName: 'x' } }]), 12_000);
+        });
+      },
+    };
+    const svc = createKnowledgeService([queuedThenSlow]);
+    const retrievePromise = svc.retrieve('q', { category: UsageCategory.RAIDING });
+    await vi.advanceTimersByTimeAsync(12_000);
+    const result = await retrievePromise;
+    expect(result.chunks.map((c) => c.text)).toEqual(['ok']);
+  });
+
+  it('caps deadline extension at the hard ceiling despite a much larger reported queue-wait (DEV-59)', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {
+      /* noop */
+    });
+    const perpetuallyExtending: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async (_query, options) => {
+        // Reports a queue-wait far larger than the hard ceiling (10s * 1.5 = 15s) could ever
+        // allow -- the deadline must not grow to accommodate it.
+        options?.onQueueWait?.(50_000);
+        return new Promise(() => {
+          /* never resolves on its own -- only the hard ceiling can end this */
+        });
+      },
+    };
+    const svc = createKnowledgeService([perpetuallyExtending]);
+    const retrievePromise = svc.retrieve('q', { category: UsageCategory.RAIDING });
+    const settled = retrievePromise.catch(() => undefined);
+
+    await vi.advanceTimersByTimeAsync(15_001);
+    await expect(retrievePromise).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
+    await vi.runAllTimersAsync();
+    await settled;
+    warn.mockRestore();
+  });
+
   it('gives each resolver its own AbortSignal, not one shared across all of them (DEV-59)', async () => {
     const seenSignals: AbortSignal[] = [];
     const capture: SourceResolver = {
@@ -295,6 +345,63 @@ describe('createKnowledgeService', () => {
 
     const result = await retrievePromise;
     expect(result.chunks.map((c) => c.text)).toEqual(['still works']);
+    warn.mockRestore();
+  });
+
+  it('does not leak a timer when onQueueWait fires after this invocation is already cleared (DEV-59: abandoned dangling upstream call)', async () => {
+    vi.useFakeTimers();
+    let capturedOnQueueWait: ((waitedMs: number) => void) | undefined;
+    const resolver: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async (_query, options) => {
+        // A resolver that races several candidate upstream calls and returns as soon as one
+        // succeeds could leave another's `consume()` promise (and its `onQueueWait` callback)
+        // still pending when it returns -- captured here to fire "late", after this invocation
+        // has already settled and been cleared.
+        capturedOnQueueWait = options?.onQueueWait;
+        return [{ text: 'ok', source: { sourceName: 'x' } }];
+      },
+    };
+    const svc = createKnowledgeService([resolver]);
+    await svc.retrieve('q', { category: UsageCategory.RAIDING });
+
+    expect(vi.getTimerCount()).toBe(0);
+    capturedOnQueueWait?.(1_000);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('is immune to a backward wall-clock jump mid-request (uses a monotonic clock, not Date.now(), DEV-59)', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {
+      /* noop */
+    });
+    const hangsAfterClockJump: SourceResolver = {
+      supportedCategories: [UsageCategory.RAIDING],
+      resolve: async (_query, options) => {
+        // Simulate an NTP correction / manual clock change jumping the wall clock backward,
+        // then report a queue-wait -- which re-arms the abort timer using an elapsed-time
+        // computation taken *after* the jump. A `Date.now()`-based version of that computation
+        // would read a huge negative elapsed duration here and re-arm the timer for roughly an
+        // hour instead of the ~10s actually remaining, effectively disabling the timeout.
+        vi.setSystemTime(Date.now() - 60 * 60 * 1_000);
+        options?.onQueueWait?.(2_000); // extends the 10s base deadline to 12s
+        return new Promise(() => {
+          /* never resolves -- only a correctly-armed timer should end this */
+        });
+      },
+    };
+    const svc = createKnowledgeService([hangsAfterClockJump]);
+    const retrievePromise = svc.retrieve('q', { category: UsageCategory.RAIDING });
+    const settled = retrievePromise.catch(() => undefined);
+
+    // Extended deadline is 12s (10s base + 2s queue-wait); advance just past it. Under the old
+    // Date.now()-based bug this would never fire within the fake-timer run.
+    await vi.advanceTimersByTimeAsync(12_001);
+    await expect(retrievePromise).rejects.toMatchObject({
+      code: ERROR_CODES.SOURCE_UNAVAILABLE,
+    });
+    await vi.runAllTimersAsync();
+    await settled;
     warn.mockRestore();
   });
 });

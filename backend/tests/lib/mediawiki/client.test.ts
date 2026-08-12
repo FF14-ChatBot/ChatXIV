@@ -6,8 +6,9 @@ import {
 } from '@src/lib/mediawiki/client.js';
 import { MediaWikiWikiId } from '@src/lib/config/constants.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
+import { ERROR_CODES } from '@chatxiv/cdm';
 import type { MediaWikiRateLimiter } from '@src/lib/mediawiki/rateLimit.js';
-import type { TokenBucket } from '@src/lib/http/tokenBucket.js';
+import { TokenBucketQueueTimeoutError, type TokenBucket } from '@src/lib/http/tokenBucket.js';
 import type pino from 'pino';
 import {
   mediaWikiParseResponseFixture,
@@ -304,6 +305,7 @@ describe('lib/mediawiki/client', () => {
 
       expect(bucket.consume).toHaveBeenCalledWith(
         expect.objectContaining({ requestId: 'wiki-req-1' }),
+        undefined,
         undefined
       );
     });
@@ -314,9 +316,58 @@ describe('lib/mediawiki/client', () => {
       const controller = new AbortController();
 
       const client = createMediaWikiClient(defaultConfig, limiter, log);
-      await client.query(MediaWikiWikiId.ConsoleGamesWiki, {}, controller.signal);
+      await client.query(MediaWikiWikiId.ConsoleGamesWiki, {}, { signal: controller.signal });
 
-      expect(bucket.consume).toHaveBeenCalledWith(expect.any(Object), controller.signal);
+      expect(bucket.consume).toHaveBeenCalledWith(expect.any(Object), controller.signal, undefined);
+    });
+
+    it('normalizes a TokenBucketQueueTimeoutError into AppError.sourceUnavailable (DEV-59)', async () => {
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter, bucket } = createMockRateLimiter();
+      vi.mocked(bucket.consume).mockRejectedValue(new TokenBucketQueueTimeoutError(4_000));
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+
+      await expect(client.query(MediaWikiWikiId.ConsoleGamesWiki, {})).rejects.toMatchObject({
+        code: ERROR_CODES.SOURCE_UNAVAILABLE,
+        message: expect.stringContaining('4000ms'),
+      });
+    });
+
+    it('does not touch a non-queue-timeout rejection from throttle.consume (e.g. an abort)', async () => {
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter, bucket } = createMockRateLimiter();
+      const abortReason = new Error('caller gave up');
+      vi.mocked(bucket.consume).mockRejectedValue(abortReason);
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+
+      await expect(client.query(MediaWikiWikiId.ConsoleGamesWiki, {})).rejects.toBe(abortReason);
+    });
+
+    it('forwards onQueueWait into throttle.consume, which is responsible for calling it (DEV-59)', async () => {
+      // Timing/when-it-fires behavior now lives entirely in tokenBucket.ts (see its own tests) --
+      // this only verifies client.ts wires the caller's callback through to consume() correctly.
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter, bucket } = createMockRateLimiter();
+      vi.mocked(bucket.consume).mockImplementation(async (_meta, _signal, onQueueWait) => {
+        onQueueWait?.(42);
+      });
+      const onQueueWait = vi.fn();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      await client.query(MediaWikiWikiId.ConsoleGamesWiki, {}, { onQueueWait });
+
+      expect(onQueueWait).toHaveBeenCalledWith(42);
+    });
+
+    it('does not require onQueueWait to be provided', async () => {
+      fetchMock.mockResolvedValue(okJson({ query: {} }));
+      const { limiter, bucket } = createMockRateLimiter();
+
+      const client = createMediaWikiClient(defaultConfig, limiter, log);
+      await expect(client.query(MediaWikiWikiId.ConsoleGamesWiki, {})).resolves.toBeDefined();
+      expect(bucket.consume).toHaveBeenCalled();
     });
   });
 });

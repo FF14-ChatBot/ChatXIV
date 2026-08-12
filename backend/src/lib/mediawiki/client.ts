@@ -9,12 +9,18 @@
  */
 
 import type pino from 'pino';
-import { RetryingHttpClient, type BeforeAttemptContext } from '../http/fetchWithRetry.js';
+import {
+  RetryingHttpClient,
+  type BeforeAttemptContext,
+  type RequestOptions,
+} from '../http/fetchWithRetry.js';
+import { normalizeTokenBucketTimeout } from '../http/normalizeTokenBucketTimeout.js';
 import { MediaWikiWikiId } from '../config/constants.js';
 import {
   getMediaWikiUserAgent,
   getMediaWikiTimeoutMs,
   getMediaWikiRateLimitPerSecond,
+  getMediaWikiRateLimitQueueTimeoutMs,
   getMediaWikiBaseUrl,
 } from '../config/env.js';
 import { createMediaWikiRateLimiter, type MediaWikiRateLimiter } from './rateLimit.js';
@@ -77,17 +83,24 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
       timeoutMs: config.timeoutMs,
       sourceName: SOURCE_NAME,
       headers: { 'User-Agent': config.userAgent },
-      beforeAttempt: (ctx: BeforeAttemptContext) => {
+      beforeAttempt: async (ctx: BeforeAttemptContext) => {
         const wikiId = wikiIdForUrl(baseUrls, ctx.url);
-        if (wikiId === undefined) return Promise.resolve();
-        return rateLimiter.forWiki(wikiId).consume(
-          {
-            url: ctx.url,
-            wikiId,
-            ...(ctx.requestId !== undefined ? { requestId: ctx.requestId } : {}),
-          },
-          ctx.signal
-        );
+        if (wikiId === undefined) return;
+        try {
+          // `consume()` itself measures queue-wait and calls `ctx.onQueueWait` only when this
+          // attempt actually queued -- it's the one place that already knows which case applies.
+          await rateLimiter.forWiki(wikiId).consume(
+            {
+              url: ctx.url,
+              wikiId,
+              ...(ctx.requestId !== undefined ? { requestId: ctx.requestId } : {}),
+            },
+            ctx.signal,
+            ctx.onQueueWait
+          );
+        } catch (err) {
+          normalizeTokenBucketTimeout(err, SOURCE_NAME);
+        }
       },
     });
     this.baseUrls = baseUrls;
@@ -114,39 +127,44 @@ export class MediaWikiHttpClient extends RetryingHttpClient implements MediaWiki
     wikiId: MediaWikiWikiId,
     action: string,
     params: Readonly<Record<string, string>>,
-    signal?: AbortSignal
+    options?: RequestOptions
   ): Promise<T> {
     const url = this.buildUrl(wikiId, action, params);
-    return (await this.fetchJson(url.toString(), this.log, signal)) as T;
+    return (await this.fetchJson(
+      url.toString(),
+      this.log,
+      options?.signal,
+      options?.onQueueWait
+    )) as T;
   }
 
   async query(
     wikiId: MediaWikiWikiId,
     params: MediaWikiQueryParams,
-    signal?: AbortSignal
+    options?: RequestOptions
   ): Promise<MediaWikiApiResponse> {
-    return this.request<MediaWikiApiResponse>(wikiId, 'query', params, signal);
+    return this.request<MediaWikiApiResponse>(wikiId, 'query', params, options);
   }
 
   async parse(
     wikiId: MediaWikiWikiId,
     params: MediaWikiParseParams,
-    signal?: AbortSignal
+    options?: RequestOptions
   ): Promise<MediaWikiApiResponse> {
-    return this.request<MediaWikiApiResponse>(wikiId, 'parse', params, signal);
+    return this.request<MediaWikiApiResponse>(wikiId, 'parse', params, options);
   }
 
   async search(
     wikiId: MediaWikiWikiId,
     srsearch: string,
     limit?: number,
-    signal?: AbortSignal
+    options?: RequestOptions
   ): Promise<MediaWikiSearchResponse> {
     const params: Record<string, string> = { list: 'search', srsearch };
     if (limit !== undefined) {
       params.srlimit = String(limit);
     }
-    return this.request<MediaWikiSearchResponse>(wikiId, 'query', params, signal);
+    return this.request<MediaWikiSearchResponse>(wikiId, 'query', params, options);
   }
 }
 
@@ -180,7 +198,11 @@ export function createMediaWikiClientFromEnv(log: pino.Logger): MediaWikiClientF
     timeoutMs: getMediaWikiTimeoutMs(),
     userAgent: getMediaWikiUserAgent(),
   };
-  const rateLimiter = createMediaWikiRateLimiter(getMediaWikiRateLimitPerSecond(), log);
+  const rateLimiter = createMediaWikiRateLimiter(
+    getMediaWikiRateLimitPerSecond(),
+    log,
+    getMediaWikiRateLimitQueueTimeoutMs()
+  );
   const client = new MediaWikiHttpClient(config, rateLimiter, log);
   // `client.baseUrls` is the normalized form the client actually requests against -- return that
   // (not `config.baseUrls`) so callers building their own URLs from this (e.g. MediaWikiResolver's

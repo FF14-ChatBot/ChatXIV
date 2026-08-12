@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type pino from 'pino';
-import { createTokenBucket } from '@src/lib/http/tokenBucket.js';
+import { createTokenBucket, TokenBucketQueueTimeoutError } from '@src/lib/http/tokenBucket.js';
 
 function createMockLogger(): pino.Logger {
   return { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as pino.Logger;
@@ -195,6 +195,224 @@ describe('lib/http/tokenBucket', () => {
     // Aborting after the wait already resolved must be a no-op -- no unhandled rejection, no
     // effect on a since-reused queue.
     expect(() => controller.abort(new Error('too late'))).not.toThrow();
+  });
+
+  it('rejects distinctly when a queue wait exceeds maxQueueWaitMs, instead of eating the caller budget silently (DEV-59)', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 500);
+    await bucket.consume(); // takes the only token immediately; next refill is 1000ms out
+
+    let rejected: unknown;
+    const pending = bucket.consume().catch((err: unknown) => {
+      rejected = err;
+    });
+
+    await vi.advanceTimersByTimeAsync(500);
+    await pending;
+
+    expect(rejected).toBeInstanceOf(TokenBucketQueueTimeoutError);
+    expect((rejected as Error).message).toContain('500ms');
+  });
+
+  it('does not fire the queue-timeout when a token arrives before the cap', async () => {
+    const bucket = createTokenBucket(2, 2, undefined, 5_000);
+    await bucket.consume();
+    await bucket.consume();
+
+    let resolved = false;
+    const pending = bucket.consume().then(() => {
+      resolved = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(500); // well under the 5s cap, refill is at ~500ms for rate=2
+    await pending;
+    expect(resolved).toBe(true);
+  });
+
+  it('removes a timed-out waiter from the queue without corrupting it for a waiter queued afterward', async () => {
+    // maxQueueWaitMs applies bucket-wide (not per-call, unlike `signal`) -- two waiters queued
+    // at the same instant would hit the same deadline together, so this verifies queue integrity
+    // via a waiter added *after* the timed-out one has already been spliced out, not a waiter
+    // racing the same cap.
+    const bucket = createTokenBucket(1, 1, undefined, 300);
+    await bucket.consume(); // takes the only token immediately; refill due at t=1000
+
+    let firstRejected: unknown;
+    const first = bucket.consume().catch((err: unknown) => {
+      firstRejected = err;
+    });
+
+    await vi.advanceTimersByTimeAsync(300);
+    await first;
+    expect(firstRejected).toBeInstanceOf(Error);
+
+    // Advance past the refill (due at t=1000) *before* queuing a second waiter, so it lands on
+    // the immediate-grant fast path instead of queueing again -- isolating this test to whether
+    // the first waiter's removal corrupted the queue/drain bookkeeping for what comes next,
+    // independent of maxQueueWaitMs applying to a second queued wait too.
+    await vi.advanceTimersByTimeAsync(700); // absolute t=1000
+    let secondResolved = false;
+    await bucket.consume().then(() => {
+      secondResolved = true;
+    });
+    expect(secondResolved).toBe(true);
+  });
+
+  it("gives a later-arriving waiter its own independent cap window, not the earlier waiter's deadline", async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 300);
+    await bucket.consume(); // takes the only token immediately; refill due at t=1000
+
+    let firstRejected: unknown;
+    const first = bucket.consume().catch((err: unknown) => {
+      firstRejected = err;
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+    let secondRejected: unknown;
+    const second = bucket.consume().catch((err: unknown) => {
+      secondRejected = err;
+    });
+
+    // First's cap (300ms from its own t=0) fires now; second's own cap (300ms from t=100) has
+    // not yet elapsed -- it must not be dragged down by the first waiter's deadline.
+    await vi.advanceTimersByTimeAsync(200); // absolute t=300
+    await first;
+    expect(firstRejected).toBeInstanceOf(Error);
+    expect(secondRejected).toBeUndefined();
+
+    await vi.advanceTimersByTimeAsync(100); // absolute t=400, second's own cap now elapsed
+    await second;
+    expect(secondRejected).toBeInstanceOf(Error);
+  });
+
+  it('does not fire the queue-timeout after a signal-driven abort already settled the wait', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 1_000);
+    await bucket.consume();
+
+    const controller = new AbortController();
+    const reason = new Error('caller gave up first');
+    let rejected: unknown;
+    const pending = bucket.consume(undefined, controller.signal).catch((err: unknown) => {
+      rejected = err;
+    });
+
+    await vi.advanceTimersByTimeAsync(200);
+    controller.abort(reason);
+    await pending;
+    expect(rejected).toBe(reason);
+
+    // If the queue-timeout timer weren't cleared on abort, it would still be live here and
+    // attempting to act on an already-removed waiter -- advancing past its own deadline must be
+    // a silent no-op (no unhandled rejection, no throw).
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+
+  it('does not fire the queue-timeout after the wait already resolved normally', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 5_000);
+    await bucket.consume();
+
+    const pending = bucket.consume();
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expect(pending).resolves.toBeUndefined();
+
+    // The queue-timeout timer must have been cleared on grant -- advancing well past its
+    // original deadline must not cause any further effect.
+    await vi.advanceTimersByTimeAsync(5_000);
+  });
+
+  it('logs a distinct message when the queue-timeout fires and a logger is configured', async () => {
+    const log = createMockLogger();
+    const bucket = createTokenBucket(1, 1, log, 400);
+    await bucket.consume();
+
+    const pending = bucket.consume({ url: 'https://example.com/x' }).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(400);
+    await pending;
+
+    expect(log.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ maxQueueWaitMs: 400, url: 'https://example.com/x' }),
+      expect.stringContaining('Token bucket queue wait exceeded cap')
+    );
+  });
+
+  it('does not call onQueueWait for an immediate grant (DEV-59)', async () => {
+    const bucket = createTokenBucket(10);
+    const onQueueWait = vi.fn();
+
+    await bucket.consume(undefined, undefined, onQueueWait);
+
+    expect(onQueueWait).not.toHaveBeenCalled();
+  });
+
+  it('calls onQueueWait with the actual wait duration once a queued call is granted (DEV-59)', async () => {
+    const bucket = createTokenBucket(1, 1);
+    await bucket.consume(); // takes the only token; next refill is 1000ms out
+
+    const onQueueWait = vi.fn();
+    const pending = bucket.consume(undefined, undefined, onQueueWait);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await pending;
+
+    expect(onQueueWait).toHaveBeenCalledTimes(1);
+    expect(onQueueWait).toHaveBeenCalledWith(expect.any(Number));
+    expect(onQueueWait.mock.calls[0]?.[0]).toBeGreaterThanOrEqual(1_000);
+  });
+
+  it('does not call onQueueWait when the wait ends in a queue-timeout instead of a grant', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 300);
+    await bucket.consume();
+
+    const onQueueWait = vi.fn();
+    const pending = bucket.consume(undefined, undefined, onQueueWait).catch(() => undefined);
+
+    await vi.advanceTimersByTimeAsync(300);
+    await pending;
+
+    expect(onQueueWait).not.toHaveBeenCalled();
+  });
+
+  it('uses only one live timer even with a queue-timeout cap and multiple queued waiters (DEV-59: no second per-waiter timer)', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 5_000);
+    await bucket.consume(); // takes the only token immediately
+
+    const waiters = Array.from({ length: 4 }, () => bucket.consume().catch(() => undefined));
+
+    // Four waiters queued behind a capped bucket -- a per-waiter queue-timeout timer alongside
+    // the existing drain timer would show 5 live timers here; folding the cap into the shared
+    // drain tick keeps it at 1 regardless of queue depth.
+    expect(vi.getTimerCount()).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    await Promise.all(waiters);
+  });
+
+  it('evicts a waiter at the cap even when a token becomes available on the same tick (DEV-59: grant must not win the race against its own expiry)', async () => {
+    const bucket = createTokenBucket(1, 1, undefined, 4_000);
+    await bucket.consume(); // takes the only token immediately; refills at 1/s thereafter
+
+    // Five waiters queued at t=0 behind a 1/s refill: the first four get granted in lockstep
+    // with the refill cadence (t=1000, 2000, 3000, 4000), so the 4th grant lands on the exact
+    // same tick as every remaining waiter's 4000ms cap -- the tie this bug depended on.
+    const outcomes: unknown[] = [];
+    const waiters = Array.from({ length: 5 }, (_, i) =>
+      bucket
+        .consume()
+        .then(() => {
+          outcomes[i] = 'granted';
+        })
+        .catch((err: unknown) => {
+          outcomes[i] = err;
+        })
+    );
+
+    await vi.advanceTimersByTimeAsync(4_000);
+    await Promise.all(waiters);
+
+    // Waiters 3 and 4 both waited exactly the 4000ms cap -- both must time out consistently,
+    // not one granted and the other rejected purely because of which order the drain timer's
+    // eviction-vs-grant logic happened to run in.
+    expect(outcomes[3]).toBeInstanceOf(TokenBucketQueueTimeoutError);
+    expect(outcomes[4]).toBeInstanceOf(TokenBucketQueueTimeoutError);
   });
 
   it('warns when empty and a logger is configured', async () => {

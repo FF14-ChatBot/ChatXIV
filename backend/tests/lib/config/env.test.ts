@@ -24,6 +24,7 @@ import {
   getMediaWikiUserAgent,
   getMediaWikiTimeoutMs,
   getMediaWikiRateLimitPerSecond,
+  getMediaWikiRateLimitQueueTimeoutMs,
   getMediaWikiBaseUrl,
 } from '@src/lib/config/env.js';
 import { ENV_KEYS, MediaWikiWikiId } from '@src/lib/config/constants.js';
@@ -514,6 +515,25 @@ describe('lib/config/env', () => {
       expect(getMediaWikiRateLimitPerSecond()).toBe(1);
       process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_PER_SECOND] = '-1';
       expect(getMediaWikiRateLimitPerSecond()).toBe(1);
+    });
+  });
+
+  describe('getMediaWikiRateLimitQueueTimeoutMs', () => {
+    it('returns the default when unset', () => {
+      delete process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_QUEUE_TIMEOUT_MS];
+      expect(getMediaWikiRateLimitQueueTimeoutMs()).toBe(4_000);
+    });
+
+    it('parses a valid value', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_QUEUE_TIMEOUT_MS] = '2500';
+      expect(getMediaWikiRateLimitQueueTimeoutMs()).toBe(2_500);
+    });
+
+    it('returns the default for a non-numeric or non-positive value', () => {
+      process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_QUEUE_TIMEOUT_MS] = 'abc';
+      expect(getMediaWikiRateLimitQueueTimeoutMs()).toBe(4_000);
+      process.env[ENV_KEYS.MEDIAWIKI_RATE_LIMIT_QUEUE_TIMEOUT_MS] = '-1';
+      expect(getMediaWikiRateLimitQueueTimeoutMs()).toBe(4_000);
     });
   });
 

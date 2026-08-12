@@ -83,7 +83,21 @@ describe('createXivApiResolver', () => {
     const resolver = createXivApiResolver({ client, cache });
     await resolver.resolve('potion', { signal: controller.signal });
 
-    expect(search).toHaveBeenCalledWith(expect.anything(), controller.signal);
+    expect(search).toHaveBeenCalledWith(expect.anything(), {
+      signal: controller.signal,
+      onQueueWait: undefined,
+    });
+  });
+
+  it('threads options.onQueueWait through to the XIVAPI client (DEV-59)', async () => {
+    cache.get.mockResolvedValue(cacheMiss());
+    search.mockResolvedValue({ results: [], schema: 's', version: 'v1' });
+    const onQueueWait = vi.fn();
+
+    const resolver = createXivApiResolver({ client, cache });
+    await resolver.resolve('potion', { onQueueWait });
+
+    expect(search).toHaveBeenCalledWith(expect.anything(), { signal: undefined, onQueueWait });
   });
 
   it('marks chunks stale when upstream fails after soft expiry', async () => {

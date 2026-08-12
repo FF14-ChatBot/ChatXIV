@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createXivApiClient, type XivApiClientConfig } from '@src/lib/xivapi/XIVApiClient.js';
 import { XivApiSchemaFormat } from '@src/lib/xivapi/types.js';
 import { requestContext } from '@src/lib/request/requestContext.js';
-import type { TokenBucket } from '@src/lib/http/tokenBucket.js';
+import { ERROR_CODES } from '@chatxiv/cdm';
+import { TokenBucketQueueTimeoutError, type TokenBucket } from '@src/lib/http/tokenBucket.js';
 import type pino from 'pino';
 import {
   xivApiRowResponseFixture,
@@ -122,7 +123,7 @@ describe('lib/xivapi/XIVApiClient', () => {
       const controller = new AbortController();
 
       const client = createXivApiClient(defaultConfig, throttle, log);
-      await client.search({}, controller.signal);
+      await client.search({}, { signal: controller.signal });
 
       const init = fetchMock.mock.calls[0][1] as RequestInit;
       expect(init.signal?.aborted).toBe(false);
@@ -332,9 +333,11 @@ describe('lib/xivapi/XIVApiClient', () => {
       await client.search({});
 
       expect(order).toEqual(['throttle', 'fetch']);
-      expect(mockThrottle.consume).toHaveBeenCalledWith({
-        url: 'https://v2.xivapi.com/api/search',
-      });
+      expect(mockThrottle.consume).toHaveBeenCalledWith(
+        { url: 'https://v2.xivapi.com/api/search' },
+        undefined,
+        undefined
+      );
     });
 
     it('forwards requestId into throttle.consume when requestContext is active', async () => {
@@ -344,10 +347,70 @@ describe('lib/xivapi/XIVApiClient', () => {
       const client = createXivApiClient(defaultConfig, mockThrottle, log);
       await requestContext.run({ requestId: 'chat-req-7' }, () => client.search({}));
 
-      expect(mockThrottle.consume).toHaveBeenCalledWith({
-        url: 'https://v2.xivapi.com/api/search',
-        requestId: 'chat-req-7',
+      expect(mockThrottle.consume).toHaveBeenCalledWith(
+        {
+          url: 'https://v2.xivapi.com/api/search',
+          requestId: 'chat-req-7',
+        },
+        undefined,
+        undefined
+      );
+    });
+
+    it('forwards the caller-supplied signal into throttle.consume (DEV-59)', async () => {
+      const mockThrottle: TokenBucket = { consume: vi.fn().mockResolvedValue(undefined) };
+      fetchMock.mockResolvedValue(okJson({ results: [], schema: 's', version: 'v' }));
+      const controller = new AbortController();
+
+      const client = createXivApiClient(defaultConfig, mockThrottle, log);
+      await client.search({}, { signal: controller.signal });
+
+      expect(mockThrottle.consume).toHaveBeenCalledWith(
+        expect.any(Object),
+        controller.signal,
+        undefined
+      );
+    });
+
+    it('forwards onQueueWait into throttle.consume, which is responsible for calling it (DEV-59)', async () => {
+      // Timing/when-it-fires behavior lives entirely in tokenBucket.ts (see its own tests) --
+      // this only verifies the client wires the caller's callback through to consume() correctly.
+      const mockThrottle: TokenBucket = {
+        consume: vi.fn().mockImplementation(async (_meta, _signal, onQueueWait) => {
+          onQueueWait?.(42);
+        }),
+      };
+      fetchMock.mockResolvedValue(okJson({ results: [], schema: 's', version: 'v' }));
+      const onQueueWait = vi.fn();
+
+      const client = createXivApiClient(defaultConfig, mockThrottle, log);
+      await client.search({}, { onQueueWait });
+
+      expect(onQueueWait).toHaveBeenCalledWith(42);
+    });
+
+    it('normalizes a TokenBucketQueueTimeoutError into AppError.sourceUnavailable (DEV-59)', async () => {
+      const mockThrottle: TokenBucket = {
+        consume: vi.fn().mockRejectedValue(new TokenBucketQueueTimeoutError(4_000)),
+      };
+      fetchMock.mockResolvedValue(okJson({ results: [], schema: 's', version: 'v' }));
+
+      const client = createXivApiClient(defaultConfig, mockThrottle, log);
+
+      await expect(client.search({})).rejects.toMatchObject({
+        code: ERROR_CODES.SOURCE_UNAVAILABLE,
+        message: expect.stringContaining('4000ms'),
       });
+    });
+
+    it('does not touch a non-queue-timeout rejection from throttle.consume (e.g. an abort)', async () => {
+      const abortReason = new Error('caller gave up');
+      const mockThrottle: TokenBucket = { consume: vi.fn().mockRejectedValue(abortReason) };
+      fetchMock.mockResolvedValue(okJson({ results: [], schema: 's', version: 'v' }));
+
+      const client = createXivApiClient(defaultConfig, mockThrottle, log);
+
+      await expect(client.search({})).rejects.toBe(abortReason);
     });
   });
 

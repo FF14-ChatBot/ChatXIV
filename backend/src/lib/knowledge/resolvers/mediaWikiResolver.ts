@@ -18,6 +18,7 @@ import { AppError } from '../../errors/AppError.js';
 import { mediaWikiSearchCacheKey } from '../../cache/cacheCategoryKeys.js';
 import { getOrFetch } from '../../getOrFetch.js';
 import type { CacheClient } from '../../cache/types.js';
+import type { RequestOptions } from '../../http/fetchWithRetry.js';
 import type {
   MediaWikiApiResponse,
   MediaWikiClient,
@@ -174,9 +175,9 @@ async function parseCandidate(
   entry: MediaWikiSearchResultEntry,
   /** Position in the wiki's own search-relevance ranking (0 = best match). */
   rank: number,
-  signal: AbortSignal | undefined
+  requestOptions: RequestOptions
 ): Promise<RetrievedChunk | undefined> {
-  const response = await client.parse(wikiId, { page: entry.title }, signal);
+  const response = await client.parse(wikiId, { page: entry.title }, requestOptions);
   const html = extractParseHtml(response);
   if (html === undefined) return undefined;
 
@@ -205,14 +206,16 @@ async function fetchWikiChunks(
   query: string,
   topK: number,
   log: pino.Logger,
-  signal: AbortSignal | undefined
+  requestOptions: RequestOptions
 ): Promise<readonly RetrievedChunk[]> {
-  const searchResponse = await client.search(wikiId, query, topK, signal);
+  const searchResponse = await client.search(wikiId, query, topK, requestOptions);
   const candidates = searchResponse.query.search.slice(0, MAX_PAGES_TO_PARSE);
   if (candidates.length === 0) return [];
 
   const settled = await Promise.allSettled(
-    candidates.map((entry, rank) => parseCandidate(client, wikiId, baseUrl, entry, rank, signal))
+    candidates.map((entry, rank) =>
+      parseCandidate(client, wikiId, baseUrl, entry, rank, requestOptions)
+    )
   );
 
   const chunks: RetrievedChunk[] = [];
@@ -248,7 +251,7 @@ async function resolveForWiki(
   query: string,
   topK: number,
   log: pino.Logger,
-  signal: AbortSignal | undefined
+  requestOptions: RequestOptions
 ): Promise<readonly RetrievedChunk[]> {
   // At most MAX_PAGES_TO_PARSE candidates are ever parsed regardless of topK (see
   // fetchWikiChunks), so that's the search limit that actually determines the result -- both
@@ -265,7 +268,15 @@ async function resolveForWiki(
     dataSource: MEDIAWIKI_DATA_SOURCE,
     getFetchedAt: (payload) => payload.fetchedAt,
     fetch: async () => ({
-      chunks: await fetchWikiChunks(client, wikiId, baseUrl, query, searchLimit, log, signal),
+      chunks: await fetchWikiChunks(
+        client,
+        wikiId,
+        baseUrl,
+        query,
+        searchLimit,
+        log,
+        requestOptions
+      ),
       fetchedAt: new Date().toISOString(),
     }),
   });
@@ -312,6 +323,10 @@ export function createMediaWikiResolver(
       // of throwing) hides that outage whenever another resolver sharing the category (e.g.
       // XivApiResolver on UNLOCKS) also comes back empty rather than rejecting.
       let allWikisFailed = true;
+      const requestOptions: RequestOptions = {
+        signal: options.signal,
+        onQueueWait: options.onQueueWait,
+      };
 
       for (const wikiId of wikiOrder) {
         if (options.signal?.aborted) return [];
@@ -330,7 +345,7 @@ export function createMediaWikiResolver(
             wikiQuery,
             topK,
             log,
-            options.signal
+            requestOptions
           );
           allWikisFailed = false;
           if (chunks.length > 0) return chunks;

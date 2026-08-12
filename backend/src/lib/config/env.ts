@@ -16,6 +16,7 @@ import {
   ENV_KEYS,
   MEDIAWIKI_DEFAULT_BASE_URLS,
   MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND,
+  MEDIAWIKI_DEFAULT_RATE_LIMIT_QUEUE_TIMEOUT_MS,
   MEDIAWIKI_DEFAULT_TIMEOUT_MS,
   MediaWikiWikiId,
 } from './constants.js';
@@ -385,6 +386,14 @@ export function getMediaWikiRateLimitPerSecond(): number {
   return readPositiveNumberEnv(
     ENV_KEYS.MEDIAWIKI_RATE_LIMIT_PER_SECOND,
     MEDIAWIKI_DEFAULT_RATE_LIMIT_PER_SECOND
+  );
+}
+
+/** Caps a single request's rate-limit queue wait before it fails fast (DEV-59). */
+export function getMediaWikiRateLimitQueueTimeoutMs(): number {
+  return readPositiveNumberEnv(
+    ENV_KEYS.MEDIAWIKI_RATE_LIMIT_QUEUE_TIMEOUT_MS,
+    MEDIAWIKI_DEFAULT_RATE_LIMIT_QUEUE_TIMEOUT_MS
   );
 }
 
